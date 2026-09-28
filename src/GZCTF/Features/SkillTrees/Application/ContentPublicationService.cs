@@ -29,6 +29,10 @@ public sealed class ContentPublicationService(
             throw new SkillTreeRevisionConflictException();
         if (!HasPublishableText(challenge.Localizations.Select(item => item.Title)))
             throw new ContentPublicationValidationException("The challenge needs a localized title before publication.");
+        if (challenge.Localizations.Any(item => string.IsNullOrWhiteSpace(item.Body)))
+            throw new ContentPublicationValidationException(
+                "Every challenge localization needs a description before publication.",
+                "content_challenge_body_required");
         await ChallengePublicationValidator.ValidateAsync(challenge, storage, token);
 
         var categoryIds = await ResolveCategoriesAsync(command, token);

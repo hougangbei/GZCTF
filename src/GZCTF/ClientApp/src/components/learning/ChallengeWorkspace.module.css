@@ -1,0 +1,117 @@
+.workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
+}
+
+.navigation {
+  margin-bottom: 20px;
+}
+.intro {
+  min-width: 0;
+  padding-bottom: 28px;
+}
+.pageTitle {
+  margin-bottom: 16px;
+}
+.meta {
+  margin-bottom: 20px;
+}
+.summary {
+  margin-bottom: 12px;
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.6;
+}
+.description {
+  max-width: 72ch;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.description > :first-child {
+  margin-top: 0;
+}
+.description > :last-child {
+  margin-bottom: 0;
+}
+
+.activity {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 28px;
+  padding: 26px 0 28px;
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+.activitySection {
+  min-width: 0;
+}
+.singleActivity {
+  grid-template-columns: 1fr;
+}
+.singleActivity .activitySection {
+  max-width: 520px;
+}
+.activitySection + .activitySection {
+  padding-left: 28px;
+  border-left: 1px solid var(--mantine-color-default-border);
+}
+.sectionTitle {
+  margin-bottom: 16px;
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.4;
+  font-weight: 650;
+}
+.instanceAddress {
+  font-family: var(--mantine-font-family-monospace);
+  overflow-wrap: anywhere;
+}
+.submitForm {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+.submitForm > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.submitForm button {
+  flex-shrink: 0;
+}
+.flagInput {
+  height: 40px;
+}
+.feedback {
+  margin-top: 12px;
+}
+.help {
+  padding-top: 24px;
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+@media (max-width: 640px) {
+  .intro {
+    padding-bottom: 22px;
+  }
+  .activity {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 22px 0;
+  }
+  .activitySection + .activitySection {
+    padding: 24px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--mantine-color-default-border);
+  }
+}
+
+@media (max-width: 420px) {
+  .submitForm {
+    flex-direction: column;
+  }
+  .submitForm button {
+    align-self: flex-start;
+  }
+}

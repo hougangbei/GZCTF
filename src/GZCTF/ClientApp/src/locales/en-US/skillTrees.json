@@ -1,5 +1,13 @@
 {
   "title": "Skill trees",
+  "content": {
+    "allCategories": "All categories",
+    "itemCount": "{{count}} items",
+    "expectedMinutes": "Estimated time: {{count}} min",
+    "noDescription": "This challenge has no description yet.",
+    "signInToSubmit": "Sign in to submit a Flag",
+    "signInToComplete": "Sign in to mark complete"
+  },
   "loading": "Loading...",
   "icon": {
     "label": "Icon",

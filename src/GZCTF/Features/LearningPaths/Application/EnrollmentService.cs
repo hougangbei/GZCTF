@@ -5,16 +5,14 @@ using Microsoft.EntityFrameworkCore;
 namespace GZCTF.Features.LearningPaths.Application;
 
 /// <summary>
-/// Serves retained lesson content. Enrollment authorization still lives here because
-/// <see cref="LessonProgressService"/> shares the same exception contract; the old
-/// LearningPath enrollment surface was retired in the skill tree cutover.
+/// Serves retained lesson content from published skill trees.
 /// </summary>
 public sealed class EnrollmentService(AppDbContext db, SkillTreeEnrollmentService enrollments)
 {
     public async Task<LessonContentResponse> GetLessonAsync(
-        Guid userId, Guid lessonId, string? locale, CancellationToken token)
+        Guid lessonId, string? locale, CancellationToken token)
     {
-        switch (await enrollments.GetLessonAccessAsync(userId, lessonId, token))
+        switch (await enrollments.GetLessonAccessAsync(lessonId, token))
         {
             case LessonAccess.NotFound:
                 throw new LearningLessonNotFoundException();

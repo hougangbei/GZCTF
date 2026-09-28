@@ -51,6 +51,9 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
         }
 
         var (_, learner) = await CreateLearnerClientAsync();
+        using var visitor = factory.CreateClient();
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await visitor.GetAsync($"/api/challenges/{challengeId}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound,
             (await learner.GetAsync($"/api/challenges/{challengeId}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound,
@@ -227,7 +230,10 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
 
         using var anonymous = factory.CreateClient();
         var anonymousResponse = await anonymous.GetAsync($"/api/challenges/{challengeId}");
-        Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, anonymousResponse.StatusCode);
+        var publicBody = await anonymousResponse.Content.ReadAsStringAsync();
+        Assert.Contains(fixture.Title, publicBody);
+        Assert.DoesNotContain(fixture.StaticFlag ?? "flag{", publicBody);
 
         using var learner = factory.CreateClient();
         var login = await learner.PostAsJsonAsync("/api/Account/LogIn",
@@ -245,7 +251,7 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
 
     [Theory]
     [MemberData(nameof(Fixtures))]
-    public async Task Anonymous_users_cannot_download_start_or_submit(ChallengeModeFixture fixture)
+    public async Task Anonymous_users_cannot_download_start_submit_or_reveal_help(ChallengeModeFixture fixture)
     {
         var challengeId = await SeedFixtureAsync(fixture);
         using var anonymous = factory.CreateClient();
@@ -254,10 +260,14 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
         var start = await anonymous.PostAsync($"/api/challenges/{challengeId}/instances", null);
         var submit = await anonymous.PostAsJsonAsync($"/api/challenges/{challengeId}/submissions",
             new { flag = fixture.StaticFlag ?? fixture.Attachments.FirstOrDefault()?.Flag ?? "flag{unknown}" });
+        var hint = await anonymous.GetAsync($"/api/challenges/{challengeId}/hints/next");
+        var writeup = await anonymous.GetAsync($"/api/challenges/{challengeId}/writeup");
 
         Assert.Equal(HttpStatusCode.Unauthorized, download.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, start.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, submit.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, hint.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, writeup.StatusCode);
     }
 
     [Theory]

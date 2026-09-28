@@ -9,7 +9,7 @@ import {
 } from './support/skillTreeSeed'
 
 /**
- * ST27 release gate. Walks the anonymous discovery, enrollment, lesson, challenge and
+ * ST27 release gate. Walks the anonymous discovery, lesson, challenge and
  * personal record journeys end to end and fails on any console error, page error or
  * response with a status of 500 or above.
  */
@@ -62,7 +62,7 @@ test.describe('skill tree learner journey', () => {
     await expect(visitorPage.getByText(PROGRESS_TEXT)).toHaveCount(0)
     await anonymous.close()
 
-    // 2. Sign in, join two trees and set one current.
+    // 2. Sign in without joining a tree.
     const context = await createRoleContext(browser, 'learner')
     const page = await context.newPage()
     const learnerFailures = collectFailures(page, [
@@ -70,44 +70,33 @@ test.describe('skill tree learner journey', () => {
       { url: /\/instances$/, status: 404 },
     ])
 
-    const joinAndSelect = async (treeId: string) => {
-      await page.goto(`/skill-trees/${treeId}`)
-      // Wait for the enrollment control to settle before deciding which state it is in.
-      await expect(page.getByRole('button', { name: /^Join$|^Set current$/ }).first()).toBeVisible()
-      const join = page.getByRole('button', { name: 'Join' })
-      if (await join.count()) await join.click()
-      await page.getByRole('button', { name: 'Set current' }).click()
-      await expect(page.getByText('Current').first()).toBeVisible()
-    }
-
-    await joinAndSelect(seed.treeId)
-    await joinAndSelect(seed.secondTreeId)
+    await page.goto(`/skill-trees/${seed.treeId}`)
+    await expect(page.getByRole('link', { name: sharedCategory })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Join' })).toHaveCount(0)
 
     // 3. Open a Markdown lesson and mark complete.
     await page.goto(`/skill-trees/${seed.treeId}/${seed.categoryId}/lesson/${seed.lessonId}`)
-    await expect(page.getByRole('heading', { name: lessonTitle })).toBeVisible()
+    await expect(page.getByRole('dialog', { name: lessonTitle })).toBeVisible()
     await page.getByRole('button', { name: 'Mark complete' }).click()
     await expect(page.getByRole('button', { name: 'Mark complete' })).toBeEnabled()
 
     // 4. Reveal a hint and the official write-up, then submit the Flag.
     await page.goto(`/skill-trees/${seed.treeId}/${seed.categoryId}/challenge/${seed.challengeId}`)
-    await expect(page.getByRole('heading', { name: challengeTitle })).toBeVisible()
+    await expect(page.getByRole('dialog', { name: challengeTitle })).toBeVisible()
     await page.getByRole('button', { name: 'Reveal next hint' }).click()
     await page.getByRole('button', { name: 'Show official write-up' }).click()
     await page.getByRole('textbox').first().fill(flag)
     await page.getByRole('button', { name: 'Submit flag' }).click()
     await expect(page.getByText('Flag accepted.')).toBeVisible({ timeout: 15_000 })
 
-    // 5. Personal records reflect both shared references.
+    // 5. Personal records retain solved content without a tree enrollment.
     await page.goto('/account/learning')
-    await expect(page.getByText(firstTree).first()).toBeVisible()
-    await expect(page.getByText(secondTree).first()).toBeVisible()
     await expect(page.getByText(challengeTitle).first()).toBeVisible()
     await expect(page.getByText(lessonTitle).first()).toBeVisible()
 
     // 6. Switch languages and assert no raw translation key leaks.
     await switchLanguage(page, 'zh-CN')
-    await expect(page.getByText(firstTree).first()).toBeVisible()
+    await expect(page.getByText(challengeTitle).first()).toBeVisible()
     await assertNoRawKeys(page)
     await switchLanguage(page, 'en-US')
     await assertNoRawKeys(page)

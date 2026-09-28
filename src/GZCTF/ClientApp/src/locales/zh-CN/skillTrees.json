@@ -1,5 +1,13 @@
 {
   "title": "技能树",
+  "content": {
+    "allCategories": "全部类别",
+    "itemCount": "{{count}} 项内容",
+    "expectedMinutes": "预计用时：{{count}} 分钟",
+    "noDescription": "这道题还没有题目描述。",
+    "signInToSubmit": "登录后提交 Flag",
+    "signInToComplete": "登录后标记完成"
+  },
   "loading": "加载中...",
   "icon": {
     "label": "图标",

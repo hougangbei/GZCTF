@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using GZCTF.Features.ChallengeLibrary.Domain;
 using GZCTF.Features.LearningProgress.Domain;
+using GZCTF.Features.LearningPaths.Domain;
 using GZCTF.Features.SkillTrees.Application;
 using GZCTF.Features.SkillTrees.Domain;
 using GZCTF.Integration.Test.Base;
@@ -82,6 +83,57 @@ public class SkillTreeEnrollmentTests(GZCTFApplicationFactory factory)
         Assert.Equal(HttpStatusCode.NoContent, leave.StatusCode);
         var record = await client.GetFromJsonAsync<MyLearningResponse>("/api/my-learning", JsonOptions);
         Assert.Null(record!.CurrentSkillTreeId);
+    }
+
+    [Fact]
+    public async Task Published_lesson_can_be_opened_and_completed_without_joining_a_tree()
+    {
+        var lessonId = Guid.CreateVersion7();
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var lesson = new Lesson
+            {
+                Id = lessonId,
+                PublicationState = LessonPublicationState.Published,
+                Localizations = [new LessonLocalization { Locale = "en", Title = "Open lesson", Body = "Read me" }]
+            };
+            var category = new SkillCategory { Name = "Open category", IconKey = "brain" };
+            category.Contents.Add(new CategoryContent { Category = category, Lesson = lesson, SortOrder = 0 });
+            var (tree, revision) = BuildTree("Open tree", "brain", category);
+            db.SkillTrees.Add(tree);
+            await db.SaveChangesAsync();
+            await SetCurrentAsync(db, tree.Id, revision.Id);
+        }
+
+        using var visitor = factory.CreateClient();
+        var publicDetail = await visitor.GetAsync($"/api/learning-lessons/{lessonId}");
+        Assert.Equal(HttpStatusCode.OK, publicDetail.StatusCode);
+
+        var (user, client) = await CreateUserClientAsync();
+        var detail = await client.GetAsync($"/api/learning-lessons/{lessonId}");
+        Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
+        Assert.Contains("Read me", await detail.Content.ReadAsStringAsync());
+
+        var complete = await client.PostAsync($"/api/learning-lessons/{lessonId}/complete", null);
+        Assert.Equal(HttpStatusCode.NoContent, complete.StatusCode);
+        await using var verify = factory.Services.CreateAsyncScope();
+        var dbVerify = verify.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.True(await dbVerify.LessonProgress.AnyAsync(item => item.UserId == user.Id && item.LessonId == lessonId));
+    }
+
+    [Fact]
+    public async Task Visitor_can_read_a_published_challenge_without_joining()
+    {
+        var seed = await SeedTreesAsync();
+        using var visitor = factory.CreateClient();
+
+        var response = await visitor.GetAsync($"/api/challenges/{seed.ChallengeId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var detail = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Shared challenge", detail);
+        Assert.DoesNotContain("flag{", detail);
     }
 
     [Fact]

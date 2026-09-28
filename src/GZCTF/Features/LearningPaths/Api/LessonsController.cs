@@ -19,15 +19,9 @@ public sealed class LessonsController(
     public async Task<ActionResult<LessonContentResponse>> Get(
         Guid id, [FromQuery] string? locale, CancellationToken token)
     {
-        if (User.Identity?.IsAuthenticated != true)
-            return Forbid();
-        var user = await userManager.GetUserAsync(User);
-        if (user is null)
-            return Forbid();
-
         try
         {
-            return Ok(await enrollmentService.GetLessonAsync(user.Id, id, locale, token));
+            return Ok(await enrollmentService.GetLessonAsync(id, locale, token));
         }
         catch (LearningEnrollmentRequiredException)
         {

@@ -1,41 +1,47 @@
-import { Alert, Badge, Button, Card, Code, Group, Stack, Text, Textarea, Title } from '@mantine/core'
-import { Link } from 'react-router'
+import { Alert, Badge, Button, Group, Stack, Text, TextInput, Title } from '@mantine/core'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Markdown } from '@Components/MarkdownRenderer'
-import {
-  useChallenge,
-  useChallengeInstance,
-  useLearningMutations,
-} from '@Hooks/useChallengeLibraryAdmin'
-import { useUser } from '@Hooks/useUser'
-import { useLanguage } from '@Utils/I18n'
+import { Link } from 'react-router'
 import { useSWRConfig } from 'swr'
+import { Markdown } from '@Components/MarkdownRenderer'
+import { useLanguage } from '@Utils/I18n'
+import { useChallenge, useChallengeInstance, useLearningMutations } from '@Hooks/useChallengeLibraryAdmin'
+import { useUser } from '@Hooks/useUser'
 import { ChallengeInstanceStatus } from '@Api'
+import classes from './ChallengeWorkspace.module.css'
 
 export type ChallengeWorkspaceProps = {
   challengeId: string
   backHref?: string
   previousHref?: string
   nextHref?: string
+  modal?: boolean
 }
 
-export const ChallengeWorkspace = ({ challengeId, backHref, previousHref, nextHref }: ChallengeWorkspaceProps) => {
+export const ChallengeWorkspace = ({
+  challengeId,
+  backHref,
+  previousHref,
+  nextHref,
+  modal = false,
+}: ChallengeWorkspaceProps) => {
   const { locale } = useLanguage()
   const { user } = useUser()
   const { t } = useTranslation('learning')
   const { t: tChallenge } = useTranslation('challenge')
-  const { data: challenge, error } = useChallenge(challengeId, locale, !!user)
+  const { t: tSkillTrees } = useTranslation('skillTrees')
+  const { data: challenge, error } = useChallenge(challengeId, locale, true)
   const { data: instance, mutate: mutateInstance } = useChallengeInstance(challengeId, !!user)
   const { mutate } = useSWRConfig()
-  const { startInstance, extendInstance, stopInstance, submitChallenge, nextHint, revealWriteup } = useLearningMutations()
+  const { startInstance, extendInstance, stopInstance, submitChallenge, nextHint, revealWriteup } =
+    useLearningMutations()
   const [flag, setFlag] = useState('')
   const [hints, setHints] = useState<string[]>([])
   const [writeup, setWriteup] = useState<string>()
   const [message, setMessage] = useState<string>()
+  const [messageType, setMessageType] = useState<'success' | 'error'>('error')
   const [solveMode, setSolveMode] = useState<string>()
 
-  if (!user) return <Text c="dimmed">{t('signInToStudy')}</Text>
   if (!challenge && !error) return <Text>{t('loading')}</Text>
   if (error) return <Text c="red">{t('loadFailed')}</Text>
 
@@ -44,6 +50,7 @@ export const ChallengeWorkspace = ({ challengeId, backHref, previousHref, nextHr
       setMessage(undefined)
       await action()
     } catch {
+      setMessageType('error')
       setMessage(t('actionFailed'))
     }
   }
@@ -52,9 +59,14 @@ export const ChallengeWorkspace = ({ challengeId, backHref, previousHref, nextHr
     if (!flag.trim()) return
     try {
       const result = await submitChallenge(challengeId, flag)
-      setMessage(result.accepted ? t('accepted') :
-        result.rejectionCode === 'challenge.submission_limit_exhausted'
-          ? t('submissionLimitExhausted') : t('rejected'))
+      setMessageType(result.accepted ? 'success' : 'error')
+      setMessage(
+        result.accepted
+          ? t('accepted')
+          : result.rejectionCode === 'challenge.submission_limit_exhausted'
+            ? t('submissionLimitExhausted')
+            : t('rejected')
+      )
       if (result.accepted) {
         setSolveMode(result.solveMode === undefined || result.solveMode === null ? undefined : String(result.solveMode))
         await mutate((key) => {
@@ -64,6 +76,7 @@ export const ChallengeWorkspace = ({ challengeId, backHref, previousHref, nextHr
       }
       setFlag('')
     } catch {
+      setMessageType('error')
       setMessage(t('actionFailed'))
     }
   }
@@ -82,10 +95,13 @@ export const ChallengeWorkspace = ({ challengeId, backHref, previousHref, nextHr
     })
   }
 
+  const typeKey = challenge!.type.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
+  const hasResource = !!user && (challenge!.hasAttachment || challenge!.hasContainer)
+
   return (
-    <Stack gap="lg">
-      {(backHref || previousHref || nextHref) && (
-        <Group gap="xs">
+    <div className={classes.workspace}>
+      {!modal && (backHref || previousHref || nextHref) && (
+        <Group gap="xs" className={classes.navigation}>
           {backHref && (
             <Button component={Link} to={backHref} variant="subtle">
               ← Back
@@ -103,70 +119,157 @@ export const ChallengeWorkspace = ({ challengeId, backHref, previousHref, nextHr
           )}
         </Group>
       )}
-      <Card withBorder padding="xl">
-        <Stack>
-          <Group justify="space-between">
-            <Title order={2}>{challenge!.title}</Title>
-            <Group gap="xs">
-              {challenge!.ctfCategory && (
-                <Badge variant="light">
-                  {challenge!.ctfCategory} · {tChallenge(`category.${challenge!.ctfCategory.toLowerCase()}`)}
-                </Badge>
-              )}
-              <Code>{challenge!.type}</Code>
-            </Group>
-          </Group>
-          <Text c="dimmed">{challenge!.summary}</Text>
-          <Markdown source={challenge!.body} />
-        </Stack>
-      </Card>
+      <section className={classes.intro} aria-label={challenge!.title}>
+        {!modal && (
+          <Title order={2} className={classes.pageTitle}>
+            {challenge!.title}
+          </Title>
+        )}
+        <Group gap="xs" className={classes.meta}>
+          {challenge!.ctfCategory && (
+            <Badge variant="light">
+              {challenge!.ctfCategory} · {tChallenge(`category.${challenge!.ctfCategory.toLowerCase()}`)}
+            </Badge>
+          )}
+          <Badge variant="outline" color="gray">
+            {tChallenge(`type.${typeKey}.label`)}
+          </Badge>
+        </Group>
+        {challenge!.summary && <Text className={classes.summary}>{challenge!.summary}</Text>}
+        <div className={classes.description}>
+          {challenge!.body?.trim() ? (
+            <Markdown source={challenge!.body} />
+          ) : (
+            <Text c="dimmed">{tSkillTrees('content.noDescription')}</Text>
+          )}
+        </div>
+      </section>
 
-      {(challenge!.hasAttachment || challenge!.hasContainer) && (
-        <Card withBorder>
-          <Stack>
-            <Title order={3}>{t('instance')}</Title>
+      <div className={`${classes.activity} ${!hasResource ? classes.singleActivity : ''}`}>
+        {hasResource && (
+          <section className={classes.activitySection}>
+            <Title order={3} className={classes.sectionTitle}>
+              {t('instance')}
+            </Title>
             {instance?.status === ChallengeInstanceStatus.Running ? (
-              <Group>
-                <Text>
+              <Stack gap="sm" align="flex-start">
+                <Text className={classes.instanceAddress}>
                   {instance.publicIp
                     ? `${instance.publicIp}${instance.publicPort ? `:${instance.publicPort}` : ''}`
                     : t('instanceRunning')}
                 </Text>
-                <Button variant="light" onClick={() => run(async () => { await extendInstance(challengeId); await mutateInstance() })}>{t('extend')}</Button>
-                <Button color="red" variant="light" onClick={() => run(async () => { await stopInstance(challengeId); await mutateInstance(undefined, false) })}>{t('stop')}</Button>
-              </Group>
+                <Group gap="xs">
+                  <Button
+                    variant="light"
+                    onClick={() =>
+                      run(async () => {
+                        await extendInstance(challengeId)
+                        await mutateInstance()
+                      })
+                    }
+                  >
+                    {t('extend')}
+                  </Button>
+                  <Button
+                    color="red"
+                    variant="subtle"
+                    onClick={() =>
+                      run(async () => {
+                        await stopInstance(challengeId)
+                        await mutateInstance(undefined, false)
+                      })
+                    }
+                  >
+                    {t('stop')}
+                  </Button>
+                </Group>
+              </Stack>
             ) : challenge!.hasContainer ? (
-              <Button onClick={() => run(async () => { await startInstance(challengeId); await mutateInstance() })}>{t('start')}</Button>
+              <Button
+                variant="light"
+                onClick={() =>
+                  run(async () => {
+                    await startInstance(challengeId)
+                    await mutateInstance()
+                  })
+                }
+              >
+                {t('start')}
+              </Button>
             ) : (
-              <Button component="a" href={`/api/challenges/${challengeId}/attachment`}>{t('downloadAttachment')}</Button>
+              <Button component="a" variant="light" href={`/api/challenges/${challengeId}/attachment`}>
+                {t('downloadAttachment')}
+              </Button>
             )}
-          </Stack>
-        </Card>
-      )}
+          </section>
+        )}
 
-      <Card withBorder>
-        <Stack>
-          <Title order={3}>{t('submit')}</Title>
-          <Textarea value={flag} onChange={(event) => setFlag(event.currentTarget.value)} placeholder={t('flagPlaceholder')} />
-          <Button onClick={submit}>{t('submit')}</Button>
-          {message && <Alert>{message}</Alert>}
-          {solveMode && <Text c="teal">{t('solveMode')}: {solveMode}</Text>}
-        </Stack>
-      </Card>
+        {user ? (
+          <section className={classes.activitySection}>
+            <Title order={3} className={classes.sectionTitle}>
+              {t('submit')}
+            </Title>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                void submit()
+              }}
+              className={classes.submitForm}
+            >
+              <TextInput
+                value={flag}
+                onChange={(event) => setFlag(event.currentTarget.value)}
+                placeholder={t('flagPlaceholder')}
+                aria-label={t('flagPlaceholder')}
+                classNames={{ input: classes.flagInput }}
+              />
+              <Button type="submit" disabled={!flag.trim()}>
+                {t('submit')}
+              </Button>
+            </form>
+            {message && (
+              <Alert color={messageType === 'success' ? 'teal' : 'red'} className={classes.feedback}>
+                {message}
+              </Alert>
+            )}
+            {solveMode && (
+              <Text c="teal" size="sm">
+                {t('solveMode')}: {solveMode}
+              </Text>
+            )}
+          </section>
+        ) : (
+          <Button component={Link} to="/account/login" variant="light">
+            {tSkillTrees('content.signInToSubmit')}
+          </Button>
+        )}
+      </div>
 
-      {(challenge!.hintLocaleCount > 0 || challenge!.hasWriteup) && (
-        <Card withBorder>
-          <Stack>
-            <Title order={3}>{t('help')}</Title>
+      {!!user && (challenge!.hintLocaleCount > 0 || challenge!.hasWriteup) && (
+        <section className={classes.help}>
+          <Stack gap="sm">
+            <Title order={3} className={classes.sectionTitle}>
+              {t('help')}
+            </Title>
             <Group>
-              {challenge!.hintLocaleCount > 0 && <Button variant="light" onClick={revealHint}>{t('nextHint')}</Button>}
-              {challenge!.hasWriteup && <Button variant="light" onClick={revealOfficialWriteup}>{t('showWriteup')}</Button>}
+              {challenge!.hintLocaleCount > 0 && (
+                <Button variant="light" onClick={revealHint}>
+                  {t('nextHint')}
+                </Button>
+              )}
+              {challenge!.hasWriteup && (
+                <Button variant="light" onClick={revealOfficialWriteup}>
+                  {t('showWriteup')}
+                </Button>
+              )}
             </Group>
-            {hints.map((hint, index) => <Alert key={`${index}-${hint}`}>{hint}</Alert>)}
+            {hints.map((hint, index) => (
+              <Alert key={`${index}-${hint}`}>{hint}</Alert>
+            ))}
             {writeup && <Markdown source={writeup} />}
           </Stack>
-        </Card>
+        </section>
       )}
-    </Stack>
+    </div>
   )
 }

@@ -1,70 +1,22 @@
-import { Button, Center, Loader, Stack, Text, Title } from '@mantine/core'
-import { useMemo } from 'react'
-import { Link, Navigate, useParams } from 'react-router'
+import { Center, Loader, Modal, Stack, Text } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
-import { useSkillTree, useMyLearning } from '@Hooks/useSkillTrees'
-import { useUser } from '@Hooks/useUser'
+import { Navigate, useNavigate, useParams } from 'react-router'
+import { WithNavBar } from '@Components/WithNavbar'
 import { ChallengeWorkspace } from '@Components/learning/ChallengeWorkspace'
 import { LessonWorkspace } from '@Components/learning/LessonWorkspace'
-import { WithNavBar } from '@Components/WithNavbar'
-
-const VALID_KINDS = ['challenge', 'lesson'] as const
+import { useSkillTree } from '@Hooks/useSkillTrees'
+import classes from './SkillTreeContentWorkspace.module.css'
+import { SkillTreeOutline } from './SkillTreeOutline'
 
 export const SkillTreeContentWorkspace = () => {
-  // The route is /skill-trees/:id/:categoryId/:kind/:contentId.
   const { id: treeId, categoryId, kind, contentId } = useParams()
+  const navigate = useNavigate()
   const { t } = useTranslation('skillTrees')
-  const { user } = useUser()
-  const { data: tree, error: treeError } = useSkillTree(treeId)
-  const { data: record } = useMyLearning(!!user)
+  const { data: tree, error } = useSkillTree(treeId)
 
-  const isEnrolled = record?.skillTrees?.some((item) => item.skillTreeId === treeId) ?? false
+  if (kind !== 'challenge' && kind !== 'lesson') return <Navigate to="/404" replace />
 
-  // Navigation is derived before any early return so the hook order stays stable while
-  // the tree, the enrollment record, or both are still loading.
-  const nav = useMemo(() => {
-    const flat = (tree?.categories ?? []).flatMap((category) =>
-      (category.contents ?? []).map((content) => ({
-        ...content,
-        categoryId: category.categoryId,
-      })),
-    )
-    const idx = flat.findIndex((item) => item.contentId === contentId)
-    const prev = idx > 0 ? flat[idx - 1] : undefined
-    const next = idx >= 0 && idx < flat.length - 1 ? flat[idx + 1] : undefined
-
-    return {
-      backHref: `/skill-trees/${treeId}`,
-      previousHref: prev
-        ? `/skill-trees/${treeId}/${prev.categoryId}/${prev.kind}/${prev.contentId}`
-        : undefined,
-      nextHref: next
-        ? `/skill-trees/${treeId}/${next.categoryId}/${next.kind}/${next.contentId}`
-        : undefined,
-    }
-  }, [tree, treeId, contentId])
-
-  if (!VALID_KINDS.includes(kind as typeof VALID_KINDS[number])) {
-    return <Navigate to="/404" replace />
-  }
-
-  if (!user) {
-    return (
-      <WithNavBar minWidth={0}>
-        <Center h="60vh">
-          <Stack align="center" gap="md">
-            <Title order={3}>Sign in required</Title>
-            <Text c="dimmed">Join this skill tree to access its content.</Text>
-            <Button component={Link} to="/account/login">
-              Sign in
-            </Button>
-          </Stack>
-        </Center>
-      </WithNavBar>
-    )
-  }
-
-  if (!record) {
+  if (!tree && !error) {
     return (
       <WithNavBar minWidth={0}>
         <Center h="60vh">
@@ -74,33 +26,7 @@ export const SkillTreeContentWorkspace = () => {
     )
   }
 
-  if (!isEnrolled) {
-    return (
-      <WithNavBar minWidth={0}>
-        <Center h="60vh">
-          <Stack align="center" gap="md">
-            <Title order={3}>Join this tree</Title>
-            <Text c="dimmed">You need to join this skill tree before accessing its content.</Text>
-            <Button component={Link} to={`/skill-trees/${treeId}`}>
-              View tree
-            </Button>
-          </Stack>
-        </Center>
-      </WithNavBar>
-    )
-  }
-
-  if (!tree && !treeError) {
-    return (
-      <WithNavBar minWidth={0}>
-        <Center h="60vh">
-          <Loader />
-        </Center>
-      </WithNavBar>
-    )
-  }
-
-  if (treeError || !tree) {
+  if (error || !tree) {
     return (
       <WithNavBar minWidth={0}>
         <Center h="60vh">
@@ -110,9 +36,34 @@ export const SkillTreeContentWorkspace = () => {
     )
   }
 
-  if (kind === 'challenge') {
-    return <ChallengeWorkspace challengeId={contentId!} {...nav} />
-  }
+  const category = tree.categories?.find((item) => item.categoryId === categoryId)
+  const content = category?.contents?.find((item) => item.kind === kind && item.contentId === contentId)
+  if (!category || !content) return <Navigate to="/404" replace />
 
-  return <LessonWorkspace lessonId={contentId!} {...nav} />
+  const closeHref = `/skill-trees/${treeId}?category=${categoryId}`
+  return (
+    <WithNavBar minWidth={0}>
+      <Stack gap="lg">
+        <SkillTreeOutline tree={tree} selectedCategoryId={categoryId} />
+        <Modal
+          opened
+          onClose={() => navigate(closeHref)}
+          title={content.title}
+          size={kind === 'challenge' ? 860 : 'lg'}
+          centered
+          classNames={
+            kind === 'challenge'
+              ? { content: classes.content, header: classes.header, title: classes.title, body: classes.challengeBody }
+              : { content: classes.content, body: classes.body }
+          }
+        >
+          {kind === 'challenge' ? (
+            <ChallengeWorkspace challengeId={contentId!} modal />
+          ) : (
+            <LessonWorkspace lessonId={contentId!} modal />
+          )}
+        </Modal>
+      </Stack>
+    </WithNavBar>
+  )
 }

@@ -14,7 +14,6 @@ using CanonicalChallenge = GZCTF.Features.ChallengeLibrary.Domain.Challenge;
 
 namespace GZCTF.Features.ChallengeRuntime.Api;
 
-[RequireUser]
 [ApiController]
 [Route("api/challenges")]
 [Produces(MediaTypeNames.Application.Json)]
@@ -32,8 +31,7 @@ public sealed class ChallengesController(
         Guid id, [FromQuery] string? locale, CancellationToken token)
     {
         var user = await users.GetUserAsync(User);
-        if (user is null) return Unauthorized();
-        if (!await access.CanAccessAsync(id, user, token)) return NotFound();
+        if (!await access.CanReadAsync(id, user, token)) return NotFound();
         var challenge = await db.Challenges.AsNoTracking()
             .Include(item => item.Localizations)
             .Include(item => item.Hints)
@@ -59,6 +57,7 @@ public sealed class ChallengesController(
     }
 
     [HttpGet("{id:guid}/attachment")]
+    [RequireUser]
     public async Task<IActionResult> DownloadAttachment(Guid id, CancellationToken token)
     {
         var user = await users.GetUserAsync(User);
@@ -74,6 +73,7 @@ public sealed class ChallengesController(
     }
 
     [HttpGet("{id:guid}/hints/next")]
+    [RequireUser]
     public async Task<ActionResult<ChallengeHintResponse>> NextHint(
         Guid id, [FromQuery] string? locale, CancellationToken token)
     {
@@ -86,6 +86,7 @@ public sealed class ChallengesController(
     }
 
     [HttpGet("{id:guid}/writeup")]
+    [RequireUser]
     public async Task<ActionResult<ChallengeWriteupResponse>> Writeup(
         Guid id, [FromQuery] string? locale, CancellationToken token)
     {

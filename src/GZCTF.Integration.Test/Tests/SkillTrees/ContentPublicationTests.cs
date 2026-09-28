@@ -75,6 +75,26 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
     }
 
     [Fact]
+    public async Task Publishing_rejects_challenge_without_a_description()
+    {
+        var (_, categoryId) = await SeedPublishedTreeAsync();
+        var challenge = await SeedDraftAsync("challenge");
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var localization = await db.ChallengeLocalizations.SingleAsync(item => item.ChallengeId == challenge.Id);
+            localization.Body = "  ";
+            await db.SaveChangesAsync();
+        }
+
+        using var admin = await CreateAdminClientAsync();
+        var publish = await PublishAsync(admin, "challenge", challenge, [categoryId], []);
+
+        Assert.Equal(HttpStatusCode.BadRequest, publish.StatusCode);
+        Assert.Equal("content_challenge_body_required", await ReadCodeAsync(publish));
+    }
+
+    [Fact]
     public async Task Publishing_rejects_an_attachment_that_is_missing_from_storage()
     {
         var (_, categoryId) = await SeedPublishedTreeAsync();
@@ -90,7 +110,7 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
                 PublicationState = ChallengePublicationState.Draft,
                 SourceType = "native",
                 SourceId = challengeId.ToString("N"),
-                Localizations = [new ChallengeLocalization { Locale = "en", Title = "Missing file" }],
+                Localizations = [new ChallengeLocalization { Locale = "en", Title = "Missing file", Body = "Description" }],
                 Flags = [new ChallengeFlag
                 {
                     Kind = ChallengeFlagKind.DynamicAttachment,
@@ -172,7 +192,7 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
                 Type = challengeType,
                 PublicationState = ChallengePublicationState.Draft,
                 IsEnabled = true,
-                Localizations = [new ChallengeLocalization { Locale = "en", Title = "Draft challenge" }],
+                Localizations = [new ChallengeLocalization { Locale = "en", Title = "Draft challenge", Body = "Description" }],
                 Flags = includeFlag ? challengeType switch
                 {
                     ChallengeType.StaticAttachment or ChallengeType.StaticContainer =>

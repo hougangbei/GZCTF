@@ -12,13 +12,15 @@ export type LessonWorkspaceProps = {
   backHref?: string
   previousHref?: string
   nextHref?: string
+  modal?: boolean
 }
 
-export const LessonWorkspace = ({ lessonId, backHref, previousHref, nextHref }: LessonWorkspaceProps) => {
+export const LessonWorkspace = ({ lessonId, backHref, previousHref, nextHref, modal = false }: LessonWorkspaceProps) => {
   const { locale } = useLanguage()
   const { user } = useUser()
   const { t } = useTranslation('learning')
-  const { data: lesson, error } = useLesson(lessonId, locale, !!user)
+  const { t: tSkillTrees } = useTranslation('skillTrees')
+  const { data: lesson, error } = useLesson(lessonId, locale, true)
   const { completeLesson } = useLearningMutations()
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string>()
@@ -29,14 +31,13 @@ export const LessonWorkspace = ({ lessonId, backHref, previousHref, nextHref }: 
     try { await completeLesson(lessonId) } catch { setMessage(t('actionFailed')) } finally { setPending(false) }
   }
 
-  if (!user) return <Text c="dimmed">{t('signInToStudy')}</Text>
   if (!lesson && !error) return <Loader />
   if (error) return <Text c="red">{t('loadFailed')}</Text>
 
   return (
-    <Card withBorder padding="xl">
+    <Card withBorder={!modal} padding={modal ? 0 : 'xl'}>
       <Stack>
-        {(backHref || previousHref || nextHref) && (
+        {!modal && (backHref || previousHref || nextHref) && (
           <Group gap="xs" mb="md">
             {backHref && (
               <Button component={Link} to={backHref} variant="subtle">
@@ -55,10 +56,12 @@ export const LessonWorkspace = ({ lessonId, backHref, previousHref, nextHref }: 
             )}
           </Group>
         )}
-        <Title order={1}>{lesson!.title}</Title>
+        {!modal && <Title order={1}>{lesson!.title}</Title>}
         <Markdown source={lesson!.body} />
         <Group justify="flex-end">
-          <Button loading={pending} onClick={complete}>{t('markComplete')}</Button>
+          {user
+            ? <Button loading={pending} onClick={complete}>{t('markComplete')}</Button>
+            : <Button component={Link} to="/account/login" variant="light">{tSkillTrees('content.signInToComplete')}</Button>}
         </Group>
         {message && <Text c="red">{message}</Text>}
       </Stack>

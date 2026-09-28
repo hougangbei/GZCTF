@@ -10,7 +10,7 @@ public sealed class LessonProgressService(AppDbContext db, SkillTreeEnrollmentSe
 {
     public async Task CompleteAsync(Guid userId, Guid lessonId, CancellationToken token)
     {
-        var access = await enrollments.GetLessonAccessAsync(userId, lessonId, token);
+        var access = await enrollments.GetLessonAccessAsync(lessonId, token);
         if (access == LessonAccess.NotFound)
             throw new LearningLessonNotFoundException();
         if (access == LessonAccess.EnrollmentRequired)
