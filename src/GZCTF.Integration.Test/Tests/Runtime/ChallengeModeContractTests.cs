@@ -156,12 +156,69 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
         await db.SaveChangesAsync();
 
         var adapter = new RecordingContainerAdapter(db);
-        var runtime = new ChallengeRuntimeService(db, adapter);
+        var runtime = new ChallengeRuntimeService(db, adapter, new LearningInstanceSettingsService(db));
         var instance = await runtime.StartAsync(user.Id, challengeId);
 
         Assert.Equal(ChallengeInstanceStatus.Running, instance.Status);
         Assert.Equal("registry.test/legacy:1", adapter.LastRequest?.Image);
         Assert.Equal($"flag{{legacy-{user.Id:N}}}", adapter.LastRequest?.Flag);
+    }
+
+    [Fact]
+    public async Task Learner_container_limit_and_lifetime_apply_to_real_container_records()
+    {
+        var user = await TestDataSeeder.CreateUserAsync(
+            factory.Services, TestDataSeeder.RandomName(), "S08!LearnerPassword");
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var challengeIds = Enumerable.Range(0, 3).Select(_ => Guid.CreateVersion7()).ToArray();
+        foreach (var id in challengeIds)
+            db.Challenges.Add(new Challenge
+            {
+                Id = id, Type = ChallengeType.StaticContainer,
+                PublicationState = ChallengePublicationState.Published, IsEnabled = true,
+                SourceType = "native", SourceId = id.ToString("N"),
+                Localizations = [new ChallengeLocalization { Locale = "en", Title = "Box" }],
+                RuntimeConfigurationJson = JsonSerializer.Serialize(new
+                {
+                    Image = "registry.test/box:1", ExposedPort = 8080,
+                    Cpu = 1, MemoryMb = 128, StorageMb = 256, NetworkMode = "Open"
+                })
+            });
+        await db.SaveChangesAsync();
+
+        var settings = new LearningInstanceSettingsService(db);
+        await settings.SaveAsync(new LearningInstanceSettings(2, 90));
+        try
+        {
+            var runtime = new ChallengeRuntimeService(db, new RecordingContainerAdapter(db), settings);
+            var first = await runtime.StartAsync(user.Id, challengeIds[0]);
+            var second = await runtime.StartAsync(user.Id, challengeIds[1]);
+            await Assert.ThrowsAsync<ChallengeInstanceLimitException>(
+                () => runtime.StartAsync(user.Id, challengeIds[2]));
+
+            var container = await db.Containers.SingleAsync(item => item.Id == first.ContainerId);
+            Assert.InRange((container.ExpectStopAt - DateTimeOffset.UtcNow).TotalMinutes, 89, 91);
+            container.ExpectStopAt = DateTimeOffset.UtcNow.AddMinutes(5);
+            first.ExpiresAtUtc = container.ExpectStopAt;
+            await db.SaveChangesAsync();
+            await runtime.ExtendAsync(user.Id, challengeIds[0]);
+            Assert.InRange((container.ExpectStopAt - DateTimeOffset.UtcNow).TotalMinutes, 89, 91);
+            Assert.Equal(container.ExpectStopAt, first.ExpiresAtUtc);
+            await runtime.StopAsync(user.Id, challengeIds[0]);
+            await runtime.StartAsync(user.Id, challengeIds[2]);
+            second.ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(-1);
+            await db.SaveChangesAsync();
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => runtime.GetCurrentInstanceAsync(user.Id, challengeIds[1]));
+            Assert.False(second.IsActive);
+            var restarted = await runtime.StartAsync(user.Id, challengeIds[1]);
+            Assert.NotEqual(second.Id, restarted.Id);
+        }
+        finally
+        {
+            await settings.SaveAsync(new LearningInstanceSettings());
+        }
     }
 
     [Fact]
@@ -184,12 +241,14 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
             db.Containers.Add(new LegacyContainer
             {
                 Id = containerId, Image = "registry.test/box:1", ContainerId = "reachable",
-                IP = "10.0.0.2", Port = 80, PublicIP = "203.0.113.5", PublicPort = 18080
+                IP = "10.0.0.2", Port = 80, PublicIP = "203.0.113.5", PublicPort = 18080,
+                Status = ContainerStatus.Running, ExpectStopAt = DateTimeOffset.UtcNow.AddHours(2)
             });
             db.UserChallengeInstances.Add(new UserChallengeInstance
             {
                 UserId = user.Id, ChallengeId = challengeId, ContainerId = containerId,
-                Status = ChallengeInstanceStatus.Running, IsActive = true
+                Status = ChallengeInstanceStatus.Running, IsActive = true,
+                ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
             });
             await db.SaveChangesAsync();
         }
@@ -211,7 +270,8 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
             var container = new LegacyContainer
             {
                 Id = Guid.CreateVersion7(), Image = request.Image, ContainerId = "test-container",
-                IP = "127.0.0.1", Port = request.ExposedPort
+                IP = "127.0.0.1", Port = request.ExposedPort,
+                Status = ContainerStatus.Running
             };
             db.Containers.Add(container);
             return Task.FromResult<LegacyContainer?>(container);

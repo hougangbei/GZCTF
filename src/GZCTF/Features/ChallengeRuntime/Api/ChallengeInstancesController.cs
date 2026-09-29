@@ -22,7 +22,7 @@ public sealed class ChallengeInstancesController(
 {
     [HttpGet]
     public Task<ActionResult<ChallengeInstanceResponse>> Get(Guid challengeId, CancellationToken token) =>
-        Execute(challengeId, () => runtime.GetOwnedInstanceAsync(GetUserId(), challengeId, token));
+        Execute(challengeId, () => runtime.GetCurrentInstanceAsync(GetUserId(), challengeId, token));
 
     [HttpPost]
     public Task<ActionResult<ChallengeInstanceResponse>> Start(Guid challengeId, CancellationToken token) =>
@@ -58,6 +58,10 @@ public sealed class ChallengeInstancesController(
         try
         {
             return Ok(await ToResponseAsync(await action(), HttpContext.RequestAborted));
+        }
+        catch (ChallengeInstanceLimitException)
+        {
+            return Conflict(new { code = "challenge.instance_limit_reached" });
         }
         catch (InvalidOperationException)
         {

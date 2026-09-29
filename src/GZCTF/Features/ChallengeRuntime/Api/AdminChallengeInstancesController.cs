@@ -3,6 +3,7 @@ using GZCTF.Features.ChallengeRuntime.Application;
 using GZCTF.Features.ChallengeRuntime.Domain;
 using GZCTF.Middlewares;
 using GZCTF.Models;
+using GZCTF.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,15 +19,32 @@ public sealed record AdminChallengeInstanceResponse(
 [Route("api/admin/challenge-instances")]
 [Produces(MediaTypeNames.Application.Json)]
 public sealed class AdminChallengeInstancesController(
-    AppDbContext db, ChallengeRuntimeService runtime) : ControllerBase
+    AppDbContext db, ChallengeRuntimeService runtime,
+    LearningInstanceSettingsService settingsService) : ControllerBase
 {
+    [HttpGet("settings")]
+    public Task<LearningInstanceSettings> GetSettings(CancellationToken token) => settingsService.GetAsync(token);
+
+    [HttpPut("settings")]
+    public async Task<IActionResult> SetSettings([FromBody] LearningInstanceSettings settings,
+        CancellationToken token)
+    {
+        if (!settings.IsValid) return BadRequest();
+        await settingsService.SaveAsync(settings, token);
+        return Ok(settings);
+    }
+
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<AdminChallengeInstanceResponse>>> List(CancellationToken token)
     {
         var instances = await db.UserChallengeInstances.AsNoTracking()
             .Include(item => item.User)
             .Include(item => item.Challenge.Localizations)
-            .Where(item => item.IsActive)
+            .Where(item => item.IsActive && item.Status == ChallengeInstanceStatus.Running &&
+                           item.ContainerId != null && item.ExpiresAtUtc > DateTimeOffset.UtcNow &&
+                           db.Containers.Any(container => container.Id == item.ContainerId &&
+                               container.Status == ContainerStatus.Running &&
+                               container.ExpectStopAt > DateTimeOffset.UtcNow))
             .OrderByDescending(item => item.CreatedAtUtc)
             .Take(200)
             .ToArrayAsync(token);

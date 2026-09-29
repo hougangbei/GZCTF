@@ -1,59 +1,75 @@
-import { Alert, Button, Paper, ScrollArea, Stack, Table, Text, Title } from '@mantine/core'
+import { Alert, Button, Group, NumberInput, Paper, ScrollArea, Stack, Table, Text, Title } from '@mantine/core'
 import { modals } from '@mantine/modals'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
-import api, { fetcher } from '@Api'
+import api, { ContentType, fetcher } from '@Api'
 
 type LearningInstance = {
   id: string
   userName: string
   challengeTitle: string
-  status: string | number
   startedAtUtc?: string
   expiresAtUtc?: string
   publicIp?: string
   publicPort?: number
 }
 
-type GameInstance = {
-  containerGuid: string
-  team?: { name: string }
-  challenge?: { title: string }
-  startedAt?: string
-  expectStopAt?: string
-  ip?: string
-  port?: number
+type InstanceSettings = {
+  maxConcurrentPerUser: number
+  lifetimeMinutes: number
 }
 
 export const InstancesPanel = () => {
   const { t } = useTranslation('skillTrees')
-  const { data: learning, error: learningError, mutate: mutateLearning } =
+  const { data: instances, error: loadError, mutate: mutateInstances } =
     useSWR<LearningInstance[]>('/api/admin/challenge-instances', fetcher, { refreshInterval: 30000 })
-  const { data: games, error: gamesError, mutate: mutateGames } =
-    useSWR<{ data: GameInstance[] }>('/api/admin/instances', fetcher, { refreshInterval: 30000 })
-  const [error, setError] = useState(false)
+  const { data: settings, error: settingsError, mutate: mutateSettings } =
+    useSWR<InstanceSettings>('/api/admin/challenge-instances/settings', fetcher)
+  const [maxConcurrentPerUser, setMaxConcurrentPerUser] = useState<number | string>(2)
+  const [lifetimeMinutes, setLifetimeMinutes] = useState<number | string>(120)
   const [busyId, setBusyId] = useState<string>()
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState<'saved' | 'failed'>()
 
-  const stop = (id: string, kind: 'learning' | 'game') => modals.openConfirmModal({
+  useEffect(() => {
+    if (!settings) return
+    setMaxConcurrentPerUser(settings.maxConcurrentPerUser)
+    setLifetimeMinutes(settings.lifetimeMinutes)
+  }, [settings])
+
+  const save = async () => {
+    if (typeof maxConcurrentPerUser !== 'number' || typeof lifetimeMinutes !== 'number') return
+    setSaving(true)
+    setMessage(undefined)
+    try {
+      const result = await api.request<InstanceSettings>({
+        path: '/api/admin/challenge-instances/settings', method: 'PUT',
+        type: ContentType.Json, body: { maxConcurrentPerUser, lifetimeMinutes }, format: 'json',
+      })
+      await mutateSettings(result.data, false)
+      setMessage('saved')
+    } catch {
+      setMessage('failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const stop = (id: string) => modals.openConfirmModal({
     title: t('instances.stop'),
     children: <Text size="sm">{t('instances.stop')}?</Text>,
     labels: { confirm: t('instances.stop'), cancel: t('delete.cancel') },
     confirmProps: { color: 'red' },
     onConfirm: () => {
       setBusyId(id)
-      setError(false)
+      setMessage(undefined)
       void (async () => {
         try {
-          if (kind === 'learning') {
-            await api.request({ path: `/api/admin/challenge-instances/${id}`, method: 'DELETE' })
-            await mutateLearning()
-          } else {
-            await api.admin.adminDestroyInstance(id)
-            await mutateGames()
-          }
+          await api.request({ path: `/api/admin/challenge-instances/${id}`, method: 'DELETE' })
+          await mutateInstances()
         } catch {
-          setError(true)
+          setMessage('failed')
         } finally {
           setBusyId(undefined)
         }
@@ -62,15 +78,36 @@ export const InstancesPanel = () => {
   })
 
   const formatDate = (value?: string) => value ? new Date(value).toLocaleString() : '—'
+  const valid = typeof maxConcurrentPerUser === 'number' && maxConcurrentPerUser >= 1 &&
+    maxConcurrentPerUser <= 20 && Number.isInteger(maxConcurrentPerUser) &&
+    typeof lifetimeMinutes === 'number' && lifetimeMinutes >= 10 &&
+    lifetimeMinutes <= 1440 && Number.isInteger(lifetimeMinutes)
 
   return (
     <Stack gap="lg">
-      {(learningError || gamesError || error) && <Alert color="red">{t('instances.stopFailed')}</Alert>}
+      {(loadError || settingsError || message === 'failed') &&
+        <Alert color="red">{t('instances.saveFailed')}</Alert>}
+      {message === 'saved' && <Alert color="teal">{t('instances.saved')}</Alert>}
+      <Paper withBorder p="md">
+        <Stack gap="md">
+          <Title order={3}>{t('instances.settings')}</Title>
+          <Group align="end" wrap="wrap">
+            <NumberInput label={t('instances.maxConcurrentPerUser')} min={1} max={20}
+              value={maxConcurrentPerUser} onChange={setMaxConcurrentPerUser} allowDecimal={false} />
+            <NumberInput label={t('instances.lifetimeMinutes')} min={10} max={1440}
+              value={lifetimeMinutes} onChange={setLifetimeMinutes} allowDecimal={false} />
+            <Button onClick={() => void save()} loading={saving} disabled={!valid || !settings}>
+              {t('instances.save')}
+            </Button>
+          </Group>
+          <Text size="sm" c="dimmed">{t('instances.settingsHint')}</Text>
+        </Stack>
+      </Paper>
       <Paper withBorder p="md">
         <Stack>
           <Title order={3}>{t('instances.learning')}</Title>
-          {learning?.length === 0 && <Text c="dimmed">{t('instances.empty')}</Text>}
-          {!!learning?.length && <ScrollArea>
+          {instances?.length === 0 && <Text c="dimmed">{t('instances.empty')}</Text>}
+          {!!instances?.length && <ScrollArea>
             <Table miw={720}>
               <Table.Thead><Table.Tr>
                 <Table.Th>{t('instances.user')}</Table.Th>
@@ -80,41 +117,14 @@ export const InstancesPanel = () => {
                 <Table.Th>{t('instances.address')}</Table.Th>
                 <Table.Th />
               </Table.Tr></Table.Thead>
-              <Table.Tbody>{learning?.map((item) => <Table.Tr key={item.id}>
+              <Table.Tbody>{instances.map((item) => <Table.Tr key={item.id}>
                 <Table.Td>{item.userName}</Table.Td>
                 <Table.Td>{item.challengeTitle}</Table.Td>
                 <Table.Td>{formatDate(item.startedAtUtc)}</Table.Td>
                 <Table.Td>{formatDate(item.expiresAtUtc)}</Table.Td>
                 <Table.Td>{item.publicIp ? `${item.publicIp}${item.publicPort ? `:${item.publicPort}` : ''}` : '—'}</Table.Td>
                 <Table.Td><Button color="red" variant="light" size="xs" loading={busyId === item.id}
-                  onClick={() => stop(item.id, 'learning')}>{t('instances.stop')}</Button></Table.Td>
-              </Table.Tr>)}</Table.Tbody>
-            </Table>
-          </ScrollArea>}
-        </Stack>
-      </Paper>
-      <Paper withBorder p="md">
-        <Stack>
-          <Title order={3}>{t('instances.competition')}</Title>
-          {games?.data?.length === 0 && <Text c="dimmed">{t('instances.empty')}</Text>}
-          {!!games?.data?.length && <ScrollArea>
-            <Table miw={720}>
-              <Table.Thead><Table.Tr>
-                <Table.Th>{t('instances.user')}</Table.Th>
-                <Table.Th>{t('instances.challenge')}</Table.Th>
-                <Table.Th>{t('instances.started')}</Table.Th>
-                <Table.Th>{t('instances.expires')}</Table.Th>
-                <Table.Th>{t('instances.address')}</Table.Th>
-                <Table.Th />
-              </Table.Tr></Table.Thead>
-              <Table.Tbody>{games.data.map((item) => <Table.Tr key={item.containerGuid}>
-                <Table.Td>{item.team?.name ?? '—'}</Table.Td>
-                <Table.Td>{item.challenge?.title ?? '—'}</Table.Td>
-                <Table.Td>{formatDate(item.startedAt)}</Table.Td>
-                <Table.Td>{formatDate(item.expectStopAt)}</Table.Td>
-                <Table.Td>{item.ip ? `${item.ip}${item.port ? `:${item.port}` : ''}` : '—'}</Table.Td>
-                <Table.Td><Button color="red" variant="light" size="xs" loading={busyId === item.containerGuid}
-                  onClick={() => stop(item.containerGuid, 'game')}>{t('instances.stop')}</Button></Table.Td>
+                  onClick={() => stop(item.id)}>{t('instances.stop')}</Button></Table.Td>
               </Table.Tr>)}</Table.Tbody>
             </Table>
           </ScrollArea>}

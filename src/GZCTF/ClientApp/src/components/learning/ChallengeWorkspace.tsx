@@ -50,9 +50,10 @@ export const ChallengeWorkspace = ({
     try {
       setMessage(undefined)
       await action()
-    } catch {
+    } catch (error) {
       setMessageType('error')
-      setMessage(t('actionFailed'))
+      setMessage((error as { response?: { status?: number } })?.response?.status === 409
+        ? tSkillTrees('instances.limitReached') : t('actionFailed'))
     }
   }
 

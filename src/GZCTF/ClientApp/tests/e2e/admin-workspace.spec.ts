@@ -109,7 +109,11 @@ test.describe('admin workspace', () => {
       running = false
       return route.fulfill({ status: 204 })
     })
-    await page.route('**/api/admin/instances', (route) => route.fulfill({ json: { data: [], length: 0, total: 0 } }))
+    await page.route('**/api/admin/challenge-instances/settings', (route) => route.fulfill({
+      json: route.request().method() === 'PUT'
+        ? { maxConcurrentPerUser: 4, lifetimeMinutes: 90 }
+        : { maxConcurrentPerUser: 2, lifetimeMinutes: 120 },
+    }))
 
     await page.goto('/admin/skill-trees?tab=writeups')
     await expect(page.getByRole('tab', { name: 'WP 审核' })).toHaveAttribute('aria-selected', 'true')
@@ -119,6 +123,12 @@ test.describe('admin workspace', () => {
     await page.getByRole('tab', { name: '实例管理' }).click()
     await expect(page.getByText('Container challenge')).toBeVisible()
     await expect(page.getByText('learner')).toBeVisible()
+    await expect(page.getByText('比赛实例')).toHaveCount(0)
+    await expect(page.getByRole('textbox', { name: '每位成员最多同时开启' })).toHaveValue('2')
+    await page.getByRole('textbox', { name: '每位成员最多同时开启' }).fill('4')
+    await page.getByRole('textbox', { name: '靶机运行时长（分钟）' }).fill('90')
+    await page.getByRole('button', { name: '保存设置' }).click()
+    await expect(page.getByText('设置已保存')).toBeVisible()
     await page.getByRole('button', { name: '停止实例' }).click()
     await page.getByRole('dialog').getByRole('button', { name: '停止实例' }).click()
     await expect(page.getByText('Container challenge')).toHaveCount(0)

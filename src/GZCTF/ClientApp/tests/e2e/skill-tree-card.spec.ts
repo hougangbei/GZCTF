@@ -59,7 +59,7 @@ test.describe('skill tree discovery', () => {
 
     await page.goto(`/skill-trees/${treeId}`)
     await expect(page.getByRole('link', { name: /Web 基础/ })).toBeVisible()
-    await page.getByRole('link', { name: /Web 基础/ }).click()
+    await page.getByRole('link', { name: /Web 基础/ }).click({ position: { x: 260, y: 90 } })
     await expect(page.getByRole('link', { name: /第一道题/ })).toBeVisible()
     await page.getByRole('link', { name: /第一道题/ }).click()
     await expect(page.getByRole('dialog', { name: '第一道题' })).toBeVisible()
@@ -100,6 +100,9 @@ test.describe('skill tree discovery', () => {
 
     await page.goto('/skill-trees')
     await expect(page.getByText('Web 工程师')).toBeVisible()
+    await page.getByRole('link', { name: /Web 工程师/ }).click({ position: { x: 260, y: 90 } })
+    await expect(page).toHaveURL(/\/skill-trees\/01990000-0000-7000-8000-000000000001$/)
+    await page.goBack()
     await expect(page.getByText(/3\s+categories|3\s+个类别/)).toBeVisible()
     await expect(page.getByText(/12\s+challenges|12\s+道题目/)).toBeVisible()
     await expect(page.getByText(/6\s+lessons|6\s+篇课节/)).toBeVisible()
