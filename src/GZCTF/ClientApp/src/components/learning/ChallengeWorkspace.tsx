@@ -9,6 +9,7 @@ import { useChallenge, useChallengeInstance, useLearningMutations } from '@Hooks
 import { useUser } from '@Hooks/useUser'
 import { ChallengeInstanceStatus } from '@Api'
 import classes from './ChallengeWorkspace.module.css'
+import { CommunityWriteups } from './CommunityWriteups'
 
 export type ChallengeWorkspaceProps = {
   challengeId: string
@@ -270,6 +271,7 @@ export const ChallengeWorkspace = ({
           </Stack>
         </section>
       )}
+      <CommunityWriteups challengeId={challengeId} />
     </div>
   )
 }

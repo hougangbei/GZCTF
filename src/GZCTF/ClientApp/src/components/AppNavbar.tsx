@@ -13,12 +13,14 @@ import {
   mdiAccountCircleOutline,
   mdiCached,
   mdiFileTreeOutline,
+  mdiFileCheckOutline,
   mdiHomeVariantOutline,
   mdiInformationOutline,
   mdiLogin,
   mdiLogout,
   mdiNoteTextOutline,
   mdiPalette,
+  mdiPackageVariantClosed,
   mdiTranslate,
   mdiWeatherNight,
   mdiWeatherSunny,
@@ -90,26 +92,29 @@ export const AppNavbar: FC<AppControlProps> = ({ openColorModal }) => {
     { icon: mdiFileTreeOutline, label: 'skillTrees:navigation.title', link: '/skill-trees' },
     { icon: mdiInformationOutline, label: 'common.tab.about', link: '/about' },
     { icon: mdiWrenchOutline, label: 'common.tab.admin', link: '/admin/skill-trees', admin: true },
+    { icon: mdiFileCheckOutline, label: 'skillTrees:writeups.reviewMenu', link: '/admin/skill-trees?tab=writeups', admin: true },
+    { icon: mdiPackageVariantClosed, label: 'skillTrees:instances.menu', link: '/admin/skill-trees?tab=instances', admin: true },
   ]
 
-  const getLabel = (path: string) =>
-    items.find((item) =>
-      item.link === '/'
-        ? path === '/'
-        : item.link.startsWith('/admin')
-          ? path.startsWith('/admin')
-          : path.startsWith(item.link)
-    )?.label
+  const getLabel = (path: string, search: string) => {
+    if (path.startsWith('/admin')) {
+      const tab = new URLSearchParams(search).get('tab')
+      if (tab === 'writeups') return 'skillTrees:writeups.reviewMenu'
+      if (tab === 'instances') return 'skillTrees:instances.menu'
+      return 'common.tab.admin'
+    }
+    return items.find((item) => item.link === '/' ? path === '/' : path.startsWith(item.link))?.label
+  }
 
-  const [active, setActive] = useState(getLabel(location.pathname) ?? '')
+  const [active, setActive] = useState(getLabel(location.pathname, location.search) ?? '')
 
   useEffect(() => {
     if (location.pathname === '/') {
       setActive(items[0].label)
     } else {
-      setActive(getLabel(location.pathname) ?? '')
+      setActive(getLabel(location.pathname, location.search) ?? '')
     }
-  }, [location.pathname])
+  }, [location.pathname, location.search])
 
   const links = items
     .filter((m) => !m.admin || user?.role === Role.Admin)

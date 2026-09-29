@@ -13,13 +13,13 @@ const mockAdmin = async (page: Page) => {
 }
 
 test.describe('admin workspace', () => {
-  test('all four tabs remain accessible on a narrow screen', async ({ page }) => {
+  test('all six tabs remain accessible on a narrow screen', async ({ page }) => {
     await mockAdmin(page)
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/admin/skill-trees')
 
     const tabs = page.getByRole('tab')
-    await expect(tabs).toHaveCount(4)
+    await expect(tabs).toHaveCount(6)
     const positions = await tabs.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().top))
     expect(new Set(positions.map(Math.round)).size).toBe(1)
     await page.getByRole('tab', { name: '成员管理' }).click()
@@ -27,7 +27,7 @@ test.describe('admin workspace', () => {
     await expect(page.getByRole('button', { name: '创建年级' }).first()).toBeVisible()
   })
 
-  test('four tabs switch in place and legacy addresses land on their tabs', async ({ page }) => {
+  test('six tabs switch in place and legacy addresses land on their tabs', async ({ page }) => {
     test.setTimeout(120_000)
     await mockAdmin(page)
 
@@ -48,7 +48,7 @@ test.describe('admin workspace', () => {
 
     // 1. The workspace shows the four tabs in order.
     await page.goto('/admin/skill-trees')
-    const labels = ['技能树', '全局类别', '题目管理', '成员管理']
+    const labels = ['技能树', '全局类别', '题目管理', '成员管理', 'WP 审核', '实例管理']
     for (const label of labels) {
       await expect(page.getByRole('tab', { name: label })).toBeVisible()
     }
@@ -80,6 +80,48 @@ test.describe('admin workspace', () => {
     await expect(page.getByRole('tab', { name: '技能树' })).toHaveAttribute('aria-selected', 'true')
 
     expect(failures, failures.join('\n')).toEqual([])
+  })
+
+  test('review and instance tabs expose the new management flows', async ({ page }) => {
+    await mockAdmin(page)
+    let pending = true
+    let running = true
+    const writeup = {
+      id: '01990000-0000-7000-8000-000000000010',
+      challengeId: '01990000-0000-7000-8000-000000000011', challengeTitle: 'Sample challenge',
+      title: 'Sample WP', authorName: 'Alice', fileSize: 1024, status: 'Pending',
+      createdAtUtc: new Date().toISOString(),
+    }
+    const instance = {
+      id: '01990000-0000-7000-8000-000000000012', userName: 'learner',
+      challengeTitle: 'Container challenge', status: 'Running',
+      startedAtUtc: new Date().toISOString(), expiresAtUtc: new Date().toISOString(),
+    }
+    await page.route('**/api/admin/community-writeups?status=pending', (route) =>
+      route.fulfill({ json: pending ? [writeup] : [] }))
+    await page.route('**/api/admin/community-writeups/*/review', (route) => {
+      pending = false
+      return route.fulfill({ status: 204 })
+    })
+    await page.route('**/api/admin/challenge-instances', (route) =>
+      route.fulfill({ json: running ? [instance] : [] }))
+    await page.route('**/api/admin/challenge-instances/*', (route) => {
+      running = false
+      return route.fulfill({ status: 204 })
+    })
+    await page.route('**/api/admin/instances', (route) => route.fulfill({ json: { data: [], length: 0, total: 0 } }))
+
+    await page.goto('/admin/skill-trees?tab=writeups')
+    await expect(page.getByRole('tab', { name: 'WP 审核' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByText('Sample WP')).toBeVisible()
+    await page.getByRole('button', { name: '通过' }).click()
+    await expect(page.getByText('Sample WP')).toHaveCount(0)
+    await page.getByRole('tab', { name: '实例管理' }).click()
+    await expect(page.getByText('Container challenge')).toBeVisible()
+    await expect(page.getByText('learner')).toBeVisible()
+    await page.getByRole('button', { name: '停止实例' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: '停止实例' }).click()
+    await expect(page.getByText('Container challenge')).toHaveCount(0)
   })
 
   test('challenge library lists, creates and returns from the detail page', async ({ page }) => {

@@ -97,6 +97,7 @@ internal static class ServicesExtension
             builder.Services.AddScoped<ILegacyContainerRuntimeAdapter, LegacyContainerRuntimeAdapter>();
             builder.Services.AddScoped<ChallengeSubmissionService>();
             builder.Services.AddScoped<ChallengeHelpService>();
+            builder.Services.AddScoped<CommunityWriteupService>();
             builder.Services.AddScoped<DailySolveProjection>();
             builder.Services.AddScoped<DashboardSnapshotService>();
             builder.Services.AddSingleton(_ => new DashboardRequestLimiter());

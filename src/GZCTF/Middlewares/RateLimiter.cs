@@ -45,7 +45,12 @@ public static class RateLimiter
         /// <summary>
         /// Pow challenge generation limit
         /// </summary>
-        PowChallenge
+        PowChallenge,
+
+        /// <summary>
+        /// Community PDF writeup submissions
+        /// </summary>
+        CommunityWriteup
     }
 
     public static void ConfigureRateLimiter(RateLimiterOptions options)
@@ -136,5 +141,14 @@ public static class RateLimiter
             o.TokensPerPeriod = 50;
             o.ReplenishmentPeriod = TimeSpan.FromSeconds(5);
         });
+        options.AddPolicy(nameof(LimitPolicy.CommunityWriteup), context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
+                    Window = TimeSpan.FromHours(1),
+                    QueueLimit = 0
+                }));
     }
 }

@@ -45,6 +45,17 @@ test.describe('skill tree discovery', () => {
         hasContainer: false,
       }),
     }))
+    await page.route(`**/api/challenges/${challengeId}/community-writeups`, (route) =>
+      route.request().method() === 'POST'
+        ? route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: 'new-wp' }) })
+        : route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify([
+            { id: 'wp-one', title: 'Solution A', authorName: 'Alice', fileSize: 500, createdAtUtc: new Date().toISOString() },
+            { id: 'wp-two', title: 'Solution B', authorName: 'Bob', fileSize: 600, createdAtUtc: new Date().toISOString() },
+          ]),
+        })
+    )
 
     await page.goto(`/skill-trees/${treeId}`)
     await expect(page.getByRole('link', { name: /Web 基础/ })).toBeVisible()
@@ -54,6 +65,16 @@ test.describe('skill tree discovery', () => {
     await expect(page.getByRole('dialog', { name: '第一道题' })).toBeVisible()
     await expect(page.getByRole('dialog').getByText('阅读这段题目正文')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Join' })).toHaveCount(0)
+    await page.getByRole('button', { name: /查看 WP|View WP/ }).click()
+    await expect(page.getByRole('link', { name: /Solution A/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /Solution B/ })).toBeVisible()
+    await page.getByRole('textbox', { name: /WP 标题|WP title/ }).fill('My solution')
+    await page.getByRole('textbox', { name: /作者|Author/ }).fill('Visitor')
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'solution.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\nexample\n%%EOF'),
+    })
+    await page.getByRole('button', { name: /提交 WP|Submit WP/ }).click()
+    await expect(page.getByText(/待审核|pending review/i)).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(page).toHaveURL(new RegExp(`category=${categoryId}$`))

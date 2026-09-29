@@ -6,16 +6,19 @@ import { Role } from '@Api'
 import { CategoriesPanel } from '@Components/admin/workspace/CategoriesPanel'
 import { ChallengesPanel } from '@Components/admin/workspace/ChallengesPanel'
 import { MembersPanel } from '@Components/admin/workspace/MembersPanel'
+import { InstancesPanel } from '@Components/admin/workspace/InstancesPanel'
 import { SkillTreesPanel } from '@Components/admin/workspace/SkillTreesPanel'
+import { WriteupsPanel } from '@Components/admin/workspace/WriteupsPanel'
 import classes from '@Components/admin/workspace/AdminWorkspace.module.css'
 import { WithNavBar } from '@Components/WithNavbar'
 import { WithRole } from '@Components/WithRole'
 import { usePageTitle } from '@Hooks/usePageTitle'
 
-type AdminTab = 'trees' | 'categories' | 'challenges' | 'members'
+type AdminTab = 'trees' | 'categories' | 'challenges' | 'members' | 'writeups' | 'instances'
 
 const isKnownTab = (value: string | null): value is AdminTab =>
-  value === 'trees' || value === 'categories' || value === 'challenges' || value === 'members'
+  value === 'trees' || value === 'categories' || value === 'challenges' || value === 'members' ||
+  value === 'writeups' || value === 'instances'
 
 const AdminWorkspace = () => {
   const { t } = useTranslation('skillTrees')
@@ -29,6 +32,8 @@ const AdminWorkspace = () => {
     categories: t('category.title'),
     challenges: t('workspace.tabs.challenges'),
     members: t('workspace.tabs.members'),
+    writeups: t('writeups.reviewMenu'),
+    instances: t('instances.menu'),
   }
   usePageTitle(tabLabels[tab])
 
@@ -41,7 +46,7 @@ const AdminWorkspace = () => {
   const openCreate = () => setCreateOpen(true)
   const closeCreate = () => setCreateOpen(false)
 
-  const createLabels: Record<AdminTab, string> = {
+  const createLabels: Partial<Record<AdminTab, string>> = {
     trees: t('list.createTitle'),
     categories: t('category.createTitle'),
     challenges: t('workspace.createChallenge'),
@@ -66,11 +71,13 @@ const AdminWorkspace = () => {
                 <Tabs.Tab value="categories">{tabLabels.categories}</Tabs.Tab>
                 <Tabs.Tab value="challenges">{tabLabels.challenges}</Tabs.Tab>
                 <Tabs.Tab value="members">{tabLabels.members}</Tabs.Tab>
+                <Tabs.Tab value="writeups">{tabLabels.writeups}</Tabs.Tab>
+                <Tabs.Tab value="instances">{tabLabels.instances}</Tabs.Tab>
               </Tabs.List>
             </Tabs>
-            <Button className={classes.primaryAction} onClick={openCreate}>
+            {createLabels[tab] && <Button className={classes.primaryAction} onClick={openCreate}>
               {createLabels[tab]}
-            </Button>
+            </Button>}
           </Group>
 
           <Box className={classes.content}>
@@ -86,6 +93,8 @@ const AdminWorkspace = () => {
             {tab === 'members' && (
               <MembersPanel createOpen={createOpen} onClose={closeCreate} onOpen={openCreate} />
             )}
+            {tab === 'writeups' && <WriteupsPanel />}
+            {tab === 'instances' && <InstancesPanel />}
           </Box>
         </Stack>
       </WithNavBar>

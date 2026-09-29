@@ -78,6 +78,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<UserChallengeInstance> UserChallengeInstances { get; set; } = null!;
     public DbSet<ChallengeSubmission> ChallengeSubmissions { get; set; } = null!;
     public DbSet<ChallengeHelpUsage> ChallengeHelpUsages { get; set; } = null!;
+    public DbSet<CommunityWriteup> CommunityWriteups { get; set; } = null!;
     public DbSet<SkillTree> SkillTrees { get; set; } = null!;
     public DbSet<SkillTreeRevision> SkillTreeRevisions { get; set; } = null!;
     public DbSet<SkillCategory> SkillCategories { get; set; } = null!;
@@ -498,6 +499,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
         });
 
         LearningModelConfiguration.Configure(builder);
+        builder.Entity<CommunityWriteup>(entity =>
+        {
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).ValueGeneratedNever();
+            entity.Property(item => item.Title).HasMaxLength(160).IsRequired();
+            entity.Property(item => item.AuthorName).HasMaxLength(80).IsRequired();
+            entity.Property(item => item.StorageKey).HasMaxLength(256).IsRequired();
+            entity.Property(item => item.Status).HasConversion<byte>();
+            entity.HasIndex(item => new { item.ChallengeId, item.Status, item.CreatedAtUtc });
+            entity.HasIndex(item => new { item.Status, item.CreatedAtUtc });
+            entity.HasOne(item => item.Challenge).WithMany()
+                .HasForeignKey(item => item.ChallengeId).OnDelete(DeleteBehavior.Cascade);
+        });
         SkillTreeModelConfiguration.Configure(builder);
     }
 }
