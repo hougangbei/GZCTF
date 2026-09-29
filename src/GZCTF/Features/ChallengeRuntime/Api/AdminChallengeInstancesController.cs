@@ -46,7 +46,6 @@ public sealed class AdminChallengeInstancesController(
                                container.Status == ContainerStatus.Running &&
                                container.ExpectStopAt > DateTimeOffset.UtcNow))
             .OrderByDescending(item => item.CreatedAtUtc)
-            .Take(200)
             .ToArrayAsync(token);
         var containerIds = instances.Where(item => item.ContainerId.HasValue)
             .Select(item => item.ContainerId!.Value).ToArray();

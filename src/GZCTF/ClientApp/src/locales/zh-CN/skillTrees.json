@@ -189,6 +189,9 @@
   "instances": {
     "menu": "实例管理",
     "learning": "技能树题目实例",
+    "selectMember": "选择成员",
+    "allMembers": "全部成员",
+    "targetCount": "{{count}} 台靶机",
     "settings": "靶机设置",
     "maxConcurrentPerUser": "每位成员最多同时开启",
     "lifetimeMinutes": "靶机运行时长（分钟）",

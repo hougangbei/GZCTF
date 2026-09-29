@@ -93,7 +93,8 @@ test.describe('admin workspace', () => {
       createdAtUtc: new Date().toISOString(),
     }
     const instance = {
-      id: '01990000-0000-7000-8000-000000000012', userName: 'learner',
+      id: '01990000-0000-7000-8000-000000000012',
+      userId: '01990000-0000-7000-8000-000000000013', userName: 'learner',
       challengeTitle: 'Container challenge', status: 'Running',
       startedAtUtc: new Date().toISOString(), expiresAtUtc: new Date().toISOString(),
     }
@@ -122,7 +123,7 @@ test.describe('admin workspace', () => {
     await expect(page.getByText('Sample WP')).toHaveCount(0)
     await page.getByRole('tab', { name: '实例管理' }).click()
     await expect(page.getByText('Container challenge')).toBeVisible()
-    await expect(page.getByText('learner')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'learner' })).toBeVisible()
     await expect(page.getByText('比赛实例')).toHaveCount(0)
     await expect(page.getByRole('textbox', { name: '每位成员最多同时开启' })).toHaveValue('2')
     await page.getByRole('textbox', { name: '每位成员最多同时开启' }).fill('4')
@@ -132,6 +133,39 @@ test.describe('admin workspace', () => {
     await page.getByRole('button', { name: '停止实例' }).click()
     await page.getByRole('dialog').getByRole('button', { name: '停止实例' }).click()
     await expect(page.getByText('Container challenge')).toHaveCount(0)
+  })
+
+  test('groups running targets by member and switches between all and one member', async ({ page }) => {
+    await mockAdmin(page)
+    const entries = [
+      { id: '01990000-0000-7000-8000-000000000020', userId: '01990000-0000-7000-8000-000000000021',
+        userName: 'Alice', challengeTitle: 'Web A', status: 'Running' },
+      { id: '01990000-0000-7000-8000-000000000022', userId: '01990000-0000-7000-8000-000000000021',
+        userName: 'Alice', challengeTitle: 'Web B', status: 'Running' },
+      { id: '01990000-0000-7000-8000-000000000023', userId: '01990000-0000-7000-8000-000000000024',
+        userName: 'Bob', challengeTitle: 'Pwn C', status: 'Running' },
+    ]
+    await page.route('**/api/admin/challenge-instances', (route) => route.fulfill({ json: entries }))
+    await page.route('**/api/admin/challenge-instances/settings', (route) => route.fulfill({
+      json: { maxConcurrentPerUser: 2, lifetimeMinutes: 120 },
+    }))
+
+    await page.goto('/admin/skill-trees?tab=instances')
+    await expect(page.getByRole('heading', { name: 'Alice' })).toHaveCount(1)
+    await expect(page.getByRole('heading', { name: 'Bob' })).toHaveCount(1)
+    await expect(page.getByText('Web A')).toBeVisible()
+    await expect(page.getByText('Web B')).toBeVisible()
+    await expect(page.getByText('Pwn C')).toBeVisible()
+
+    await page.getByRole('combobox', { name: '选择成员' }).click()
+    await page.getByRole('option', { name: 'Alice' }).click()
+    await expect(page.getByRole('heading', { name: 'Alice' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Bob' })).toHaveCount(0)
+    await expect(page.getByText('Pwn C')).toHaveCount(0)
+
+    await page.getByRole('combobox', { name: '选择成员' }).click()
+    await page.getByRole('option', { name: '全部成员' }).click()
+    await expect(page.getByRole('heading', { name: 'Bob' })).toBeVisible()
   })
 
   test('challenge library lists, creates and returns from the detail page', async ({ page }) => {

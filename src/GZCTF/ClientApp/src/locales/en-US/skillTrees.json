@@ -189,6 +189,9 @@
   "instances": {
     "menu": "Instance management",
     "learning": "Skill tree challenge instances",
+    "selectMember": "Select member",
+    "allMembers": "All members",
+    "targetCount": "{{count}} targets",
     "settings": "Target settings",
     "maxConcurrentPerUser": "Maximum targets per member",
     "lifetimeMinutes": "Target lifetime (minutes)",
