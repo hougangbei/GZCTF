@@ -7,6 +7,7 @@ using GZCTF.Features.Imports.Application;
 using GZCTF.Features.Imports.Infrastructure;
 using GZCTF.Features.LearningPaths.Application;
 using GZCTF.Features.LearningProgress.Application;
+using GZCTF.Features.QqBot.Application;
 using GZCTF.Features.Dashboard.Application;
 using GZCTF.Features.SkillTrees.Application;
 using GZCTF.Features.SkillTrees.Migration;
@@ -99,6 +100,11 @@ internal static class ServicesExtension
             builder.Services.AddScoped<ChallengeSubmissionService>();
             builder.Services.AddScoped<ChallengeHelpService>();
             builder.Services.AddScoped<CommunityWriteupService>();
+            builder.Services.AddScoped<QqBotSettingsService>();
+#pragma warning disable EXTEXP0001 // Sending a QQ message must not be retried automatically.
+            builder.Services.AddHttpClient<QqBotNotifier>(client => client.Timeout = TimeSpan.FromSeconds(8))
+                .RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
             builder.Services.AddScoped<DailySolveProjection>();
             builder.Services.AddScoped<DashboardSnapshotService>();
             builder.Services.AddSingleton(_ => new DashboardRequestLimiter());

@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next'
 import { ColorPreview } from '@Components/ColorPreview'
 import { LogoBox } from '@Components/LogoBox'
 import { AdminPage } from '@Components/admin/AdminPage'
+import { QqBotSettingsPanel } from '@Components/admin/QqBotSettingsPanel'
 import { SwitchLabel } from '@Components/admin/SwitchLabel'
 import { webCryptoAvailable } from '@Utils/Crypto'
 import { getInputNumber, showErrorMsg } from '@Utils/Shared'
@@ -391,6 +392,7 @@ const Configs: FC = () => {
             />
           </SimpleGrid>
         </Stack>
+        <QqBotSettingsPanel />
       </Stack>
     </AdminPage>
   )

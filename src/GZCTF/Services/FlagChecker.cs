@@ -1,4 +1,6 @@
 ﻿using System.Threading.Channels;
+using GZCTF.Features.QqBot.Application;
+using GZCTF.Models;
 using GZCTF.Repositories.Interface;
 using GZCTF.Services.Cache;
 using Microsoft.EntityFrameworkCore;
@@ -172,6 +174,14 @@ public class FlagChecker(
 
                     item.Status = ans;
                     await submissionRepository.SendSubmission(item);
+                    if (ans == AnswerResult.Accepted &&
+                        await scope.ServiceProvider.GetRequiredService<AppDbContext>().FirstSolves
+                            .AnyAsync(solve => solve.SubmissionId == item.Id, token))
+                    {
+                        var qqBot = scope.ServiceProvider.GetRequiredService<QqBotNotifier>();
+                        await qqBot.TrySendSolveAsync(new QqSolveEvent(
+                            item.UserName, item.ChallengeName, "比赛", item.TeamName), true, token);
+                    }
                 }
                 catch (DbUpdateConcurrencyException)
                 {

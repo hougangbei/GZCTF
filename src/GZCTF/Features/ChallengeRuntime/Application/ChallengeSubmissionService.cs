@@ -6,6 +6,7 @@ using GZCTF.Features.ChallengeRuntime.Domain;
 using GZCTF.Features.Dashboard.Domain;
 using GZCTF.Features.Dashboard.Application;
 using GZCTF.Features.LearningProgress.Domain;
+using GZCTF.Features.QqBot.Application;
 using GZCTF.Models;
 using GZCTF.Utils;
 using Microsoft.EntityFrameworkCore;
@@ -26,12 +27,15 @@ public sealed class ChallengeSubmissionService(
     ChallengeRuntimeService runtime,
     DynamicAttachmentAllocator attachments,
     DailySolveProjection dailyProjection,
-    DashboardDeltaPublisher dashboardDeltas)
+    DashboardDeltaPublisher dashboardDeltas,
+    QqBotNotifier qqBot,
+    ILogger<ChallengeSubmissionService> logger)
 {
     public async Task<ChallengeSubmissionResult> SubmitAsync(
         Guid userId, Guid challengeId, string submittedFlag, CancellationToken token = default)
     {
         var challenge = await db.Challenges.Include(item => item.Flags)
+            .Include(item => item.Localizations)
             .SingleAsync(item => item.Id == challengeId, token);
         IDbContextTransaction? limitTransaction = null;
         try
@@ -110,6 +114,21 @@ public sealed class ChallengeSubmissionService(
                 await db.SaveChangesAsync(token);
                 await transaction.CommitAsync(token);
                 await dashboardDeltas.PublishFirstSolveAsync(userId, token);
+                try
+                {
+                    var user = await db.Users.AsNoTracking().Where(item => item.Id == userId)
+                        .Select(item => new { item.UserName, CohortName = item.Cohort == null ? "" : item.Cohort.Name })
+                        .SingleAsync(token);
+                    var title = challenge.Localizations.FirstOrDefault(item => item.Locale == "zh-CN")?.Title ??
+                                challenge.Localizations.FirstOrDefault(item => item.Locale == "en")?.Title ??
+                                challenge.Localizations.FirstOrDefault()?.Title ?? challengeId.ToString();
+                    await qqBot.TrySendSolveAsync(new QqSolveEvent(
+                        user.UserName ?? userId.ToString(), title, "技能树", user.CohortName), false, token);
+                }
+                catch (Exception error) when (error is not OperationCanceledException)
+                {
+                    logger.LogWarning(error, "Failed to prepare QQ solve notification");
+                }
                 return new ChallengeSubmissionResult(true, true, mode, null, submission.Id);
             }
             catch (DbUpdateException)

@@ -1,5 +1,9 @@
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using GZCTF.Features.ChallengeLibrary.Domain;
 using GZCTF.Features.ChallengeRuntime.Application;
+using GZCTF.Features.QqBot.Application;
 using GZCTF.Features.LearningProgress.Domain;
 using GZCTF.Integration.Test.Base;
 using GZCTF.Models;
@@ -13,6 +17,51 @@ namespace GZCTF.Integration.Test.Tests.Runtime;
 [Collection(nameof(IntegrationTestCollection))]
 public sealed class ChallengeSubmissionTests(GZCTFApplicationFactory factory)
 {
+    [Fact]
+    public async Task First_skill_tree_solve_sends_one_customized_group_message()
+    {
+        var user = await TestDataSeeder.CreateUserAsync(
+            factory.Services, TestDataSeeder.RandomName(), "QqSolve!2026");
+        var challengeId = await SeedChallengeAsync("flag{qq-solve}");
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        var received = Task.Run(async () =>
+        {
+            using var peer = await listener.AcceptTcpClientAsync();
+            await using var stream = peer.GetStream();
+            using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
+            var headers = new List<string>();
+            string? line;
+            while (!string.IsNullOrEmpty(line = await reader.ReadLineAsync())) headers.Add(line);
+            var payload = Encoding.UTF8.GetBytes("{\"status\":\"ok\",\"retcode\":0}");
+            await stream.WriteAsync(Encoding.ASCII.GetBytes(
+                $"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {payload.Length}\r\nConnection: close\r\n\r\n"));
+            await stream.WriteAsync(payload);
+            return headers;
+        });
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var settings = scope.ServiceProvider.GetRequiredService<QqBotSettingsService>();
+        try
+        {
+            await settings.SaveAsync(new QqBotSettingsCommand(true, $"http://127.0.0.1:{port}",
+                null, true, "123456", "{member} solved {challenge}", true, true));
+            var service = scope.ServiceProvider.GetRequiredService<ChallengeSubmissionService>();
+            Assert.False((await service.SubmitAsync(user.Id, challengeId, "wrong")).Accepted);
+            Assert.True((await service.SubmitAsync(user.Id, challengeId, "flag{qq-solve}")).FirstSolve);
+            Assert.False((await service.SubmitAsync(user.Id, challengeId, "flag{qq-solve}")).FirstSolve);
+            var headers = await received.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Contains(headers, line => line.StartsWith("POST /send_group_msg "));
+            Assert.False(listener.Pending());
+        }
+        finally
+        {
+            await settings.SaveAsync(new QqBotSettingsCommand(false, "", null, true, "",
+                QqBotSettings.DefaultTemplate, true, true));
+        }
+    }
+
     [Fact]
     public async Task Correct_submission_completes_once_and_increments_daily_stat_once()
     {
