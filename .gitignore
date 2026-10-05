@@ -238,9 +238,6 @@ _Pvt_Extensions
 # Docs
 docs
 
-# Local isolated development worktrees
-.worktrees/
-
 **/appsettings.json
 **/appsettings.*.json
 !**/appsettings.Template.json
