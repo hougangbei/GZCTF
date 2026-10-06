@@ -1,4 +1,5 @@
 using System.Net.Mime;
+using GZCTF.Features.QqBot.Application;
 using GZCTF.Middlewares;
 using GZCTF.Models.Request.Edit;
 using GZCTF.Models.Request.Info;
@@ -14,18 +15,23 @@ namespace GZCTF.Controllers;
 [Produces(MediaTypeNames.Application.Json)]
 public sealed class EditPostsController(
     UserManager<UserInfo> users,
-    IPostRepository posts) : ControllerBase
+    IPostRepository posts,
+    QqBotNotifier qqBot) : ControllerBase
 {
     [HttpPost("Posts")]
+    [AuditAction("posts.create")]
     public async Task<ActionResult<string>> Create([FromBody] PostEditModel model, CancellationToken token)
     {
         var user = await users.GetUserAsync(User);
         if (user is null) return Unauthorized();
         var post = await posts.CreatePost(new Post().Update(model, user), token);
+        if (!string.IsNullOrWhiteSpace(post.Title))
+            await qqBot.TrySendAnnouncementAsync(post.Title, CancellationToken.None);
         return Ok(post.Id);
     }
 
     [HttpPut("Posts/{id}")]
+    [AuditAction("posts.update")]
     public async Task<ActionResult<PostDetailModel>> Update(string id, [FromBody] PostEditModel model, CancellationToken token)
     {
         var post = await posts.GetPostById(id, token);
@@ -37,6 +43,7 @@ public sealed class EditPostsController(
     }
 
     [HttpDelete("Posts/{id}")]
+    [AuditAction("posts.delete")]
     public async Task<ActionResult> Delete(string id, CancellationToken token)
     {
         var post = await posts.GetPostById(id, token);

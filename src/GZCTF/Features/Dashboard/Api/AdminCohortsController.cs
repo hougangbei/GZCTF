@@ -18,6 +18,7 @@ public sealed class AdminCohortsController(AppDbContext db) : ControllerBase
             .ToArrayAsync(token));
 
     [HttpPost]
+    [AuditAction("cohorts.create")]
     public async Task<ActionResult<CohortResponse>> Create([FromBody] CohortCommand command, CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(command.Name))
@@ -36,6 +37,7 @@ public sealed class AdminCohortsController(AppDbContext db) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [AuditAction("cohorts.update")]
     public async Task<IActionResult> Rename(Guid id, [FromBody] CohortCommand command, CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(command.Name))
@@ -48,6 +50,7 @@ public sealed class AdminCohortsController(AppDbContext db) : ControllerBase
     }
 
     [HttpPost("{id:guid}/status")]
+    [AuditAction("cohorts.status")]
     public async Task<IActionResult> SetStatus(Guid id, [FromBody] CohortStatusCommand command, CancellationToken token)
     {
         var cohort = await db.Cohorts.SingleOrDefaultAsync(item => item.Id == id, token);
@@ -71,6 +74,7 @@ public sealed class AdminCohortsController(AppDbContext db) : ControllerBase
     }
 
     [HttpPost("{id:guid}/members")]
+    [AuditAction("cohorts.members.add")]
     public async Task<IActionResult> Assign(Guid id, [FromBody] CohortMembersCommand command, CancellationToken token)
     {
         var cohort = await db.Cohorts.SingleOrDefaultAsync(item => item.Id == id, token);
@@ -86,6 +90,7 @@ public sealed class AdminCohortsController(AppDbContext db) : ControllerBase
     }
 
     [HttpDelete("{id:guid}/members/{userId:guid}")]
+    [AuditAction("cohorts.members.remove", TargetIdParameter = "userId")]
     public async Task<IActionResult> Clear(Guid id, Guid userId, CancellationToken token)
     {
         var updated = await db.Users.Where(item => item.Id == userId && item.CohortId == id)

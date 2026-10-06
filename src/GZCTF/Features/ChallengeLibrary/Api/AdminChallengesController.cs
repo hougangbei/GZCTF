@@ -21,6 +21,7 @@ public sealed class AdminChallengesController(
         Ok(await service.ListChallengesAsync(locale, token));
 
     [HttpPost]
+    [AuditAction("challenges.create")]
     public async Task<ActionResult<ChallengeEditResponse>> Create(
         [FromBody] ChallengeCommand command, CancellationToken token)
     {
@@ -53,6 +54,7 @@ public sealed class AdminChallengesController(
     }
 
     [HttpPut("{id:guid}")]
+    [AuditAction("challenges.update")]
     public async Task<ActionResult<ChallengeEditResponse>> Update(
         Guid id, [FromBody] ChallengeCommand command, CancellationToken token)
     {
@@ -83,10 +85,12 @@ public sealed class AdminChallengesController(
     }
 
     [HttpDelete("{id:guid}")]
+    [AuditAction("challenges.retire")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken token) =>
         await service.RetireChallengeAsync(id, token) ? NoContent() : NotFound();
 
     [HttpPost("{id:guid}/publish")]
+    [AuditAction("challenges.publish")]
     public async Task<IActionResult> Publish(
         Guid id, [FromBody] PublishContentCommand command, CancellationToken token)
     {
@@ -125,6 +129,7 @@ public sealed class AdminChallengesController(
     }
 
     [HttpPost("{id:guid}/merge")]
+    [AuditAction("challenges.merge")]
     public async Task<ActionResult<ChallengeMergeResult>> Merge(
         Guid id, [FromBody] MergeChallengeCommand command, CancellationToken token)
     {

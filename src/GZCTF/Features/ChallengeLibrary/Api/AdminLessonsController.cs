@@ -21,6 +21,7 @@ public sealed class AdminLessonsController(
         Ok(await service.ListLessonsAsync(locale, token));
 
     [HttpPost]
+    [AuditAction("lessons.create")]
     public async Task<ActionResult<LessonResponse>> Create(
         [FromBody] LessonCommand command, CancellationToken token) =>
         Ok(await service.CreateLessonAsync(command, token));
@@ -34,6 +35,7 @@ public sealed class AdminLessonsController(
     }
 
     [HttpPut("{id:guid}")]
+    [AuditAction("lessons.update")]
     public async Task<ActionResult<LessonResponse>> Update(
         Guid id, [FromBody] LessonCommand command, CancellationToken token)
     {
@@ -42,10 +44,12 @@ public sealed class AdminLessonsController(
     }
 
     [HttpDelete("{id:guid}")]
+    [AuditAction("lessons.delete")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken token) =>
         await service.DeleteLessonAsync(id, token) ? NoContent() : NotFound();
 
     [HttpPost("{id:guid}/publish")]
+    [AuditAction("lessons.publish")]
     public async Task<IActionResult> Publish(
         Guid id, [FromBody] PublishContentCommand command, CancellationToken token)
     {

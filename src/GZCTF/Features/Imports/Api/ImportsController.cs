@@ -46,6 +46,7 @@ public sealed class ImportsController(
     }
 
     [HttpPost("zip")]
+    [AuditAction("imports.zip")]
     [RequestSizeLimit(LegacyZipSource.MaxExpandedBytes)]
     public async Task<ActionResult<CanonicalImportResult>> Upload(
         IFormFile package, CancellationToken token)

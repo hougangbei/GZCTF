@@ -1,5 +1,7 @@
 ﻿using System.Text.Json;
 using GZCTF.Features.ChallengeLibrary.Domain;
+using GZCTF.Features.Auditing.Domain;
+using GZCTF.Features.AboutPage.Domain;
 using GZCTF.Features.ChallengeRuntime.Domain;
 using GZCTF.Features.Dashboard.Domain;
 using GZCTF.Features.Imports.Domain;
@@ -86,6 +88,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<CategoryContent> CategoryContents { get; set; } = null!;
     public DbSet<SkillTreeEnrollment> SkillTreeEnrollments { get; set; } = null!;
     public DbSet<LearningPathRedirect> LearningPathRedirects { get; set; } = null!;
+    public DbSet<AuditEvent> AuditEvents { get; set; } = null!;
+    public DbSet<FlagAttemptLog> FlagAttemptLogs { get; set; } = null!;
+    public DbSet<AboutPageState> AboutPageStates { get; set; } = null!;
+    public DbSet<AboutPageVersion> AboutPageVersions { get; set; } = null!;
 
     private static ValueConverter<T?, string> GetJsonConverter<T>() where T : class, new() =>
         new(
@@ -129,6 +135,53 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
                 .WithMany(e => e.Users)
                 .HasForeignKey(e => e.CohortId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<AuditEvent>(entity =>
+        {
+            entity.Property(e => e.ActorName).HasMaxLength(80);
+            entity.Property(e => e.ActorKind).HasMaxLength(24);
+            entity.Property(e => e.Category).HasMaxLength(32);
+            entity.Property(e => e.Action).HasMaxLength(64);
+            entity.Property(e => e.TargetType).HasMaxLength(32);
+            entity.Property(e => e.TargetId).HasMaxLength(128);
+            entity.Property(e => e.TargetName).HasMaxLength(160);
+            entity.Property(e => e.ErrorCode).HasMaxLength(48);
+            entity.Property(e => e.ErrorReason).HasMaxLength(240);
+            entity.Property(e => e.RequestId).HasMaxLength(64);
+            entity.HasIndex(e => new { e.OccurredAtUtc, e.Id });
+            entity.HasIndex(e => new { e.Category, e.OccurredAtUtc, e.Id });
+            entity.HasIndex(e => new { e.ActorId, e.OccurredAtUtc, e.Id });
+            entity.HasIndex(e => new { e.Succeeded, e.OccurredAtUtc, e.Id });
+        });
+
+        builder.Entity<FlagAttemptLog>(entity =>
+        {
+            entity.Property(e => e.UserName).HasMaxLength(80);
+            entity.Property(e => e.ChallengeName).HasMaxLength(160);
+            entity.Property(e => e.Outcome).HasMaxLength(24);
+            entity.Property(e => e.RejectionCode).HasMaxLength(48);
+            entity.Property(e => e.ProtectedSubmittedFlag).HasColumnType("text");
+            entity.HasIndex(e => new { e.OccurredAtUtc, e.Id });
+            entity.HasIndex(e => new { e.Outcome, e.OccurredAtUtc, e.Id });
+            entity.HasIndex(e => new { e.UserId, e.OccurredAtUtc, e.Id });
+            entity.HasIndex(e => new { e.ChallengeId, e.OccurredAtUtc, e.Id });
+        });
+
+        builder.Entity<AboutPageState>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.DraftJson).HasColumnType("text");
+            entity.Property(e => e.LockOwnerName).HasMaxLength(80);
+            entity.HasIndex(e => e.CurrentVersionId);
+        });
+
+        builder.Entity<AboutPageVersion>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.DocumentJson).HasColumnType("text");
+            entity.Property(e => e.PublisherName).HasMaxLength(80);
+            entity.HasIndex(e => e.VersionNumber).IsUnique();
         });
 
         builder.Entity<Game>(entity =>

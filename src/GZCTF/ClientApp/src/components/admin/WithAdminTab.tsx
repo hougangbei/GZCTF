@@ -4,8 +4,10 @@ import {
   mdiAccountGroupOutline,
   mdiFileDocumentOutline,
   mdiFlagOutline,
+  mdiInformationOutline,
   mdiPackageVariantClosed,
   mdiSitemapOutline,
+  mdiUpdate,
 } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import React, { FC, useEffect, useState } from 'react'
@@ -38,6 +40,8 @@ export const WithAdminTab: FC<AdminTabProps> = ({ head, headProps, isLoading, ch
     },
     { icon: mdiFileDocumentOutline, title: t('admin.tab.logs'), path: 'logs' },
     { icon: mdiSitemapOutline, title: t('admin.tab.settings'), path: 'settings' },
+    { icon: mdiUpdate, title: t('admin.tab.updates'), path: 'updates' },
+    { icon: mdiInformationOutline, title: t('admin.tab.about'), path: 'about' },
   ]
   const getTab = (path: string) => pages.findIndex((page) => path.startsWith(`/admin/${page.path}`))
   const tabIndex = getTab(location.pathname)

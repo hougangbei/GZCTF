@@ -30,7 +30,7 @@ public static partial class QqMessageTemplate
         });
     }
 
-    private static string EscapeCq(string text) => text.Replace("&", "&amp;")
+    internal static string EscapeCq(string text) => text.Replace("&", "&amp;")
         .Replace("[", "&#91;").Replace("]", "&#93;");
 
     [GeneratedRegex(@"\{([a-zA-Z]+)\}")]

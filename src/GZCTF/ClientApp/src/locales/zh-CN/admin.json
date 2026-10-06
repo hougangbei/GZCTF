@@ -593,6 +593,39 @@
       "student_id": "00000000"
     }
   },
+  "logsConsole": {
+    "tabs": { "audit": "操作日志", "flags": "Flag 提交", "system": "系统状态" },
+    "filters": {
+      "allCategories": "全部类别", "allResults": "全部结果", "category": "类别", "result": "结果",
+      "search": "按操作者或目标名称 / ID 搜索", "level": "日志级别"
+    },
+    "categories": {
+      "users": "用户与权限", "challenges": "题目与课节", "skill_trees": "技能树与类别",
+      "containers": "容器", "settings": "系统设置", "content": "内容与导入",
+      "cohorts": "班级", "dashboards": "看板"
+    },
+    "result": { "success": "成功", "failure": "失败", "accepted": "正确", "incorrect": "错误", "rejected": "已拒绝", "error": "异常" },
+    "levels": { "Verbose": "详细", "Debug": "调试", "Information": "信息", "Warning": "警告", "Error": "错误", "Fatal": "致命", "All": "全部" },
+    "detail": {
+      "actor": "操作者", "target": "目标", "status": "HTTP 状态", "affected": "影响数量",
+      "requestId": "请求 ID", "submission": "提交记录 ID", "rejection": "拒绝原因代码",
+      "submittedFlag": "提交的 Flag", "originalUnavailable": "原文已清除或不可用", "source": "来源"
+    },
+    "newRecords": "有新记录（{{count}}）", "loadFailed": "日志加载失败", "detailFailed": "详情加载失败",
+    "retry": "重试", "empty": "暂无记录"
+  },
+  "updates": {
+    "title": "更新管理", "description": "查看 GitHub 已成功构建的版本，并手动更新当前平台。",
+    "current": "当前提交", "latest": "最新可用提交", "unknown": "未知", "publishedAt": "构建完成时间",
+    "workflow": "查看 GitHub 构建", "available": "发现更新", "noUpdate": "暂无可用更新",
+    "refresh": "重新检查", "task": "更新任务", "target": "目标提交", "backup": "备份目录",
+    "changedAt": "状态更新时间", "apply": "立即更新", "cancel": "取消",
+    "loadFailed": "无法读取更新状态，请稍后重试。", "applyFailed": "无法发起更新，请刷新状态后重试。",
+    "notConfigured": "当前部署尚未配置宿主机更新程序。请按 deploy/self-update/README.md 完成 Docker Compose 部署。",
+    "warning": "更新会短暂停机。部署程序会先备份数据库和上传文件；新版本启动时可能执行数据库迁移，失败后需按备份人工恢复。",
+    "confirmTitle": "确认更新平台", "confirmBody": "将平台更新到 {{sha}}？应用会短暂停机，数据库和上传文件会先备份。迁移后的数据库可能无法直接回退。",
+    "phases": { "idle": "尚未执行更新", "disabled": "未配置", "accepted": "已接受任务", "pulling": "拉取镜像", "backingUp": "备份数据", "starting": "启动新版本", "succeeded": "更新成功", "failed": "更新失败", "interrupted": "更新中断" }
+  },
   "tab": {
     "games": {
       "challenges": "题目管理",
@@ -604,8 +637,10 @@
       "writeups": "Writeups"
     },
     "instances": "实例管理",
+    "about": "关于页管理",
     "logs": "系统日志",
     "settings": "系统设置",
+    "updates": "更新管理",
     "teams": "队伍管理",
     "users": "用户管理"
   }

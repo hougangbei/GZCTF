@@ -5,6 +5,7 @@ using GZCTF.Features.ChallengeLibrary.Domain;
 using GZCTF.Features.Dashboard.Domain;
 using GZCTF.Features.LearningPaths.Domain;
 using GZCTF.Features.LearningProgress.Domain;
+using GZCTF.Features.QqBot.Application;
 using GZCTF.Features.SkillTrees.Application;
 using GZCTF.Models;
 using GZCTF.Utils;
@@ -13,7 +14,8 @@ using CanonicalChallenge = GZCTF.Features.ChallengeLibrary.Domain.Challenge;
 
 namespace GZCTF.Features.ChallengeLibrary.Application;
 
-public sealed class ChallengeLibraryService(AppDbContext db, IChallengeMergeConflictChecker conflictChecker)
+public sealed class ChallengeLibraryService(
+    AppDbContext db, IChallengeMergeConflictChecker conflictChecker, QqBotNotifier qqBot)
 {
     public async Task<ChallengeEditResponse> CreateChallengeAsync(
         ChallengeCommand command, CancellationToken token)
@@ -81,7 +83,13 @@ public sealed class ChallengeLibraryService(AppDbContext db, IChallengeMergeConf
             challenge.PublicationState != ChallengePublicationState.Draft)
             throw new ChallengeTypeImmutableException();
 
+        var wasVisible = challenge.PublicationState == ChallengePublicationState.Published && challenge.IsEnabled;
+        var previousHintSlots = challenge.Hints
+            .Select(hint => (Locale: hint.Locale.ToLowerInvariant(), hint.SortOrder)).ToHashSet();
         ApplyChallengeCommand(challenge, command, isCreate: false);
+        var isVisible = challenge.PublicationState == ChallengePublicationState.Published && challenge.IsEnabled;
+        var addedHintCount = command.Hints?.Select(hint => (Locale: hint.Locale.ToLowerInvariant(), hint.SortOrder))
+            .Distinct().Count(slot => !previousHintSlots.Contains(slot)) ?? 0;
         // Changes confined to child rows (localizations, Flags, hints) must still
         // advance the parent xmin used by the editor's optimistic concurrency check.
         db.Entry(challenge).Property(item => item.IsEnabled).IsModified = true;
@@ -94,6 +102,17 @@ public sealed class ChallengeLibraryService(AppDbContext db, IChallengeMergeConf
             throw new ChallengeRevisionConflictException();
         }
         var categoryIds = await LoadCategoryIdsAsync(id, null, token);
+        if (isVisible && (!wasVisible || addedHintCount > 0))
+        {
+            var title = challenge.Localizations.FirstOrDefault(item => item.Locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(item.Title))?.Title
+                ?? challenge.Localizations.FirstOrDefault(item => !string.IsNullOrWhiteSpace(item.Title))?.Title
+                ?? "未命名题目";
+            if (!wasVisible)
+                await qqBot.TrySendChallengePublishedAsync(title, CancellationToken.None);
+            else
+                await qqBot.TrySendHintAddedAsync(title, addedHintCount, CancellationToken.None);
+        }
         return ToEditResponse(challenge, command.Locale, categoryIds);
     }
 

@@ -1,6 +1,7 @@
 using System.Data;
 using GZCTF.Features.ChallengeLibrary.Domain;
 using GZCTF.Features.LearningPaths.Domain;
+using GZCTF.Features.QqBot.Application;
 using GZCTF.Features.SkillTrees.Domain;
 using GZCTF.Models;
 using GZCTF.Storage.Interface;
@@ -10,7 +11,8 @@ using CanonicalChallenge = GZCTF.Features.ChallengeLibrary.Domain.Challenge;
 namespace GZCTF.Features.SkillTrees.Application;
 
 public sealed class ContentPublicationService(
-    AppDbContext db, ISkillTreeCacheInvalidator cacheInvalidator, IBlobStorage storage)
+    AppDbContext db, ISkillTreeCacheInvalidator cacheInvalidator, IBlobStorage storage,
+    QqBotNotifier qqBot)
 {
     public async Task PublishChallengeAsync(
         Guid challengeId, PublishContentCommand command, CancellationToken token)
@@ -25,6 +27,7 @@ public sealed class ContentPublicationService(
 
         if (challenge.PublicationState is ChallengePublicationState.Retired or ChallengePublicationState.Merged)
             throw new ContentPublicationValidationException("A retired challenge cannot be published.");
+        var firstPublication = challenge.PublicationState != ChallengePublicationState.Published;
         if (command.RowVersion != challenge.RowVersion)
             throw new SkillTreeRevisionConflictException();
         if (!HasPublishableText(challenge.Localizations.Select(item => item.Title)))
@@ -66,6 +69,14 @@ public sealed class ContentPublicationService(
 
         foreach (var categoryId in categoryIds)
             await cacheInvalidator.InvalidateByCategoryAsync(categoryId, token);
+
+        if (firstPublication && challenge.IsEnabled)
+        {
+            var title = challenge.Localizations.FirstOrDefault(item => item.Locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(item.Title))?.Title
+                ?? challenge.Localizations.First(item => !string.IsNullOrWhiteSpace(item.Title)).Title;
+            await qqBot.TrySendChallengePublishedAsync(title, CancellationToken.None);
+        }
     }
 
     public async Task PublishLessonAsync(

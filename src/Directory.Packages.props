@@ -12,6 +12,7 @@
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.6.0" />
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.7.0" />
     <PackageVersion Include="Cronos" Version="0.13.0" />
+    <PackageVersion Include="AngleSharp" Version="1.7.1" />
     <PackageVersion Include="Docker.DotNet.Enhanced" Version="4.3.3" />
     <PackageVersion Include="Docker.DotNet.Enhanced.BasicAuth" Version="4.3.3" />
     <PackageVersion Include="KubernetesClient" Version="19.0.2" />

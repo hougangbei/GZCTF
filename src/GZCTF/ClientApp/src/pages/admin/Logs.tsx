@@ -1,80 +1,21 @@
-import {
-  ActionIcon,
-  Badge,
-  Group,
-  Paper,
-  ScrollArea,
-  SegmentedControl,
-  Table,
-  Text,
-  useMantineTheme,
-} from '@mantine/core'
-import { showNotification } from '@mantine/notifications'
-import { mdiArrowLeftBold, mdiArrowRightBold, mdiCheck, mdiClose } from '@mdi/js'
+import { Button, Group, Tabs } from '@mantine/core'
+import { mdiRefresh } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import * as signalR from '@microsoft/signalr'
-import cx from 'clsx'
-import dayjs from 'dayjs'
-import { FC, useEffect, useRef, useState } from 'react'
+import { FC, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdminPage } from '@Components/admin/AdminPage'
-import { handleAxiosError } from '@Utils/ApiHelper'
-import { useLanguage } from '@Utils/I18n'
-import { TaskStatusColorMap } from '@Utils/Shared'
-import api, { LogMessageModel, TaskStatus } from '@Api'
-import tableClasses from '@Styles/Table.module.css'
+import { AuditLogPanel } from '@Components/admin/logs/AuditLogPanel'
+import { FlagAttemptPanel } from '@Components/admin/logs/FlagAttemptPanel'
+import { SystemLogPanel } from '@Components/admin/logs/SystemLogPanel'
 
-const ITEM_COUNT_PER_PAGE = 50
-
-enum LogLevel {
-  Info = 'Information',
-  Warn = 'Warning',
-  Error = 'Error',
-  All = 'All',
-}
+type AdminLogTab = 'audit' | 'flags' | 'system'
 
 const Logs: FC = () => {
-  const [level, setLevel] = useState(LogLevel.Info)
-  const [activePage, setPage] = useState(1)
-  const theme = useMantineTheme()
-
-  // realtime logs buffered on top of the fetched page, kept in state so it is
-  // not read from a mutable ref during render
-  const [newLogs, setNewLogs] = useState<LogMessageModel[]>([])
-  const [logs, setLogs] = useState<LogMessageModel[]>()
-
   const { t } = useTranslation()
-  const { locale } = useLanguage()
-  const viewport = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    viewport.current?.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [activePage, level, viewport])
-
-  useEffect(() => {
-    const fetchLogs = async () => {
-      // the freshly fetched first page already contains the buffered logs
-      if (activePage === 1) setNewLogs((prev) => (prev.length ? [] : prev))
-
-      try {
-        const res = await api.admin.adminLogs({
-          level,
-          count: ITEM_COUNT_PER_PAGE,
-          skip: (activePage - 1) * ITEM_COUNT_PER_PAGE,
-        })
-        setLogs(res.data)
-      } catch (err) {
-        showNotification({
-          color: 'red',
-          title: t('admin.notification.logs.fetch_failed'),
-          message: await handleAxiosError(err),
-          icon: <Icon path={mdiClose} size={1} />,
-        })
-      }
-    }
-
-    fetchLogs()
-  }, [activePage, level])
+  const [tab, setTab] = useState<AdminLogTab>('audit')
+  const [unseen, setUnseen] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     const connection = new signalR.HubConnectionBuilder()
@@ -84,127 +25,42 @@ const Logs: FC = () => {
       .configureLogging(signalR.LogLevel.None)
       .build()
 
-    connection.serverTimeoutInMilliseconds = 60 * 1000 * 60 * 24
-
-    connection.on('ReceivedLog', (message: LogMessageModel) => {
-      console.log(message)
-      setNewLogs((prev) => [message, ...prev])
-    })
-
-    const startConnection = async () => {
-      try {
-        await connection.start()
-        showNotification({
-          color: 'teal',
-          message: t('admin.notification.logs.connected'),
-          icon: <Icon path={mdiCheck} size={1} />,
-        })
-      } catch (err) {
-        console.error(err)
-      }
-    }
-
-    startConnection()
-
-    return () => {
-      connection.stop().catch((err) => {
-        console.error(err)
-      })
-    }
+    connection.serverTimeoutInMilliseconds = 60 * 60 * 1000 * 24
+    connection.on('ReceivedLog', () => setUnseen((count) => count + 1))
+    void connection.start().catch(() => undefined)
+    return () => { void connection.stop().catch(() => undefined) }
   }, [])
 
-  const rows = [...(activePage === 1 ? newLogs : []), ...(logs ?? [])]
-    .filter((item) => level === 'All' || item.level === level)
-    .map((item, i) => (
-      <Table.Tr
-        key={`${item.time}@${i}`}
-        className={cx({
-          [tableClasses.fade]: i === 0 && activePage === 1 && newLogs.length > 0 && newLogs[0].level === level,
-        })}
-      >
-        <Table.Td className={tableClasses.time}>
-          <Badge size="sm" color="indigo" fullWidth>
-            {dayjs(item.time).locale(locale).format('SL HH:mm:ss')}
-          </Badge>
-        </Table.Td>
-        <Table.Td>
-          <Text ff="monospace" size="sm" fw={500} className={tableClasses.overflow}>
-            {item.ip || ''}
-          </Text>
-        </Table.Td>
-        <Table.Td>
-          <Text ff="monospace" size="sm" fw="bold" className={tableClasses.overflow}>
-            {item.name || ''}
-          </Text>
-        </Table.Td>
-        <Table.Td>
-          <Text size="sm" className={tableClasses.overflow}>
-            {item.msg || ''}
-          </Text>
-        </Table.Td>
-        <Table.Td ff="monospace">
-          {item.status && (
-            <Badge size="sm" color={TaskStatusColorMap.get(item.status as TaskStatus) ?? 'gray'}>
-              {item.status}
-            </Badge>
-          )}
-        </Table.Td>
-      </Table.Tr>
-    ))
+  const refresh = () => {
+    setUnseen(0)
+    setRefreshKey((value) => value + 1)
+  }
 
   return (
     <AdminPage
-      isLoading={!logs}
+      minWidth={390}
+      isLoading={false}
       head={
-        <>
-          <SegmentedControl
-            color={theme.primaryColor}
-            value={level}
-            bg="transparent"
-            onChange={(value) => {
-              setLevel(value as LogLevel)
-              // reset to the first page whenever the filter changes
-              setPage(1)
-            }}
-            data={Object.entries(LogLevel).map((role) => ({
-              value: role[1],
-              label: role[0],
-            }))}
-          />
-          <Group justify="right">
-            <ActionIcon size="lg" disabled={activePage <= 1} onClick={() => setPage(activePage - 1)}>
-              <Icon path={mdiArrowLeftBold} size={1} />
-            </ActionIcon>
-            <Text fw="bold" size="sm">
-              {activePage}
-            </Text>
-            <ActionIcon
-              size="lg"
-              disabled={logs && logs.length < ITEM_COUNT_PER_PAGE}
-              onClick={() => setPage(activePage + 1)}
-            >
-              <Icon path={mdiArrowRightBold} size={1} />
-            </ActionIcon>
-          </Group>
-        </>
+        <Group justify="space-between" w="100%" wrap="wrap">
+          <Tabs value={tab} onChange={(value) => value && setTab(value as AdminLogTab)}>
+            <Tabs.List>
+              <Tabs.Tab value="audit">{t('admin.logsConsole.tabs.audit')}</Tabs.Tab>
+              <Tabs.Tab value="flags">{t('admin.logsConsole.tabs.flags')}</Tabs.Tab>
+              <Tabs.Tab value="system">{t('admin.logsConsole.tabs.system')}</Tabs.Tab>
+            </Tabs.List>
+          </Tabs>
+          {unseen > 0 && <Button size="sm" variant="light" leftSection={<Icon path={mdiRefresh} size={0.8} />}
+            onClick={refresh}>
+            {t('admin.logsConsole.newRecords', { count: unseen })}
+          </Button>}
+        </Group>
       }
     >
-      <Paper shadow="md" p="md" w="100%">
-        <ScrollArea viewportRef={viewport} offsetScrollbars scrollbarSize={4} h="calc(100vh - 190px)">
-          <Table className={cx(tableClasses.table, tableClasses.fixed)}>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th w="7rem">{t('common.label.time')}</Table.Th>
-                <Table.Th w="9rem">{t('common.label.ip')}</Table.Th>
-                <Table.Th w="7rem">{t('common.label.user')}</Table.Th>
-                <Table.Th w="100%">{t('admin.label.logs.message')}</Table.Th>
-                <Table.Th w="6rem">{t('admin.label.logs.status')}</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>{rows}</Table.Tbody>
-          </Table>
-        </ScrollArea>
-      </Paper>
+      <Tabs value={tab} onChange={(value) => value && setTab(value as AdminLogTab)} keepMounted>
+        <Tabs.Panel value="audit" pt="md"><AuditLogPanel refreshKey={refreshKey} /></Tabs.Panel>
+        <Tabs.Panel value="flags" pt="md"><FlagAttemptPanel refreshKey={refreshKey} /></Tabs.Panel>
+        <Tabs.Panel value="system" pt="md"><SystemLogPanel refreshKey={refreshKey} /></Tabs.Panel>
+      </Tabs>
     </AdminPage>
   )
 }

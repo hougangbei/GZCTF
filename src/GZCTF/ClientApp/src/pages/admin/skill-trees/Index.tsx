@@ -1,7 +1,7 @@
 import { Box, Button, Group, Stack, Tabs, Text, Title } from '@mantine/core'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { Role } from '@Api'
 import { CategoriesPanel } from '@Components/admin/workspace/CategoriesPanel'
 import { ChallengesPanel } from '@Components/admin/workspace/ChallengesPanel'
@@ -14,11 +14,11 @@ import { WithNavBar } from '@Components/WithNavbar'
 import { WithRole } from '@Components/WithRole'
 import { usePageTitle } from '@Hooks/usePageTitle'
 
-type AdminTab = 'trees' | 'categories' | 'challenges' | 'members' | 'writeups' | 'instances'
+type AdminTab = 'trees' | 'categories' | 'challenges' | 'members' | 'writeups' | 'writeupManagement' | 'instances'
 
 const isKnownTab = (value: string | null): value is AdminTab =>
   value === 'trees' || value === 'categories' || value === 'challenges' || value === 'members' ||
-  value === 'writeups' || value === 'instances'
+  value === 'writeups' || value === 'writeupManagement' || value === 'instances'
 
 const AdminWorkspace = () => {
   const { t } = useTranslation('skillTrees')
@@ -33,6 +33,7 @@ const AdminWorkspace = () => {
     challenges: t('workspace.tabs.challenges'),
     members: t('workspace.tabs.members'),
     writeups: t('writeups.reviewMenu'),
+    writeupManagement: t('writeups.manageMenu'),
     instances: t('instances.menu'),
   }
   usePageTitle(tabLabels[tab])
@@ -72,12 +73,18 @@ const AdminWorkspace = () => {
                 <Tabs.Tab value="challenges">{tabLabels.challenges}</Tabs.Tab>
                 <Tabs.Tab value="members">{tabLabels.members}</Tabs.Tab>
                 <Tabs.Tab value="writeups">{tabLabels.writeups}</Tabs.Tab>
+                <Tabs.Tab value="writeupManagement">{tabLabels.writeupManagement}</Tabs.Tab>
                 <Tabs.Tab value="instances">{tabLabels.instances}</Tabs.Tab>
               </Tabs.List>
             </Tabs>
-            {createLabels[tab] && <Button className={classes.primaryAction} onClick={openCreate}>
-              {createLabels[tab]}
-            </Button>}
+            <Group gap="xs">
+              <Button component={Link} to="/admin/settings" variant="default">
+                {t('admin:tab.settings')}
+              </Button>
+              {createLabels[tab] && <Button className={classes.primaryAction} onClick={openCreate}>
+                {createLabels[tab]}
+              </Button>}
+            </Group>
           </Group>
 
           <Box className={classes.content}>
@@ -94,6 +101,7 @@ const AdminWorkspace = () => {
               <MembersPanel createOpen={createOpen} onClose={closeCreate} onOpen={openCreate} />
             )}
             {tab === 'writeups' && <WriteupsPanel />}
+            {tab === 'writeupManagement' && <WriteupsPanel mode="management" />}
             {tab === 'instances' && <InstancesPanel />}
           </Box>
         </Stack>

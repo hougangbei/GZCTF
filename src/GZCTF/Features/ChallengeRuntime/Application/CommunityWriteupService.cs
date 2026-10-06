@@ -90,12 +90,13 @@ public sealed class CommunityWriteupService(AppDbContext db, IBlobStorage storag
     }
 
     public async Task<IReadOnlyList<AdminCommunityWriteupSummary>> ListForReviewAsync(
-        CommunityWriteupStatus? status, CancellationToken token)
+        CommunityWriteupStatus? status, int offset, int limit, CancellationToken token)
     {
         var query = db.CommunityWriteups.AsNoTracking().Include(item => item.Challenge.Localizations)
             .AsQueryable();
         if (status is { } filter) query = query.Where(item => item.Status == filter);
-        var items = await query.OrderByDescending(item => item.CreatedAtUtc).Take(200).ToArrayAsync(token);
+        var items = await query.OrderByDescending(item => item.CreatedAtUtc)
+            .ThenByDescending(item => item.Id).Skip(offset).Take(limit).ToArrayAsync(token);
         return items.Select(item => new AdminCommunityWriteupSummary(
             item.Id, item.ChallengeId,
             item.Challenge.Localizations.FirstOrDefault(localization => localization.Locale == "en")?.Title ??

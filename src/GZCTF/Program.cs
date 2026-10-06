@@ -20,6 +20,8 @@ global using TaskStatus = GZCTF.Utils.TaskStatus;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
+using GZCTF.Features.Auditing.Domain;
 using GZCTF.Extensions.Startup;
 using GZCTF.Models;
 using Serilog;
@@ -46,6 +48,64 @@ builder.AddWebServices();
 builder.AddDevelopmentServices();
 
 var app = builder.Build();
+
+if (args.Length >= 2 && args[0] == "about" && args[1] == "unlock")
+{
+    static string? Option(string[] values, string key)
+    {
+        var index = Array.IndexOf(values, key);
+        return index >= 0 && index + 1 < values.Length ? values[index + 1] : null;
+    }
+
+    var operatorName = Option(args, "--operator");
+    var reason = Option(args, "--reason");
+    if (string.IsNullOrWhiteSpace(operatorName) || string.IsNullOrWhiteSpace(reason))
+    {
+        Console.Error.WriteLine("Usage: GZCTF about unlock --operator <identifier> --reason <reason>");
+        return;
+    }
+
+    await using (var scope = app.Services.CreateAsyncScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        var state = await db.AboutPageStates.SingleOrDefaultAsync(x => x.Id == 1);
+        Console.WriteLine(state?.LockOwnerId is { } ownerId
+            ? $"Current editor lock: {state.LockOwnerName} ({ownerId}), created {state.LockCreatedAtUtc:O}"
+            : "Current editor lock: none");
+        var lockedId = state?.LockOwnerId;
+        var lockedName = state?.LockOwnerName;
+        if (state is not null)
+        {
+            state.LockOwnerId = null;
+            state.LockOwnerName = null;
+            state.LockCreatedAtUtc = null;
+        }
+        db.AuditEvents.Add(new AuditEvent
+        {
+            OccurredAtUtc = DateTimeOffset.UtcNow,
+            ActorId = null,
+            ActorName = operatorName.Length <= 80 ? operatorName : operatorName[..80],
+            ActorKind = "operator",
+            Category = "content",
+            Action = "about.lock.emergency_unlock",
+            TargetType = "about_page",
+            TargetId = lockedId?.ToString(),
+            TargetName = lockedName,
+            Succeeded = true,
+            HttpStatus = StatusCodes.Status200OK,
+            ErrorReason = reason.Length <= 240 ? reason : reason[..240],
+            RequestId = $"cli-{Guid.NewGuid():N}"[..64]
+        });
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        Console.WriteLine("Emergency unlock recorded; draft content was preserved.");
+    }
+
+    await app.DisposeAsync();
+    await Log.CloseAndFlushAsync();
+    return;
+}
 
 Log.Logger = app.GetLogger();
 

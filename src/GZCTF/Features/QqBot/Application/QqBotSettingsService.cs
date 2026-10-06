@@ -12,7 +12,10 @@ public sealed record QqBotSettings(
     string GroupId = "",
     string MessageTemplate = "🎉 {member} 解出了 {challenge}（{source}）",
     bool NotifyLearningSolves = true,
-    bool NotifyGameSolves = true)
+    bool NotifyGameSolves = true,
+    bool NotifyChallengePublishes = true,
+    bool NotifyAnnouncements = true,
+    bool NotifyHints = true)
 {
     public const string DefaultTemplate = "🎉 {member} 解出了 {challenge}（{source}）";
 
@@ -27,11 +30,13 @@ public sealed record QqBotSettings(
 
 public sealed record QqBotSettingsView(
     bool Enabled, string BaseUrl, bool AccessTokenConfigured, string GroupId,
-    string MessageTemplate, bool NotifyLearningSolves, bool NotifyGameSolves);
+    string MessageTemplate, bool NotifyLearningSolves, bool NotifyGameSolves,
+    bool NotifyChallengePublishes, bool NotifyAnnouncements, bool NotifyHints);
 
 public sealed record QqBotSettingsCommand(
     bool Enabled, string BaseUrl, string? AccessToken, bool ClearAccessToken,
-    string GroupId, string MessageTemplate, bool NotifyLearningSolves, bool NotifyGameSolves);
+    string GroupId, string MessageTemplate, bool NotifyLearningSolves, bool NotifyGameSolves,
+    bool NotifyChallengePublishes = true, bool NotifyAnnouncements = true, bool NotifyHints = true);
 
 public sealed class QqBotSettingsService(AppDbContext db)
 {
@@ -62,7 +67,8 @@ public sealed class QqBotSettingsService(AppDbContext db)
             command.Enabled, command.BaseUrl.Trim().TrimEnd('/'),
             command.ClearAccessToken ? "" : command.AccessToken ?? current.AccessToken,
             command.GroupId.Trim(), command.MessageTemplate,
-            command.NotifyLearningSolves, command.NotifyGameSolves);
+            command.NotifyLearningSolves, command.NotifyGameSolves,
+            command.NotifyChallengePublishes, command.NotifyAnnouncements, command.NotifyHints);
         if (!settings.IsValid) return null;
         var row = await db.Configs.SingleOrDefaultAsync(item => item.ConfigKey == Key, token);
         if (row is null) db.Configs.Add(new Config(Key, JsonSerializer.Serialize(settings)));
@@ -74,5 +80,6 @@ public sealed class QqBotSettingsService(AppDbContext db)
     public static QqBotSettingsView ToView(QqBotSettings settings) => new(
         settings.Enabled, settings.BaseUrl, !string.IsNullOrWhiteSpace(settings.AccessToken),
         settings.GroupId, settings.MessageTemplate,
-        settings.NotifyLearningSolves, settings.NotifyGameSolves);
+        settings.NotifyLearningSolves, settings.NotifyGameSolves,
+        settings.NotifyChallengePublishes, settings.NotifyAnnouncements, settings.NotifyHints);
 }

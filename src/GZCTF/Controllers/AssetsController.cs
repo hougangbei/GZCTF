@@ -5,6 +5,7 @@ using GZCTF.Repositories.Interface;
 using GZCTF.Storage.Interface;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Microsoft.Net.Http.Headers;
 
@@ -19,6 +20,7 @@ namespace GZCTF.Controllers;
 public class AssetsController(
     IBlobStorage storage,
     IBlobRepository blobService,
+    AppDbContext db,
     ILogger<AssetsController> logger,
     IStringLocalizer<Program> localizer) : ControllerBase
 {
@@ -82,6 +84,7 @@ public class AssetsController(
     /// <response code="403">Access denied</response>
     [RequireAdmin]
     [HttpPost("api/[controller]")]
+    [AuditAction("assets.upload")]
     [ProducesResponseType(typeof(List<LocalFile>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
     [RequestFormLimits(ValueLengthLimit = int.MaxValue, MultipartBodyLengthLimit = long.MaxValue)]
@@ -124,11 +127,16 @@ public class AssetsController(
     /// <response code="403">Access denied</response>
     [RequireAdmin]
     [HttpDelete("api/[controller]/{hash:length(64)}")]
+    [AuditAction("assets.delete")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Delete(string hash, CancellationToken token)
     {
+        if (await db.AboutPageStates.AsNoTracking().AnyAsync(state => state.DraftJson.Contains(hash), token) ||
+            await db.AboutPageVersions.AsNoTracking().AnyAsync(version => version.DocumentJson.Contains(hash), token))
+            return Conflict(new RequestResponse("This image is referenced by an about page draft or published history."));
+
         var result = await blobService.DeleteBlobByHash(hash, token);
 
         logger.SystemLog(StaticLocalizer[nameof(Resources.Program.Assets_DeleteFile), hash[..8]], result,

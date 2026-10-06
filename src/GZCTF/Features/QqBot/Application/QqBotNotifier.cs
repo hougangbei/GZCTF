@@ -7,6 +7,18 @@ namespace GZCTF.Features.QqBot.Application;
 public sealed class QqBotNotifier(
     HttpClient client, QqBotSettingsService settingsService, ILogger<QqBotNotifier> logger)
 {
+    public Task<bool> TrySendChallengePublishedAsync(string title, CancellationToken token = default) =>
+        TrySendBroadcastAsync(settings => settings.NotifyChallengePublishes,
+            $"🆕 新题发布：{SafeSubject(title)}", token);
+
+    public Task<bool> TrySendAnnouncementAsync(string title, CancellationToken token = default) =>
+        TrySendBroadcastAsync(settings => settings.NotifyAnnouncements,
+            $"📢 新公告：{SafeSubject(title)}", token);
+
+    public Task<bool> TrySendHintAddedAsync(string challengeTitle, int count, CancellationToken token = default) =>
+        TrySendBroadcastAsync(settings => settings.NotifyHints,
+            $"💡 题目「{SafeSubject(challengeTitle)}」新增 {count} 条提示，请到平台查看。", token);
+
     public async Task<bool> TrySendSolveAsync(QqSolveEvent solve, bool isGame,
         CancellationToken token = default)
     {
@@ -23,6 +35,29 @@ public sealed class QqBotNotifier(
             logger.LogWarning(error, "Failed to send QQ solve notification");
             return false;
         }
+    }
+
+    private async Task<bool> TrySendBroadcastAsync(
+        Func<QqBotSettings, bool> isEnabled, string message, CancellationToken token)
+    {
+        try
+        {
+            var settings = await settingsService.GetAsync(token);
+            if (!settings.Enabled || !isEnabled(settings)) return false;
+            await SendAsync(settings, message, token);
+            return true;
+        }
+        catch (Exception error) when (!token.IsCancellationRequested)
+        {
+            logger.LogWarning(error, "Failed to send QQ publication notification");
+            return false;
+        }
+    }
+
+    private static string SafeSubject(string value)
+    {
+        var normalized = value.Trim().Replace('\r', ' ').Replace('\n', ' ');
+        return QqMessageTemplate.EscapeCq(normalized[..Math.Min(normalized.Length, 160)]);
     }
 
     public async Task SendTestAsync(CancellationToken token = default)

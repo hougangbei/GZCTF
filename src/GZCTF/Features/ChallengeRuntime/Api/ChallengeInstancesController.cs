@@ -25,14 +25,17 @@ public sealed class ChallengeInstancesController(
         Execute(challengeId, () => runtime.GetCurrentInstanceAsync(GetUserId(), challengeId, token));
 
     [HttpPost]
+    [AuditAction("challenge_instances.start")]
     public Task<ActionResult<ChallengeInstanceResponse>> Start(Guid challengeId, CancellationToken token) =>
         Execute(challengeId, () => runtime.StartAsync(GetUserId(), challengeId, token));
 
     [HttpPost("extend")]
+    [AuditAction("challenge_instances.extend")]
     public Task<ActionResult<ChallengeInstanceResponse>> Extend(Guid challengeId, CancellationToken token) =>
         Execute(challengeId, () => runtime.ExtendAsync(GetUserId(), challengeId, token));
 
     [HttpDelete]
+    [AuditAction("challenge_instances.stop")]
     public async Task<IActionResult> Stop(Guid challengeId, CancellationToken token)
     {
         var user = await users.GetUserAsync(User);

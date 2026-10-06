@@ -29,6 +29,7 @@ public class ApiTokenController(
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The generated token.</returns>
     [HttpPost]
+    [AuditAction("tokens.create")]
     [ProducesResponseType(typeof(ApiTokenResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GenerateToken([FromBody] ApiTokenCreateModel model,
         CancellationToken cancellationToken = default)
@@ -70,6 +71,7 @@ public class ApiTokenController(
     /// <param name="id">The ID of the token to restore.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     [HttpPost("{id:guid}/restore")]
+    [AuditAction("tokens.restore")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RestoreToken(Guid id, CancellationToken cancellationToken = default)
@@ -90,6 +92,7 @@ public class ApiTokenController(
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A success message if the token was revoked.</returns>
     [HttpDelete("{id:guid}")]
+    [AuditAction("tokens.revoke")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RevokeToken(Guid id, [FromQuery] bool delete = false,

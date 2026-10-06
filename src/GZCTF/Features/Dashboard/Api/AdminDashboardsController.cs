@@ -20,6 +20,7 @@ public sealed class AdminDashboardsController(AppDbContext db, DashboardTokenSer
             item.Tokens.Count(current => current.RevokedAtUtc == null))).ToArrayAsync(token));
 
     [HttpPost]
+    [AuditAction("dashboards.create")]
     public async Task<ActionResult<AdminDashboardResponse>> Create([FromBody] DashboardCommand command, CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(command.Name) || command.TopCount is not 10 and not 20) return BadRequest();
@@ -30,6 +31,7 @@ public sealed class AdminDashboardsController(AppDbContext db, DashboardTokenSer
     }
 
     [HttpPut("{id:guid}")]
+    [AuditAction("dashboards.update")]
     public async Task<IActionResult> Update(Guid id, [FromBody] DashboardCommand command, CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(command.Name) || command.TopCount is not 10 and not 20) return BadRequest();
@@ -41,6 +43,7 @@ public sealed class AdminDashboardsController(AppDbContext db, DashboardTokenSer
     }
 
     [HttpPost("{id:guid}/tokens")]
+    [AuditAction("dashboards.tokens.create", TargetIdParameter = "result")]
     public async Task<ActionResult<DashboardTokenResult>> CreateToken(Guid id, [FromBody] TokenExpiryCommand command, CancellationToken token) =>
         (await tokens.CreateAsync(id, command.ExpiresAtUtc, token)) is { } result ? Ok(result) : NotFound();
 
@@ -60,10 +63,12 @@ public sealed class AdminDashboardsController(AppDbContext db, DashboardTokenSer
     }
 
     [HttpPost("{id:guid}/tokens/{tokenId:guid}/rotate")]
+    [AuditAction("dashboards.tokens.rotate", TargetIdParameter = "tokenId")]
     public async Task<ActionResult<DashboardTokenResult>> RotateToken(Guid id, Guid tokenId, [FromBody] TokenExpiryCommand command, CancellationToken token) =>
         (await tokens.RotateAsync(id, tokenId, command.ExpiresAtUtc, token)) is { } result ? Ok(result) : NotFound();
 
     [HttpPost("{id:guid}/tokens/{tokenId:guid}/revoke")]
+    [AuditAction("dashboards.tokens.revoke", TargetIdParameter = "tokenId")]
     public async Task<IActionResult> RevokeToken(Guid id, Guid tokenId, CancellationToken token) =>
         await tokens.RevokeAsync(id, tokenId, token) ? NoContent() : NotFound();
 }

@@ -33,4 +33,16 @@ public static class RuntimeCronJobs
                 TaskStatus.Success, LogLevel.Debug);
         }
     }
+
+    [CronJob("0 3 * * *")]
+    public static async Task ClearExpiredFlagAttemptValues(AsyncServiceScope scope, ILogger<CronJobService> logger)
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var expiryCutoff = DateTimeOffset.UtcNow.AddDays(-30);
+        var cleared = await db.FlagAttemptLogs
+            .Where(item => item.OccurredAtUtc <= expiryCutoff && item.ProtectedSubmittedFlag != null)
+            .ExecuteUpdateAsync(update => update.SetProperty(item => item.ProtectedSubmittedFlag, (string?)null));
+        if (cleared > 0)
+            logger.SystemLog($"Cleared {cleared} expired Flag attempt value(s)", TaskStatus.Success, LogLevel.Information);
+    }
 }

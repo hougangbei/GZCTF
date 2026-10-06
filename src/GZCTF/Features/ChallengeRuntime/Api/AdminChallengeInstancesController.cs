@@ -26,6 +26,7 @@ public sealed class AdminChallengeInstancesController(
     public Task<LearningInstanceSettings> GetSettings(CancellationToken token) => settingsService.GetAsync(token);
 
     [HttpPut("settings")]
+    [AuditAction("challenge_instances.settings.update")]
     public async Task<IActionResult> SetSettings([FromBody] LearningInstanceSettings settings,
         CancellationToken token)
     {
@@ -68,6 +69,7 @@ public sealed class AdminChallengeInstancesController(
     }
 
     [HttpDelete("{id:guid}")]
+    [AuditAction("challenge_instances.admin_stop")]
     public async Task<IActionResult> Stop(Guid id, CancellationToken token)
     {
         var instance = await db.UserChallengeInstances.AsNoTracking()

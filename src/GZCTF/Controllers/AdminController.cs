@@ -75,6 +75,7 @@ public class AdminController(
     /// <response code="401">Unauthorized user</response>
     /// <response code="403">Forbidden</response>
     [HttpPut("Config")]
+    [AuditAction("users.config.update")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateConfigs([FromBody] ConfigEditModel model, CancellationToken token)
     {
@@ -107,6 +108,7 @@ public class AdminController(
     /// <response code="401">Unauthorized user</response>
     /// <response code="403">Forbidden</response>
     [HttpPost("Config/Logo")]
+    [AuditAction("users.logo.upload")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateLogo(IFormFile file, CancellationToken token)
     {
@@ -150,6 +152,7 @@ public class AdminController(
     /// <response code="401">Unauthorized user</response>
     /// <response code="403">Forbidden</response>
     [HttpDelete("Config/Logo")]
+    [AuditAction("users.logo.reset")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> ResetLogo(CancellationToken token)
     {
@@ -216,6 +219,7 @@ public class AdminController(
     /// <response code="401">Unauthorized user</response>
     /// <response code="403">Forbidden</response>
     [HttpPost("Users")]
+    [AuditAction("users.create_batch")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> AddUsers([FromBody] UserCreateModel[] model, CancellationToken token = default)
@@ -281,6 +285,7 @@ public class AdminController(
     /// <response code="401">Unauthorized user</response>
     /// <response code="403">Forbidden</response>
     [HttpPost("Users/Search")]
+    [AuditExcluded("Read-only user search")]
     [ProducesResponseType(typeof(ArrayResponse<UserInfoModel>), StatusCodes.Status200OK)]
     public async Task<IActionResult> SearchUsers([FromQuery] string hint, CancellationToken token = default)
     {
@@ -308,6 +313,7 @@ public class AdminController(
     /// <response code="403">Forbidden</response>
     /// <response code="404">User not found</response>
     [HttpPut("Users/{userid}")]
+    [AuditAction("users.update")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateUserInfo(string userid, [FromBody] AdminUserInfoModel model)
@@ -351,6 +357,7 @@ public class AdminController(
     /// <response code="403">Forbidden</response>
     /// <response code="404">User not found</response>
     [HttpDelete("Users/{userid:guid}/Password")]
+    [AuditAction("users.password.reset")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ResetPassword(string userid)
@@ -379,6 +386,7 @@ public class AdminController(
     /// <response code="403">Forbidden</response>
     /// <response code="404">User not found</response>
     [HttpDelete("Users/{userid:guid}")]
+    [AuditAction("users.delete")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteUser(Guid userid, CancellationToken token = default)
@@ -438,11 +446,14 @@ public class AdminController(
     /// <response code="401">Unauthorized user</response>
     /// <response code="403">Forbidden</response>
     [HttpGet("Logs")]
-    [ProducesResponseType(typeof(LogMessageModel[]), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedResult<LogMessageModel>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Logs([FromQuery] string? level = "All",
-        [FromQuery][Range(0, 1000)] int count = 50,
-        [FromQuery] int skip = 0, CancellationToken token = default) =>
-        Ok(await logRepository.GetLogs(skip, count, level, token));
+        [FromQuery][Range(1, int.MaxValue)] int page = 1,
+        [FromQuery][Range(1, 100)] int pageSize = 20, CancellationToken token = default)
+    {
+        if ((long)(page - 1) * pageSize > int.MaxValue) return BadRequest();
+        return Ok(await logRepository.GetLogs(page, pageSize, level, token));
+    }
 
     /// <summary>
     /// Get all container instances
@@ -470,6 +481,7 @@ public class AdminController(
     /// <response code="403">Forbidden</response>
     /// <response code="404">Container instance not found</response>
     [HttpDelete("Instances/{id:guid}")]
+    [AuditAction("instances.admin_container_stop")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]

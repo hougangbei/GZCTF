@@ -1,6 +1,8 @@
 using System.Net.Mime;
 using GZCTF.Middlewares;
 using GZCTF.Features.ChallengeLibrary.Application;
+using GZCTF.Features.Auditing.Application;
+using GZCTF.Features.Auditing.Infrastructure;
 using GZCTF.Features.ChallengeRuntime.Application;
 using GZCTF.Features.ChallengeRuntime.Infrastructure;
 using GZCTF.Features.Imports.Application;
@@ -11,6 +13,7 @@ using GZCTF.Features.QqBot.Application;
 using GZCTF.Features.Dashboard.Application;
 using GZCTF.Features.SkillTrees.Application;
 using GZCTF.Features.SkillTrees.Migration;
+using GZCTF.Features.Updates.Application;
 using GZCTF.Models.Internal;
 using GZCTF.Repositories;
 using GZCTF.Repositories.Interface;
@@ -73,6 +76,9 @@ internal static class ServicesExtension
             builder.Services.AddContainerService(builder.Configuration);
 
             builder.Services.AddScoped<IConfigService, ConfigService>();
+            builder.Services.AddScoped<AuditWriter>();
+            builder.Services.AddScoped<AuditActionFilter>();
+            builder.Services.AddScoped<FlagAttemptWriter>();
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<ILogRepository, LogRepository>();
             builder.Services.AddScoped<IBlobRepository, BlobRepository>();
@@ -101,6 +107,7 @@ internal static class ServicesExtension
             builder.Services.AddScoped<ChallengeHelpService>();
             builder.Services.AddScoped<CommunityWriteupService>();
             builder.Services.AddScoped<QqBotSettingsService>();
+            builder.Services.AddSingleton<UpdateAgentClient>();
 #pragma warning disable EXTEXP0001 // Sending a QQ message must not be retried automatically.
             builder.Services.AddHttpClient<QqBotNotifier>(client => client.Timeout = TimeSpan.FromSeconds(8))
                 .RemoveAllResilienceHandlers();
@@ -145,7 +152,7 @@ internal static class ServicesExtension
                 options.EnableForHttps = true;
             });
 
-            builder.Services.AddControllersWithViews().ConfigureApiBehaviorOptions(options =>
+            builder.Services.AddControllersWithViews(options => options.Filters.AddService<AuditActionFilter>()).ConfigureApiBehaviorOptions(options =>
             {
                 options.InvalidModelStateResponseFactory = InvalidModelStateHandler;
             }).AddDataAnnotationsLocalization(options =>

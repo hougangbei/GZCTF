@@ -12,6 +12,9 @@ type QqBotSettings = {
   messageTemplate: string
   notifyLearningSolves: boolean
   notifyGameSolves: boolean
+  notifyChallengePublishes: boolean
+  notifyAnnouncements: boolean
+  notifyHints: boolean
 }
 
 export const QqBotSettingsPanel = () => {
@@ -95,6 +98,14 @@ export const QqBotSettingsPanel = () => {
         onChange={(event) => set({ notifyLearningSolves: event.currentTarget.checked })} />
       <Switch label={t('qqBot.gameSolves')} checked={settings?.notifyGameSolves ?? true}
         onChange={(event) => set({ notifyGameSolves: event.currentTarget.checked })} />
+    </Group>
+    <Group>
+      <Switch label={t('qqBot.challengePublishes')} checked={settings?.notifyChallengePublishes ?? true}
+        onChange={(event) => set({ notifyChallengePublishes: event.currentTarget.checked })} />
+      <Switch label={t('qqBot.announcements')} checked={settings?.notifyAnnouncements ?? true}
+        onChange={(event) => set({ notifyAnnouncements: event.currentTarget.checked })} />
+      <Switch label={t('qqBot.hints')} checked={settings?.notifyHints ?? true}
+        onChange={(event) => set({ notifyHints: event.currentTarget.checked })} />
     </Group>
     <Textarea label={t('qqBot.template')} description={t('qqBot.placeholders')}
       minRows={3} maxLength={1000} value={settings?.messageTemplate ?? ''}

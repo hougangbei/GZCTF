@@ -593,6 +593,39 @@
       "student_id": "00000000"
     }
   },
+  "logsConsole": {
+    "tabs": { "audit": "Operations", "flags": "Flag attempts", "system": "System status" },
+    "filters": {
+      "allCategories": "All categories", "allResults": "All results", "category": "Category", "result": "Result",
+      "search": "Search actor or target name / ID", "level": "Log level"
+    },
+    "categories": {
+      "users": "Users and permissions", "challenges": "Challenges and lessons", "skill_trees": "Skill trees and categories",
+      "containers": "Containers", "settings": "System settings", "content": "Content and imports",
+      "cohorts": "Cohorts", "dashboards": "Dashboards"
+    },
+    "result": { "success": "Success", "failure": "Failed", "accepted": "Correct", "incorrect": "Incorrect", "rejected": "Rejected", "error": "Error" },
+    "levels": { "Verbose": "Verbose", "Debug": "Debug", "Information": "Information", "Warning": "Warning", "Error": "Error", "Fatal": "Fatal", "All": "All" },
+    "detail": {
+      "actor": "Actor", "target": "Target", "status": "HTTP status", "affected": "Affected count",
+      "requestId": "Request ID", "submission": "Submission ID", "rejection": "Rejection code",
+      "submittedFlag": "Submitted Flag", "originalUnavailable": "Original cleared or unavailable", "source": "Source"
+    },
+    "newRecords": "New records ({{count}})", "loadFailed": "Could not load logs", "detailFailed": "Could not load details",
+    "retry": "Retry", "empty": "No records"
+  },
+  "updates": {
+    "title": "Update management", "description": "Review successfully built GitHub versions and update this deployment manually.",
+    "current": "Current commit", "latest": "Latest available commit", "unknown": "Unknown", "publishedAt": "Build completed",
+    "workflow": "View GitHub build", "available": "Update available", "noUpdate": "No update available",
+    "refresh": "Check again", "task": "Update task", "target": "Target commit", "backup": "Backup directory",
+    "changedAt": "Status updated", "apply": "Update now", "cancel": "Cancel",
+    "loadFailed": "Could not load update status. Try again later.", "applyFailed": "Could not start the update. Refresh and retry.",
+    "notConfigured": "This deployment has no host updater. Follow deploy/self-update/README.md to configure Docker Compose.",
+    "warning": "The app will briefly stop. The updater backs up the database and uploads first. Startup migrations may require a manual restore if the new version fails.",
+    "confirmTitle": "Confirm platform update", "confirmBody": "Update to {{sha}}? The app will briefly stop after data is backed up. A migrated database may not support an image-only rollback.",
+    "phases": { "idle": "No update started", "disabled": "Not configured", "accepted": "Accepted", "pulling": "Pulling image", "backingUp": "Backing up data", "starting": "Starting new version", "succeeded": "Update succeeded", "failed": "Update failed", "interrupted": "Update interrupted" }
+  },
   "tab": {
     "games": {
       "challenges": "Challenges",
@@ -604,8 +637,10 @@
       "writeups": "Writeups"
     },
     "instances": "Instances",
+    "about": "About page",
     "logs": "Logs",
     "settings": "Settings",
+    "updates": "Update management",
     "teams": "Teams",
     "users": "Users"
   }

@@ -63,8 +63,12 @@ public sealed class AdminCommunityWriteupsController(
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<AdminCommunityWriteupSummary>>> List(
-        [FromQuery] string? status, CancellationToken token)
+        [FromQuery] string? status, [FromQuery] int? offset, [FromQuery] int? limit,
+        CancellationToken token)
     {
+        var requestedOffset = offset ?? 0;
+        var requestedLimit = limit ?? 200;
+        if (requestedOffset < 0 || requestedLimit is < 1 or > 200) return BadRequest();
         CommunityWriteupStatus? filter = null;
         if (status is not null)
         {
@@ -72,10 +76,11 @@ public sealed class AdminCommunityWriteupsController(
                 !Enum.IsDefined(parsed)) return BadRequest();
             filter = parsed;
         }
-        return Ok(await writeups.ListForReviewAsync(filter, token));
+        return Ok(await writeups.ListForReviewAsync(filter, requestedOffset, requestedLimit, token));
     }
 
     [HttpPost("{id:guid}/review")]
+    [AuditAction("writeups.review")]
     public async Task<IActionResult> Review(Guid id, [FromBody] ReviewCommunityWriteupRequest request,
         CancellationToken token)
     {

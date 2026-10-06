@@ -16,6 +16,7 @@ public sealed class AdminQqBotController(
         QqBotSettingsService.ToView(await settingsService.GetAsync(token));
 
     [HttpPut("settings")]
+    [AuditAction("settings.qq.update")]
     public async Task<ActionResult<QqBotSettingsView>> SetSettings(
         [FromBody] QqBotSettingsCommand command, CancellationToken token)
     {
@@ -24,6 +25,7 @@ public sealed class AdminQqBotController(
     }
 
     [HttpPost("test")]
+    [AuditAction("settings.qq.test")]
     public async Task<IActionResult> SendTest(CancellationToken token)
     {
         try

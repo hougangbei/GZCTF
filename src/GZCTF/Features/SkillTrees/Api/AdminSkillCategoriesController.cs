@@ -17,6 +17,7 @@ public sealed class AdminSkillCategoriesController(SkillCategoryService service)
         Ok(await service.ListAsync(token));
 
     [HttpPost]
+    [AuditAction("skill_categories.create")]
     public async Task<ActionResult<SkillCategoryAdminResponse>> Create(
         [FromBody] SkillCategoryCommand command, CancellationToken token)
     {
@@ -39,6 +40,7 @@ public sealed class AdminSkillCategoriesController(SkillCategoryService service)
         await service.GetAsync(id, token) is { } category ? Ok(category) : NotFound();
 
     [HttpPut("{id:guid}")]
+    [AuditAction("skill_categories.update")]
     public async Task<ActionResult<SkillCategoryAdminResponse>> Update(
         Guid id, [FromBody] SkillCategoryCommand command, CancellationToken token)
     {
@@ -65,6 +67,7 @@ public sealed class AdminSkillCategoriesController(SkillCategoryService service)
     }
 
     [HttpPut("{id:guid}/contents")]
+    [AuditAction("skill_categories.contents.update")]
     public async Task<ActionResult<SkillCategoryAdminResponse>> UpdateContents(
         Guid id, [FromBody] UpdateCategoryContentsCommand command, CancellationToken token)
     {
@@ -87,6 +90,7 @@ public sealed class AdminSkillCategoriesController(SkillCategoryService service)
     }
 
     [HttpPut("{id:guid}/tree-memberships")]
+    [AuditAction("skill_categories.memberships.update")]
     public async Task<ActionResult<UpdateCategoryTreeMembershipsResponse>> UpdateTreeMemberships(
         Guid id, [FromBody] UpdateCategoryTreeMembershipsCommand command, CancellationToken token)
     {
@@ -114,6 +118,7 @@ public sealed class AdminSkillCategoriesController(SkillCategoryService service)
         await service.GetDeleteImpactAsync(id, token) is { } impact ? Ok(impact) : NotFound();
 
     [HttpDelete("{id:guid}")]
+    [AuditAction("skill_categories.delete")]
     public async Task<IActionResult> Delete(
         Guid id, [FromBody] DeleteCategoryCommand command, CancellationToken token)
     {
@@ -141,6 +146,7 @@ public sealed class AdminSkillCategoriesController(SkillCategoryService service)
     }
 
     [HttpPost("merge")]
+    [AuditAction("skill_categories.merge")]
     public async Task<IActionResult> Merge(
         [FromBody] MergeSkillCategoryCommand command, CancellationToken token)
     {

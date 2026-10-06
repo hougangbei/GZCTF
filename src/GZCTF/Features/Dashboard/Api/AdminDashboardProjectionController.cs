@@ -10,6 +10,7 @@ namespace GZCTF.Features.Dashboard.Api;
 public sealed class AdminDashboardProjectionController(DailySolveProjection projection) : ControllerBase
 {
     [HttpPost("rebuild")]
+    [AuditAction("dashboards.rebuild")]
     public async Task<ActionResult<DailySolveRebuildResult>> Rebuild(CancellationToken token) =>
         Ok(await projection.RebuildAsync(token));
 }

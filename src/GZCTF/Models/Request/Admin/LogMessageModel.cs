@@ -8,6 +8,8 @@ namespace GZCTF.Models.Request.Admin;
 /// </summary>
 public class LogMessageModel
 {
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
     /// <summary>
     /// Log time
     /// </summary>
@@ -35,6 +37,12 @@ public class LogMessageModel
     [JsonPropertyName("msg")]
     public string? Msg { get; set; }
 
+    [JsonPropertyName("source")]
+    public string? Source { get; set; }
+
+    [JsonPropertyName("exception")]
+    public string? Exception { get; set; }
+
     /// <summary>
     /// Task status
     /// </summary>
@@ -44,11 +52,14 @@ public class LogMessageModel
     public static LogMessageModel FromLogModel(LogModel logInfo) =>
         new()
         {
+            Id = logInfo.Id,
             Time = logInfo.TimeUtc,
             Level = logInfo.Level,
             UserName = logInfo.UserName,
             IP = logInfo.RemoteIP,
             Msg = logInfo.Message,
+            Source = logInfo.Logger,
+            Exception = logInfo.Exception,
             Status = logInfo.Status
         };
 }

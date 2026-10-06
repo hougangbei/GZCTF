@@ -21,6 +21,7 @@ public sealed class AdminSkillTreesController(AdminSkillTreeService service) : C
     }
 
     [HttpPost]
+    [AuditAction("skill_trees.create")]
     public async Task<ActionResult<AdminSkillTreeResponse>> Create(
         [FromBody] CreateSkillTreeCommand command, CancellationToken token)
     {
@@ -29,6 +30,7 @@ public sealed class AdminSkillTreesController(AdminSkillTreeService service) : C
     }
 
     [HttpGet("{id:guid}/draft")]
+    [AuditAction("skill_trees.draft.get")]
     public async Task<ActionResult<SkillTreeDraftResponse>> GetDraft(
         Guid id, CancellationToken token)
     {
@@ -45,6 +47,7 @@ public sealed class AdminSkillTreesController(AdminSkillTreeService service) : C
     }
 
     [HttpPut("{id:guid}/draft")]
+    [AuditAction("skill_trees.draft.update")]
     public async Task<ActionResult<SkillTreeDraftResponse>> UpdateDraft(
         Guid id, [FromBody] UpdateSkillTreeDraftCommand command, CancellationToken token)
     {
@@ -68,6 +71,7 @@ public sealed class AdminSkillTreesController(AdminSkillTreeService service) : C
     }
 
     [HttpPost("{id:guid}/publish")]
+    [AuditAction("skill_trees.publish")]
     public async Task<IActionResult> Publish(
         Guid id, [FromBody] PublishSkillTreeCommand command, CancellationToken token)
     {
@@ -103,6 +107,7 @@ public sealed class AdminSkillTreesController(AdminSkillTreeService service) : C
     }
 
     [HttpDelete("{id:guid}")]
+    [AuditAction("skill_trees.delete")]
     public async Task<IActionResult> Delete(
         Guid id, [FromBody] DeleteSkillTreeCommand command, CancellationToken token)
     {

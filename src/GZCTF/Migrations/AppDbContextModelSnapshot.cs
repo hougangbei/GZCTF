@@ -23,6 +23,168 @@ namespace GZCTF.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("GZCTF.Features.AboutPage.Domain.AboutPageState", b =>
+                {
+                    b.Property<int>("Id").HasColumnType("integer");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    b.Property<Guid?>("CurrentVersionId").HasColumnType("uuid");
+                    b.Property<string>("DraftJson").IsRequired().HasColumnType("text");
+                    b.Property<long>("DraftRevision").HasColumnType("bigint");
+                    b.Property<DateTimeOffset>("DraftUpdatedAtUtc").HasColumnType("timestamp with time zone");
+                    b.Property<DateTimeOffset?>("LockCreatedAtUtc").HasColumnType("timestamp with time zone");
+                    b.Property<Guid?>("LockOwnerId").HasColumnType("uuid");
+                    b.Property<string>("LockOwnerName").HasMaxLength(80).HasColumnType("character varying(80)");
+                    b.HasKey("Id");
+                    b.HasIndex("CurrentVersionId");
+                    b.ToTable("AboutPageStates");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.AboutPage.Domain.AboutPageVersion", b =>
+                {
+                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uuid");
+                    b.Property<string>("DocumentJson").IsRequired().HasColumnType("text");
+                    b.Property<DateTimeOffset>("PublishedAtUtc").HasColumnType("timestamp with time zone");
+                    b.Property<Guid>("PublisherId").HasColumnType("uuid");
+                    b.Property<string>("PublisherName").IsRequired().HasMaxLength(80).HasColumnType("character varying(80)");
+                    b.Property<long>("SourceDraftRevision").HasColumnType("bigint");
+                    b.Property<long>("VersionNumber").HasColumnType("bigint");
+                    b.HasKey("Id");
+                    b.HasIndex("VersionNumber").IsUnique();
+                    b.ToTable("AboutPageVersions");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Auditing.Domain.AuditEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActorKind")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("ActorName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<int?>("AffectedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)");
+
+                    b.Property<string>("ErrorReason")
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)");
+
+                    b.Property<int>("HttpStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RequestId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("TargetId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("TargetName")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAtUtc", "Id");
+
+                    b.HasIndex("ActorId", "OccurredAtUtc", "Id");
+
+                    b.HasIndex("Category", "OccurredAtUtc", "Id");
+
+                    b.HasIndex("Succeeded", "OccurredAtUtc", "Id");
+
+                    b.ToTable("AuditEvents");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Auditing.Domain.FlagAttemptLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChallengeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChallengeName")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("ProtectedSubmittedFlag")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RejectionCode")
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)");
+
+                    b.Property<Guid?>("SubmissionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAtUtc", "Id");
+
+                    b.HasIndex("ChallengeId", "OccurredAtUtc", "Id");
+
+                    b.HasIndex("Outcome", "OccurredAtUtc", "Id");
+
+                    b.HasIndex("UserId", "OccurredAtUtc", "Id");
+
+                    b.ToTable("FlagAttemptLogs");
+                });
+
             modelBuilder.Entity("GZCTF.Features.ChallengeLibrary.Domain.Challenge", b =>
                 {
                     b.Property<Guid>("Id")
