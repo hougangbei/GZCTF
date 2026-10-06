@@ -120,6 +120,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
             entity.Property(e => e.Role)
                 .HasConversion<int>();
 
+            entity.Property(e => e.ApprovalStatus)
+                .HasConversion<int>()
+                .HasDefaultValue(RegistrationApprovalStatus.Approved);
+
             entity.Property(e => e.UserName)
                 .HasMaxLength(16);
 

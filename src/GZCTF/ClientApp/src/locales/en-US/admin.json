@@ -357,6 +357,10 @@
           "description": "Whether user verification email is required",
           "label": "Email Verification Required"
         },
+        "registration_review": {
+          "description": "New users provide their name and student ID, verify email, then wait for approval. Configure SMTP first.",
+          "label": "Require Registration Review"
+        },
         "email_domain_list": {
           "description": "List of allowed email domains to register. Separate multiple domains with commas, leave empty to disable.",
           "label": "Email Domain Whitelist"
@@ -613,6 +617,13 @@
     },
     "newRecords": "New records ({{count}})", "loadFailed": "Could not load logs", "detailFailed": "Could not load details",
     "retry": "Retry", "empty": "No records"
+  },
+  "registrationReview": {
+    "title": "Registration review", "hint": "Email verification and membership approval are separate. Check name and student ID before approval; assign a cohort separately.",
+    "empty": "No accounts awaiting review", "verified": "Email verified", "unverified": "Awaiting email verification",
+    "pending": "Pending", "rejected": "Rejected", "approve": "Approve", "reject": "Reject", "cancel": "Cancel",
+    "rejectConfirm": "Reject {{name}}'s registration? An administrator can approve it later.",
+    "failed": "Could not load or update registration reviews.", "previous": "Previous", "next": "Next"
   },
   "updates": {
     "title": "Update management", "description": "Review successfully built GitHub versions and update this deployment manually.",

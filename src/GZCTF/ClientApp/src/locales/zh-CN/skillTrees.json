@@ -263,6 +263,8 @@
     "emptyChallenges": "暂无题目",
     "emptyCohorts": "暂无年级",
     "emptyMembers": "当前年级暂无成员",
+    "registeredUsersHint": "这里仅显示已分配到年级的成员。新注册账号请先在用户管理中审核，再分配年级。",
+    "userManagement": "前往用户管理",
     "retry": "重试"
   }
 }

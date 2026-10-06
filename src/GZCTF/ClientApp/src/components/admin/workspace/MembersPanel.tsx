@@ -2,6 +2,7 @@ import { Badge, Button, Card, Group, Modal, MultiSelect, SimpleGrid, Stack, Tabl
 import { showNotification } from '@mantine/notifications'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import api, { type UserInfoModel } from '@Api'
 import { showErrorMsg } from '@Utils/Shared'
 import classes from '@Components/admin/workspace/AdminWorkspace.module.css'
@@ -95,6 +96,11 @@ export const MembersPanel = ({ createOpen, onClose, onOpen }: CreatePanelProps) 
 
   return (
     <Stack gap="md">
+      <Text size="sm" c="dimmed">{tSkillTrees('workspace.registeredUsersHint')}{' '}
+        <Button component={Link} to="/admin/users" variant="subtle" size="compact-sm">
+          {tSkillTrees('workspace.userManagement')}
+        </Button>
+      </Text>
       {cohortsLoading ? (
         <Text c="dimmed">{t('learning:loading')}</Text>
       ) : cohortsError ? (

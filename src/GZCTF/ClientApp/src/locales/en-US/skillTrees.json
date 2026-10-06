@@ -263,6 +263,8 @@
     "emptyChallenges": "No challenges yet",
     "emptyCohorts": "No cohorts yet",
     "emptyMembers": "No members in this cohort",
+    "registeredUsersHint": "This page shows assigned cohort members. Review new accounts in user management before assigning them.",
+    "userManagement": "Open user management",
     "retry": "Retry"
   }
 }

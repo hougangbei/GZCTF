@@ -30,6 +30,8 @@ public static class AuditActionCatalog
             ["users.update"] = new("users.update", "users", "user"),
             ["users.password.reset"] = new("users.password.reset", "users", "user"),
             ["users.delete"] = new("users.delete", "users", "user"),
+            ["users.registration.approve"] = new("users.registration.approve", "users", "user"),
+            ["users.registration.reject"] = new("users.registration.reject", "users", "user"),
             ["instances.admin_container_stop"] = new("instances.admin_container_stop", "containers", "container"),
             ["tokens.create"] = new("tokens.create", "settings", "api_token"),
             ["tokens.restore"] = new("tokens.restore", "settings", "api_token"),

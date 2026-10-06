@@ -37,11 +37,14 @@ const Verify: FC = () => {
     setDisabled(true)
 
     try {
-      await api.account.accountVerify({ token, email })
+      const response = await api.account.accountVerify({ token, email })
+      const approvalRequired = (response.data as unknown as { approvalRequired?: boolean } | undefined)
+        ?.approvalRequired === true
       showNotification({
         color: 'teal',
-        title: t('account.notification.verify.success'),
-        message: window.atob(email),
+        title: t(approvalRequired ? 'account.notification.verify.pending_review' :
+          'account.notification.verify.success'),
+        message: approvalRequired ? t('account.notification.register.request_sent.message') : window.atob(email),
         icon: <Icon path={mdiCheck} size={1} />,
       })
       navigate('/account/login')

@@ -10,6 +10,14 @@ using Microsoft.AspNetCore.Identity;
 
 namespace GZCTF.Models.Data;
 
+[JsonConverter(typeof(JsonStringEnumConverter<RegistrationApprovalStatus>))]
+public enum RegistrationApprovalStatus
+{
+    Approved = 0,
+    Pending = 1,
+    Rejected = 2
+}
+
 [MemoryPackable]
 public partial class UserInfo : IdentityUser<Guid>
 {
@@ -24,6 +32,10 @@ public partial class UserInfo : IdentityUser<Guid>
     /// </summary>
     [ProtectedPersonalData]
     public Role Role { get; set; } = Role.User;
+
+    /// <summary>Approval is separate from proving ownership of the email address.</summary>
+    public RegistrationApprovalStatus ApprovalStatus { get; set; } =
+        RegistrationApprovalStatus.Approved;
 
     /// <summary>
     /// User's recent IP address

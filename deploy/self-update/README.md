@@ -33,9 +33,19 @@
 
 恢复完并核对平台后，先停止更新程序，归档 `backups/update-state.json`，再启动更新程序。中断任务或已创建备份的失败任务会锁住后续更新，直至运维完成此步骤。
 
+## 邮箱验证与注册审核
+
+启用后台“注册后需要管理员审核”前，先在宿主机 `.env` 配置 `SMTP_SENDER_ADDRESS`、`SMTP_USERNAME`、`SMTP_PASSWORD`、`SMTP_HOST` 和 `SMTP_PORT`，然后只重建 `app` 容器，使发件配置生效。密码应为邮件服务提供商签发的 SMTP 凭据，勿提交到 GitHub。管理员先用可控邮箱确认邮件能送达，再在系统设置启用“需要邮箱验证”和“注册后需要管理员审核”；启用审核会关闭“注册后自动激活”。姓名与学号必须填写，但仍需管理员按实验室名册核实。现有账号在迁移后保持批准状态；新注册账号完成邮箱验证后进入用户管理的审核队列，批准后才能登录，加入年级需另行分配。
+
+若使用 QQ 邮箱发件，`SMTP_SENDER_ADDRESS` 与 `SMTP_USERNAME` 填同一个完整 QQ 邮箱地址，`SMTP_HOST=smtp.qq.com`、`SMTP_PORT=465`，`SMTP_PASSWORD` 填在 QQ 邮箱设置中单独生成的 SMTP 授权码。该授权码不是 QQ 登录密码，且不应发到聊天中。参见 [QQ 邮箱授权码帮助](https://help.mail.qq.com/detail/106/985) 与 [腾讯云 SMTP 参数说明](https://main.qcloudimg.com/raw/document/product/pdf/1270_46586_cn.pdf)。
+
+- 仅将邮箱域名白名单设为 `qq.com` 不能验证邮箱归属，也不能证明实验室成员身份。
+- 在 SMTP 配置完成前保持注册审核开关关闭；如需立即阻止任意账号使用，可临时关闭公开注册。
+- 未验证邮箱的账号不能批准；注册者可用相同邮箱和密码重新提交，以重新发送验证邮件。
+
 ## 操作限制
 
-- 不要将 Docker Socket 挂载到 Web 应用；更新程序的 Unix Socket 仅接受“查看状态”和“安装已验证的最新提交”。
+- GZCTF 的 Docker 题目容器管理需要应用访问 Docker Socket；这会给予应用控制宿主机 Docker 的高权限，建议将题目容器迁到独立 Docker 主机。更新程序本身使用单独的 Unix Socket，不通过网页执行任意 Docker 命令。
 - `updater.json`、令牌、`.env`、备份文件仅放在宿主机，不推送到 GitHub。
 - 当前实现一次只处理一个更新，检查 GitHub 的结果缓存五分钟；`main` 构建尚未成功前不会显示更新。
 - 该部署方案不会自动推送代码或改动线上内容。GitHub 推送、镜像发布和部署初始化由维护者完成。

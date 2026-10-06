@@ -58,7 +58,8 @@ public class RequirePrivilegeAttribute(Role privilege, bool allowToken = false) 
             await dbContext.SaveChangesAsync(); // avoid to update ConcurrencyStamp
         }
 
-        if (user.Role >= privilege)
+        if (user.ApprovalStatus == RegistrationApprovalStatus.Approved &&
+            user.Role >= privilege)
             return;
 
         if (context.ActionDescriptor is ControllerActionDescriptor actionDescriptor &&

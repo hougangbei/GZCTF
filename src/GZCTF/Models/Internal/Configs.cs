@@ -55,6 +55,9 @@ public class AccountPolicy
     /// </summary>
     public bool EmailConfirmationRequired { get; set; }
 
+    /// <summary>Require verified email and administrator approval before a new user can sign in.</summary>
+    public bool RequireRegistrationReview { get; set; }
+
     /// <summary>
     /// Email domain list, separated by commas
     /// </summary>

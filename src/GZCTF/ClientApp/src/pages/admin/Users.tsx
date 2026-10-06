@@ -31,6 +31,7 @@ import React, { FC, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ActionIconWithConfirm } from '@Components/ActionIconWithConfirm'
 import { AdminPage } from '@Components/admin/AdminPage'
+import { RegistrationReviewPanel } from '@Components/admin/RegistrationReviewPanel'
 import { UserEditModal, RoleColorMap } from '@Components/admin/UserEditModal'
 import { showErrorMsg } from '@Utils/Shared'
 import { useArrayResponse } from '@Hooks/useArrayResponse'
@@ -231,6 +232,7 @@ const Users: FC = () => {
         </>
       }
     >
+      <RegistrationReviewPanel onChanged={() => setUpdate(new Date())} />
       <Paper shadow="md" p="xs" w="100%">
         <ScrollArea viewportRef={viewport} offsetScrollbars scrollbarSize={4} h="calc(100vh - 190px)">
           <Table className={tableClasses.table}>
@@ -251,8 +253,9 @@ const Users: FC = () => {
                   <Table.Tr key={user.id}>
                     <Table.Td>
                       <Switch
-                        disabled={disabled}
-                        checked={user.emailConfirmed ?? false}
+                        disabled={disabled || (user.approvalStatus != null && user.approvalStatus !== 'Approved')}
+                        checked={(user.emailConfirmed ?? false) &&
+                          (user.approvalStatus == null || user.approvalStatus === 'Approved')}
                         onChange={() => onToggleActive(user)}
                       />
                     </Table.Td>
@@ -269,6 +272,11 @@ const Users: FC = () => {
                         <Badge size="sm" color={RoleColorMap.get(user.role ?? Role.User)}>
                           {user.role}
                         </Badge>
+                        {user.approvalStatus && user.approvalStatus !== 'Approved' &&
+                          <Badge size="sm" color={user.approvalStatus === 'Rejected' ? 'red' : 'orange'}>
+                            {t(user.approvalStatus === 'Rejected' ?
+                              'admin.registrationReview.rejected' : 'admin.registrationReview.pending')}
+                          </Badge>}
                       </Group>
                     </Table.Td>
                     <Table.Td>

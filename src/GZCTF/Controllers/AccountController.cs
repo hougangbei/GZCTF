@@ -52,6 +52,15 @@ public class AccountController(
         if (!accountPolicy.Value.AllowRegister)
             return BadRequest(new RequestResponse(localizer[nameof(Resources.Program.Account_RegisterNotEnabled)]));
 
+        var requireReview = accountPolicy.Value.RequireRegistrationReview;
+        if (requireReview && !accountPolicy.Value.EmailConfirmationRequired)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new RequestResponse("Email confirmation must be enabled before registration review."));
+        var realName = model.RealName?.Trim();
+        var stdNumber = model.StdNumber?.Trim();
+        if (requireReview && (string.IsNullOrWhiteSpace(realName) || string.IsNullOrWhiteSpace(stdNumber)))
+            return BadRequest(new RequestResponse("Real name and student number are required."));
+
         if (accountPolicy.Value.UseCaptcha && !await captcha.VerifyAsync(model, HttpContext, token))
             return BadRequest(new RequestResponse(localizer[nameof(Resources.Program.Account_TokenValidationFailed)]));
 
@@ -63,7 +72,14 @@ public class AccountController(
         if (string.IsNullOrWhiteSpace(password))
             return BadRequest(new RequestResponse(localizer[nameof(Resources.Program.Model_PasswordRequired)]));
 
-        var user = new UserInfo { UserName = model.UserName, Email = model.Email, Role = Role.User };
+        var user = new UserInfo
+        {
+            UserName = model.UserName, Email = model.Email, Role = Role.User,
+            RealName = realName ?? string.Empty, StdNumber = stdNumber ?? string.Empty,
+            RegisterTimeUtc = DateTimeOffset.UtcNow,
+            ApprovalStatus = requireReview
+                ? RegistrationApprovalStatus.Pending : RegistrationApprovalStatus.Approved
+        };
 
         user.UpdateByHttpContext(HttpContext);
 
@@ -71,18 +87,30 @@ public class AccountController(
 
         if (!result.Succeeded)
         {
-            var current = await userManager.FindByEmailAsync(model.Email);
+            if (requireReview)
+            {
+                var pending = await userManager.FindByEmailAsync(model.Email);
+                if (pending is null || pending.EmailConfirmed ||
+                    pending.ApprovalStatus != RegistrationApprovalStatus.Pending ||
+                    !await userManager.CheckPasswordAsync(pending, password))
+                    return HandleIdentityError(result.Errors);
+                user = pending;
+            }
+            else
+            {
+                var current = await userManager.FindByEmailAsync(model.Email);
 
-            if (current is null)
-                return HandleIdentityError(result.Errors);
+                if (current is null)
+                    return HandleIdentityError(result.Errors);
 
-            if (await userManager.IsEmailConfirmedAsync(current))
-                return BadRequest(new RequestResponse(localizer[nameof(Resources.Program.Account_UserExisting)]));
+                if (await userManager.IsEmailConfirmedAsync(current))
+                    return BadRequest(new RequestResponse(localizer[nameof(Resources.Program.Account_UserExisting)]));
 
-            user = current;
+                user = current;
+            }
         }
 
-        if (accountPolicy.Value.ActiveOnRegister)
+        if (accountPolicy.Value.ActiveOnRegister && !requireReview)
         {
             user.EmailConfirmed = true;
             await userManager.UpdateAsync(user);
@@ -95,7 +123,7 @@ public class AccountController(
                 StatusCodes.Status200OK));
         }
 
-        if (!accountPolicy.Value.EmailConfirmationRequired)
+        if (!accountPolicy.Value.EmailConfirmationRequired && !requireReview)
         {
             logger.Log(StaticLocalizer[nameof(Resources.Program.Account_UserRegisteredWaitingApprovalLog)],
                 user, TaskStatus.Success);
@@ -117,7 +145,10 @@ public class AccountController(
         else
         {
             if (!mailSender.SendConfirmEmailUrl(user.UserName, user.Email, link, localizer, globalConfig))
+            {
+                if (requireReview && result.Succeeded) await userManager.DeleteAsync(user);
                 return BadRequest(new RequestResponse(localizer[nameof(Resources.Program.Account_EmailSendFailed)]));
+            }
         }
 
         return Ok(new RequestResponse<RegisterStatus>(
@@ -252,17 +283,19 @@ public class AccountController(
                 StatusCodes.Status401Unauthorized));
 
         logger.Log(StaticLocalizer[nameof(Resources.Program.Account_EmailVerified)], user, TaskStatus.Success);
-        await signInManager.SignInAsync(user, true);
-
-        user.LastSignedInUtc = DateTimeOffset.UtcNow;
         user.LastVisitedUtc = DateTimeOffset.UtcNow;
-        user.RegisterTimeUtc = DateTimeOffset.UtcNow;
+        if (user.ApprovalStatus == RegistrationApprovalStatus.Approved)
+            user.LastSignedInUtc = DateTimeOffset.UtcNow;
 
         result = await userManager.UpdateAsync(user);
 
         if (!result.Succeeded)
             return HandleIdentityError(result.Errors);
 
+        if (user.ApprovalStatus != RegistrationApprovalStatus.Approved)
+            return Ok(new { approvalRequired = true });
+
+        await signInManager.SignInAsync(user, true);
         return Ok();
     }
 
@@ -300,6 +333,14 @@ public class AccountController(
 
         if (user.Role == Role.Banned)
             return Unauthorized(new RequestResponse(localizer[nameof(Resources.Program.Account_UserDisabled)],
+                StatusCodes.Status401Unauthorized));
+
+        if (user.ApprovalStatus != RegistrationApprovalStatus.Approved &&
+            await userManager.CheckPasswordAsync(user, password))
+            return Unauthorized(new RequestResponse(
+                localizer[user.ApprovalStatus == RegistrationApprovalStatus.Rejected
+                    ? nameof(Resources.Program.Account_UserDisabled)
+                    : nameof(Resources.Program.Account_UserRegisteredWaitingApproval)],
                 StatusCodes.Status401Unauthorized));
 
         user.LastSignedInUtc = DateTimeOffset.UtcNow;

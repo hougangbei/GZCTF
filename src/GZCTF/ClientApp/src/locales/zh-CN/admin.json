@@ -357,6 +357,10 @@
           "description": "是否需要用户验证邮箱",
           "label": "需要邮箱验证"
         },
+        "registration_review": {
+          "description": "新注册者填写姓名和学号，验证邮箱后等待管理员审核；启用前须配置 SMTP 发件。",
+          "label": "注册后需要管理员审核"
+        },
         "email_domain_list": {
           "description": "允许注册的邮箱域名列表，多个域名用逗号分隔，留空则不限制",
           "label": "邮箱域名白名单"
@@ -613,6 +617,13 @@
     },
     "newRecords": "有新记录（{{count}}）", "loadFailed": "日志加载失败", "detailFailed": "详情加载失败",
     "retry": "重试", "empty": "暂无记录"
+  },
+  "registrationReview": {
+    "title": "注册审核", "hint": "邮箱验证和成员审核分别进行；核对姓名、学号后批准。未分配班级的用户需另行加入班级。",
+    "empty": "暂无待审核账号", "verified": "邮箱已验证", "unverified": "等待邮箱验证",
+    "pending": "待审核", "rejected": "已拒绝", "approve": "批准", "reject": "拒绝", "cancel": "取消",
+    "rejectConfirm": "拒绝 {{name}} 的注册申请？管理员之后仍可重新批准。",
+    "failed": "注册审核加载或操作失败，请重试。", "previous": "上一页", "next": "下一页"
   },
   "updates": {
     "title": "更新管理", "description": "查看 GitHub 已成功构建的版本，并手动更新当前平台。",

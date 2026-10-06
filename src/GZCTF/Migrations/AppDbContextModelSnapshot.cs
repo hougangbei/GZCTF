@@ -2332,6 +2332,11 @@ namespace GZCTF.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("integer");
 
+                    b.Property<int>("ApprovalStatus")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("AvatarHash")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");

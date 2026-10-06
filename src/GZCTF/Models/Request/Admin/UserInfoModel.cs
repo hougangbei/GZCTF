@@ -72,6 +72,8 @@ public class UserInfoModel
     /// </summary>
     public bool? EmailConfirmed { get; set; }
 
+    public RegistrationApprovalStatus ApprovalStatus { get; set; }
+
     internal static UserInfoModel FromUserInfo(UserInfo user) =>
         new()
         {
@@ -87,6 +89,7 @@ public class UserInfoModel
             StdNumber = user.StdNumber,
             LastVisitedUtc = user.LastVisitedUtc,
             RegisterTimeUtc = user.RegisterTimeUtc,
-            EmailConfirmed = user.EmailConfirmed
+            EmailConfirmed = user.EmailConfirmed,
+            ApprovalStatus = user.ApprovalStatus
         };
 }

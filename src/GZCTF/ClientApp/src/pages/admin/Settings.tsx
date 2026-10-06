@@ -319,6 +319,20 @@ const Configs: FC = () => {
                 })
               }
             />
+            <Switch
+              checked={accountPolicy?.requireRegistrationReview ?? false}
+              disabled={disabled}
+              label={SwitchLabel(
+                t('admin.content.settings.account.registration_review.label'),
+                t('admin.content.settings.account.registration_review.description')
+              )}
+              onChange={(e) => setAccountPolicy({
+                ...accountPolicy,
+                requireRegistrationReview: e.currentTarget.checked,
+                emailConfirmationRequired: e.currentTarget.checked ? true : accountPolicy?.emailConfirmationRequired,
+                activeOnRegister: e.currentTarget.checked ? false : accountPolicy?.activeOnRegister,
+              })}
+            />
           </SimpleGrid>
           <TextInput
             label={t('admin.content.settings.account.email_domain_list.label')}

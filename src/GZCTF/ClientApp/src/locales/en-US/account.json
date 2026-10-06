@@ -29,7 +29,7 @@
     "verify_email": {
       "message": "You're almost there!<br/>We sent an email to:",
       "not_received": {
-        "list": "<0>Check your spam or junk folder.</0><1>You can re-register with the same email; your most recent registration information will be used once verified.</1>",
+        "list": "<0>Check your spam or junk folder.</0><1>Submit the same account details again to resend the verification email.</1>",
         "title": "Didn't get the email?"
       },
       "title": "Verify Email"
@@ -90,6 +90,7 @@
     },
     "verify": {
       "failed": "Failed to verify the account",
+      "pending_review": "Email verified; waiting for administrator approval",
       "success": "Account has been verified, please login"
     }
   },

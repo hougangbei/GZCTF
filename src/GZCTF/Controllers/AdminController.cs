@@ -79,6 +79,11 @@ public class AdminController(
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateConfigs([FromBody] ConfigEditModel model, CancellationToken token)
     {
+        if (model.AccountPolicy is { RequireRegistrationReview: true } policy &&
+            (!policy.EmailConfirmationRequired || policy.ActiveOnRegister))
+            return BadRequest(new RequestResponse(
+                "Registration review requires email confirmation and disables automatic activation."));
+
         // handle api encryption config
         var global = serviceProvider.GetRequiredService<IOptionsSnapshot<GlobalConfig>>().Value;
         if (!global.ApiEncryption && model.GlobalConfig?.ApiEncryption is true)

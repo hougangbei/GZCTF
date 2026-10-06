@@ -878,6 +878,8 @@ export type RegisterModel = ModelWithCaptcha & {
    * @minLength 1
    */
   email: string;
+  realName?: string | null;
+  stdNumber?: string | null;
 };
 
 export interface ModelWithCaptcha {
@@ -1054,6 +1056,8 @@ export interface AccountPolicy {
   useCaptcha?: boolean;
   /** Email confirmation required for registration, email change, and password recovery */
   emailConfirmationRequired?: boolean;
+  /** Require verified email and administrator approval for new registrations */
+  requireRegistrationReview?: boolean;
   /** Email domain list, separated by commas */
   emailDomainList?: string;
 }
@@ -1163,6 +1167,7 @@ export interface UserInfoModel {
   role?: Role | null;
   /** Is email confirmed (can log in) */
   emailConfirmed?: boolean | null;
+  approvalStatus?: 'Approved' | 'Pending' | 'Rejected';
 }
 
 /** Batch user creation (Admin) */

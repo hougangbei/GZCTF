@@ -21,6 +21,8 @@ const Register: FC = () => {
   const [retypedPwd, setRetypedPwd] = useInputState('')
   const [uname, setUname] = useInputState('')
   const [email, setEmail] = useInputState('')
+  const [realName, setRealName] = useInputState('')
+  const [stdNumber, setStdNumber] = useInputState('')
   const [disabled, setDisabled] = useState(false)
   const { config } = useConfig()
 
@@ -96,6 +98,8 @@ const Register: FC = () => {
         userName: uname,
         password: await encryptApiData(t, pwd, config.apiPublicKey),
         email: email,
+        realName: realName.trim(),
+        stdNumber: stdNumber.trim(),
         challenge: token,
       })
       const data = RegisterStatusMap.get(res.data.data)
@@ -156,6 +160,10 @@ const Register: FC = () => {
         disabled={disabled}
         onChange={(event) => setUname(event.currentTarget.value)}
       />
+      <TextInput required label={t('account.label.real_name')} value={realName}
+        disabled={disabled} onChange={(event) => setRealName(event.currentTarget.value)} />
+      <TextInput required label={t('account.label.student_id')} value={stdNumber}
+        disabled={disabled} onChange={(event) => setStdNumber(event.currentTarget.value)} />
       <StrengthPasswordInput value={pwd} onChange={(event) => setPwd(event.currentTarget.value)} disabled={disabled} />
       <PasswordInput
         required
