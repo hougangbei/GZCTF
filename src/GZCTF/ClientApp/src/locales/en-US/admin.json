@@ -344,6 +344,8 @@
     "markdown_support": "Styling with Markdown is supported",
     "nothing_found": "Nothing found",
     "settings": {
+      "loadFailed": "Could not load settings. Check administrator access or the server connection, then retry.",
+      "retry": "Reload",
       "account": {
         "allow_register": {
           "description": "Allow users to register new accounts",

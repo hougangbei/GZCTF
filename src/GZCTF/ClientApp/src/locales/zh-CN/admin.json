@@ -344,6 +344,8 @@
     "markdown_support": "支持 Markdown 语法",
     "nothing_found": "什么都没有找到",
     "settings": {
+      "loadFailed": "设置加载失败，请检查管理员权限或服务器连接后重试。",
+      "retry": "重新加载",
       "account": {
         "allow_register": {
           "description": "是否允许用户注册新账户",

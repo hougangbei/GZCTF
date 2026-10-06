@@ -1,5 +1,6 @@
 import { generateColors } from '@mantine/colors-generator'
 import {
+  Alert,
   Button,
   ColorInput,
   Divider,
@@ -36,7 +37,7 @@ import api, { AccountPolicy, ConfigEditModel, ContainerPolicy, GlobalConfig } fr
 import misc from '@Styles/Misc.module.css'
 
 const Configs: FC = () => {
-  const { data: configs, mutate } = api.admin.useAdminGetConfigs(OnceSWRConfig)
+  const { data: configs, error: configError, mutate } = api.admin.useAdminGetConfigs(OnceSWRConfig)
   const { mutate: mutateCaptchaConfig } = useCaptchaConfig()
 
   const { mutate: mutateConfig } = useConfig()
@@ -97,6 +98,17 @@ const Configs: FC = () => {
   }
 
   const colors = color && /^#[0-9A-F]{6}$/i.test(color) ? generateColors(color) : theme.colors.brand
+
+  if (configError && !configs) {
+    return <AdminPage minWidth={390}>
+      <Stack w="100%" maw={600} gap="md">
+        <Alert color="red">{t('admin.content.settings.loadFailed')}</Alert>
+        <Button variant="light" onClick={() => void mutate()} w="fit-content">
+          {t('admin.content.settings.retry')}
+        </Button>
+      </Stack>
+    </AdminPage>
+  }
 
   return (
     <AdminPage isLoading={!configs}>
