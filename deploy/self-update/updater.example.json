@@ -3,6 +3,7 @@
   "branch": "main",
   "workflow": "self-update-image.yml",
   "image_repository": "ghcr.io/hougangbei/gzctf",
+  "pull_image_repository": "ghcr.io/hougangbei/gzctf",
   "compose_file": "/opt/gzctf/compose.yml",
   "env_file": "/opt/gzctf/.env",
   "files_dir": "/opt/gzctf/files",

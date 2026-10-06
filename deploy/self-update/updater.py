@@ -30,6 +30,7 @@ from typing import Any
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 REPOSITORY_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 IMAGE_PATTERN = re.compile(r"^ghcr\.io/[a-z0-9._/-]+$")
+PULL_IMAGE_PATTERN = re.compile(r"^[a-z0-9][a-z0-9.-]+/[a-z0-9._/-]+$")
 LOG = logging.getLogger("gzctf-updater")
 
 
@@ -55,6 +56,9 @@ class Updater:
             raise ValueError("invalid repository")
         if not IMAGE_PATTERN.fullmatch(self.config["image_repository"]):
             raise ValueError("invalid image repository")
+        self.config.setdefault("pull_image_repository", self.config["image_repository"])
+        if not PULL_IMAGE_PATTERN.fullmatch(self.config["pull_image_repository"]):
+            raise ValueError("invalid pull image repository")
         for key in ("app_service", "db_service"):
             if not re.fullmatch(r"[a-z][a-z0-9_-]*", self.config[key]):
                 raise ValueError(f"invalid {key}")
@@ -248,11 +252,14 @@ class Updater:
         try:
             self._save_state(phase="pulling", message="正在拉取并校验新镜像。")
             image = f"{self.config['image_repository']}:sha-{target_sha}"
-            self._run(["docker", "pull", image], timeout=900)
+            pull_image = f"{self.config['pull_image_repository']}:sha-{target_sha}"
+            self._run(["docker", "pull", pull_image], timeout=900)
             revision = self._run(["docker", "image", "inspect", "--format",
-                                  '{{ index .Config.Labels "org.opencontainers.image.revision" }}', image])
+                                  '{{ index .Config.Labels "org.opencontainers.image.revision" }}', pull_image])
             if revision.lower() != target_sha:
                 raise RuntimeError("image revision does not match the requested commit")
+            if pull_image != image:
+                self._run(["docker", "image", "tag", pull_image, image])
             self._save_state(phase="backingUp", message="正在停止应用并备份数据库和上传文件。")
             self._compose("stop", self.config["app_service"], timeout=120)
             stopped = True

@@ -8,6 +8,8 @@
 
 工作流成功才代表新版本可以安装。若从现有旧镜像迁移，先在维护窗口按普通部署流程更新到本工作流生成的镜像；它带有 `org.opencontainers.image.revision` 标签。页面在读取不到当前标签时不会提供更新按钮。
 
+如果部署机直连 GHCR 拉取镜像不稳定，可在仅存于宿主机的 `updater.json` 中设置 `"pull_image_repository": "gh-proxy.com/docker/ghcr.io/hougangbei/gzctf"`。更新程序通过代理拉取固定 SHA 标签，核对镜像的提交标签后将其标记为原始 GHCR 镜像名，再按原流程备份与部署。`image_repository` 和 Compose 中的正式镜像地址继续使用 `ghcr.io/hougangbei/gzctf`。`ghproxy.com` 是另一站点，不能直接作为这里的 Docker 镜像仓库地址。
+
 ## 安装到 Linux 宿主机
 
 以下示例以 `/opt/gzctf` 为安装目录，执行前先按实际环境调整。保持现有反向代理、外部数据库和对象存储时，可以修改示例 Compose，但更新程序所用的应用服务名、数据库服务名、挂载目录必须一致。内置备份流程要求数据库在同一个 Compose 项目中；使用外部数据库时需要先改备份方案并验证。
