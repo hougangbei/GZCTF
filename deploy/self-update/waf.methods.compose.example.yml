@@ -1,0 +1,4 @@
+services:
+  waf:
+    volumes:
+      - ./waf-allowed-methods.conf:/opt/coraza/config.d/waf-allowed-methods.conf:ro

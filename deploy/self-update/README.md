@@ -43,6 +43,20 @@
 - 在 SMTP 配置完成前保持注册审核开关关闭；如需立即阻止任意账号使用，可临时关闭公开注册。
 - 未验证邮箱的账号不能批准；注册者可用相同邮箱和密码重新提交，以重新发送验证邮件。
 
+## 使用 Coraza CRS WAF 时允许平台的写入请求
+
+Coraza CRS 默认只允许 `GET HEAD POST OPTIONS`。GZCTF 的系统设置、技能树绑定等更新接口使用 `PUT`，删除接口使用 `DELETE`；保持默认方法策略会让这些请求在到达应用前被规则 `911100` 拦截为 403。将配置文件复制到部署目录，并在现有 `compose.yml`、`waf.compose.yml` 后追加这个 Compose 文件：
+
+```sh
+cp /opt/gzctf-src/deploy/self-update/waf-allowed-methods.conf /opt/gzctf/
+cp /opt/gzctf-src/deploy/self-update/waf.methods.compose.example.yml /opt/gzctf/waf.methods.compose.yml
+cd /opt/gzctf
+docker compose --env-file .env -f compose.yml -f waf.compose.yml -f waf.methods.compose.yml config --quiet
+docker compose --env-file .env -f compose.yml -f waf.compose.yml -f waf.methods.compose.yml up -d --no-deps waf
+```
+
+覆盖文件只给 CRS 增加平台实际使用的 `PUT`、`DELETE` 方法，其他 WAF 规则继续执行。以后运行带 WAF 的 Compose 命令也要包含 `waf.methods.compose.yml`，否则重建 WAF 时会丢失该挂载。
+
 ## 操作限制
 
 - GZCTF 的 Docker 题目容器管理需要应用访问 Docker Socket；这会给予应用控制宿主机 Docker 的高权限，建议将题目容器迁到独立 Docker 主机。更新程序本身使用单独的 Unix Socket，不通过网页执行任意 Docker 命令。
