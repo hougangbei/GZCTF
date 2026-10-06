@@ -2,9 +2,7 @@
 using GZCTF.Repositories.Interface;
 using GZCTF.Storage.Interface;
 using Microsoft.EntityFrameworkCore;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Gif;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 
 namespace GZCTF.Repositories;
 
@@ -68,15 +66,30 @@ public class BlobRepository(AppDbContext context, ILogger<BlobRepository> logger
             {
                 await file.CopyToAsync(tmp, token);
                 tmp.Position = 0;
-                using var image = await Image.LoadAsync(tmp, token);
+                using var image = SKBitmap.Decode(tmp);
+                if (image is null) throw new InvalidDataException("Invalid image data.");
 
-                if (image.Metadata.DecodedImageFormat is GifFormat)
+                tmp.Position = 0;
+                var header = new byte[6];
+                await tmp.ReadExactlyAsync(header, token);
+                if (header.AsSpan().SequenceEqual("GIF87a"u8) ||
+                    header.AsSpan().SequenceEqual("GIF89a"u8))
                     return await StoreBlob($"{fileName}.gif", tmp, token);
 
-                if (resize > 0)
-                    image.Mutate(im => im.Resize(resize, 0));
-
-                await image.SaveAsWebpAsync(webpStream, token);
+                var width = resize > 0 ? resize : image.Width;
+                var height = resize > 0
+                    ? Math.Max(1, (int)Math.Round(image.Height * (double)width / image.Width))
+                    : image.Height;
+                using var source = SKImage.FromBitmap(image);
+                using var surface = SKSurface.Create(new SKImageInfo(width, height))
+                    ?? throw new InvalidDataException("Could not create image surface.");
+                surface.Canvas.DrawImage(source, new SKRect(0, 0, width, height),
+                    new SKSamplingOptions(SKFilterMode.Linear));
+                surface.Canvas.Flush();
+                using var converted = surface.Snapshot();
+                using var encoded = converted.Encode(SKEncodedImageFormat.Webp, 85)
+                    ?? throw new InvalidDataException("Could not encode WebP image.");
+                encoded.SaveTo(webpStream);
             }
 
             return await StoreBlob($"{fileName}.webp", webpStream, token);
