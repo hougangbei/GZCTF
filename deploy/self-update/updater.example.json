@@ -1,0 +1,14 @@
+{
+  "repository": "hougangbei/GZCTF",
+  "branch": "main",
+  "workflow": "self-update-image.yml",
+  "image_repository": "ghcr.io/hougangbei/gzctf",
+  "compose_file": "/opt/gzctf/compose.yml",
+  "env_file": "/opt/gzctf/.env",
+  "files_dir": "/opt/gzctf/files",
+  "backup_dir": "/opt/gzctf/backups",
+  "socket_path": "/opt/gzctf/run/updater.sock",
+  "token_file": "/opt/gzctf/updater.token",
+  "app_service": "app",
+  "db_service": "db"
+}

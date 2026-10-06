@@ -1,0 +1,17 @@
+[Unit]
+Description=GZCTF host update service
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/gzctf/updater.py /opt/gzctf/updater.json
+Restart=on-failure
+RestartSec=5
+WorkingDirectory=/opt/gzctf
+UMask=0077
+ProtectHome=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
