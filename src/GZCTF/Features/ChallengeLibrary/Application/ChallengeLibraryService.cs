@@ -280,6 +280,10 @@ public sealed class ChallengeLibraryService(
             challenge.CtfCategory = ctfCategory;
         if (command.Difficulty is { } difficulty)
             challenge.Difficulty = difficulty;
+        if (command.Score is { } score)
+            challenge.Score = score is >= 0 and <= 10000
+                ? score
+                : throw new ChallengeValidationException("Score must be between 0 and 10000.");
         if (command.SourceType is not null)
             challenge.SourceType = command.SourceType.Trim();
         if (command.SourceId is not null)
@@ -372,6 +376,7 @@ public sealed class ChallengeLibraryService(
             challenge.Type,
             challenge.CtfCategory,
             challenge.Difficulty,
+            challenge.Score,
             challenge.PublicationState,
             challenge.IsEnabled,
             challenge.RowVersion,
@@ -495,6 +500,7 @@ public sealed class ChallengeCommand
     public ChallengeType? Type { get; set; }
     public ChallengeCategory? CtfCategory { get; set; }
     public Difficulty? Difficulty { get; set; }
+    public int? Score { get; set; }
     public string? SourceType { get; set; }
     public string? SourceId { get; set; }
     public string? SourceName { get; set; }
@@ -558,6 +564,7 @@ public sealed record ChallengeSummaryResponse(
     ChallengeType Type,
     ChallengeCategory CtfCategory,
     Difficulty Difficulty,
+    int Score,
     ChallengePublicationState PublicationState,
     bool IsEnabled,
     uint RowVersion,

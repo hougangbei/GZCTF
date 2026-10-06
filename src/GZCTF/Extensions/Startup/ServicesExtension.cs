@@ -11,6 +11,7 @@ using GZCTF.Features.LearningPaths.Application;
 using GZCTF.Features.LearningProgress.Application;
 using GZCTF.Features.QqBot.Application;
 using GZCTF.Features.Dashboard.Application;
+using GZCTF.Features.Leaderboard.Application;
 using GZCTF.Features.SkillTrees.Application;
 using GZCTF.Features.SkillTrees.Migration;
 using GZCTF.Features.Updates.Application;
@@ -114,6 +115,7 @@ internal static class ServicesExtension
 #pragma warning restore EXTEXP0001
             builder.Services.AddScoped<DailySolveProjection>();
             builder.Services.AddScoped<DashboardSnapshotService>();
+            builder.Services.AddScoped<LearningLeaderboardService>();
             builder.Services.AddSingleton(_ => new DashboardRequestLimiter());
             builder.Services.AddScoped<DashboardTokenService>();
             builder.Services.AddScoped<DashboardDeltaPublisher>();

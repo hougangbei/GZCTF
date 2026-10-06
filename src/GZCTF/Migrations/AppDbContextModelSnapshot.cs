@@ -205,6 +205,11 @@ namespace GZCTF.Migrations
                     b.Property<byte>("PublicationState")
                         .HasColumnType("smallint");
 
+                    b.Property<int>("Score")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(100);
+
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -241,7 +246,10 @@ namespace GZCTF.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Challenges");
+                    b.ToTable("Challenges", t =>
+                        {
+                            t.HasCheckConstraint("CK_Challenges_Score_Range", "\"Score\" >= 0 AND \"Score\" <= 10000");
+                        });
                 });
 
             modelBuilder.Entity("GZCTF.Features.ChallengeLibrary.Domain.ChallengeFlag", b =>

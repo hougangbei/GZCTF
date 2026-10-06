@@ -46,7 +46,7 @@ export const SkillTreeOutline = ({ tree, selectedCategoryId }: SkillTreeOutlineP
                   <Stack gap="xs" h="100%">
                     <Group justify="space-between" wrap="nowrap">
                       <Text size="xl" aria-hidden>{content.kind === 'challenge' ? '🧩' : '📖'}</Text>
-                      {content.kind === 'challenge' && content.difficulty && <Badge variant="light">{content.difficulty}</Badge>}
+                      {content.kind === 'challenge' && content.difficulty && <Badge variant="light">{t(`difficulty.${content.difficulty.toLowerCase()}`)}</Badge>}
                     </Group>
                     <Title order={4}>{content.title}</Title>
                     {content.summary && <Text size="sm" c="dimmed" lineClamp={2}>{content.summary}</Text>}

@@ -27,6 +27,7 @@ public sealed class Challenge
     public ChallengeType Type { get; set; } = ChallengeType.StaticAttachment;
     public ChallengeCategory CtfCategory { get; set; } = ChallengeCategory.Misc;
     public Difficulty Difficulty { get; set; } = Difficulty.Normal;
+    public int Score { get; set; } = 100;
     public ChallengePublicationState PublicationState { get; set; } = ChallengePublicationState.Draft;
     public bool IsEnabled { get; set; } = true;
     public int ExpectedMinutes { get; set; } = 60;

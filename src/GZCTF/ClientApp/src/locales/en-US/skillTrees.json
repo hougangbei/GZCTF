@@ -18,6 +18,17 @@
     "brain": "Brain",
     "ai": "AI"
   },
+  "difficulty": {
+    "baby": "Beginner",
+    "trivial": "Beginner",
+    "easy": "Easy",
+    "normal": "Intermediate",
+    "medium": "Intermediate",
+    "hard": "Hard",
+    "expert": "Hard",
+    "insane": "Hard",
+    "legacySuffix": " (legacy level)"
+  },
   "list": {
     "title": "Skill trees",
     "empty": "No skill trees yet",
@@ -159,6 +170,31 @@
   },
   "navigation": {
     "title": "Skill trees"
+  },
+  "record": {
+    "title": "My skill trees",
+    "empty": "No published skill trees yet.",
+    "signIn": "Sign in to view your skill tree progress.",
+    "current": "Current",
+    "historical": "Historical",
+    "progress": "Progress: {{percent}}",
+    "categories": "Categories: {{completed}} / {{total}}",
+    "challenges": "Challenges: {{completed}} / {{total}}",
+    "lessons": "Lessons: {{completed}} / {{total}}",
+    "recentActivity": "Recent activity"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "metric": "Ranking metric",
+    "metricScore": "Cumulative score",
+    "metricSolves": "Cumulative solves",
+    "date": "Date",
+    "rank": "Rank",
+    "username": "Username",
+    "solved": "Solves",
+    "score": "Score",
+    "empty": "No solves yet.",
+    "loadFailed": "The leaderboard could not be loaded. Try again later."
   },
   "writeups": {
     "title": "Community writeups",

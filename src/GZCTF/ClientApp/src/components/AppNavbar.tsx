@@ -12,6 +12,7 @@ import {
 import {
   mdiAccountCircleOutline,
   mdiCached,
+  mdiChartLine,
   mdiFileTreeOutline,
   mdiFileCheckOutline,
   mdiHomeVariantOutline,
@@ -90,6 +91,7 @@ export const AppNavbar: FC<AppControlProps> = ({ openColorModal }) => {
     { icon: mdiHomeVariantOutline, label: 'common.tab.home', link: '/' },
     { icon: mdiNoteTextOutline, label: 'common.tab.post', link: '/posts' },
     { icon: mdiFileTreeOutline, label: 'skillTrees:navigation.title', link: '/skill-trees' },
+    { icon: mdiChartLine, label: 'skillTrees:leaderboard.title', link: '/leaderboard' },
     { icon: mdiInformationOutline, label: 'common.tab.about', link: '/about' },
     { icon: mdiWrenchOutline, label: 'common.tab.admin', link: '/admin/skill-trees', admin: true },
     { icon: mdiFileCheckOutline, label: 'skillTrees:writeups.reviewMenu', link: '/admin/skill-trees?tab=writeups', admin: true },

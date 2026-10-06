@@ -18,6 +18,17 @@
     "brain": "思维",
     "ai": "AI"
   },
+  "difficulty": {
+    "baby": "入门",
+    "trivial": "入门",
+    "easy": "简单",
+    "normal": "中等",
+    "medium": "中等",
+    "hard": "困难",
+    "expert": "困难",
+    "insane": "困难",
+    "legacySuffix": "（旧档位）"
+  },
   "list": {
     "title": "技能树",
     "empty": "暂无技能树",
@@ -159,6 +170,31 @@
   },
   "navigation": {
     "title": "技能树"
+  },
+  "record": {
+    "title": "我的技能树",
+    "empty": "暂无已发布技能树",
+    "signIn": "登录后查看你的技能树进度。",
+    "current": "当前",
+    "historical": "历史记录",
+    "progress": "完成率：{{percent}}",
+    "categories": "已完成类别：{{completed}} / {{total}}",
+    "challenges": "已解题目：{{completed}} / {{total}}",
+    "lessons": "已完成课节：{{completed}} / {{total}}",
+    "recentActivity": "最近学习活动"
+  },
+  "leaderboard": {
+    "title": "排行榜",
+    "metric": "排行指标",
+    "metricScore": "累计积分",
+    "metricSolves": "累计解题数",
+    "date": "日期",
+    "rank": "名次",
+    "username": "用户名",
+    "solved": "解题数",
+    "score": "积分",
+    "empty": "暂无解题记录",
+    "loadFailed": "排行榜加载失败，请稍后重试。"
   },
   "writeups": {
     "title": "社区 WP",

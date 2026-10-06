@@ -35,6 +35,8 @@
   "adminEditChallenge": "编辑靶场题",
   "editorBasics": "基本信息",
   "editorDifficulty": "难度",
+  "editorScore": "题目分数",
+  "editorScoreHint": "首次解出获得固定分数；0 分题目仍计入解题数。",
   "editorExpectedMinutes": "预计用时（分钟）",
   "editorSubmissionLimit": "提交次数限制",
   "editorSubmissionLimitHint": "0 表示每名学员不限制提交次数。",

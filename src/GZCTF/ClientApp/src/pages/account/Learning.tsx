@@ -18,7 +18,7 @@ const AccountLearning = () => {
     <WithNavBar minWidth={0}>
       <Stack gap="xl">
         <Title order={1}>{t('list.title')}</Title>
-        {!user ? <Text c="dimmed">Sign in to view your skill trees.</Text> : !record && !error ? <Center><Loader /></Center> : error ? <Text c="red">{t('errors.generic')}</Text> : <MySkillTreeRecord record={record!} />}
+        {!user ? <Text c="dimmed">{t('record.signIn')}</Text> : !record && !error ? <Center><Loader /></Center> : error ? <Text c="red">{t('errors.generic')}</Text> : <MySkillTreeRecord record={record!} />}
       </Stack>
     </WithNavBar>
   )

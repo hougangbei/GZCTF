@@ -12,7 +12,11 @@ type Props = {
 export const ChallengeBasicsForm = ({ value, onChange, disabled }: Props) => {
   const { t } = useTranslation('learning')
   const { t: tChallenge } = useTranslation('challenge')
+  const { t: tSkillTrees } = useTranslation('skillTrees')
   const set = (patch: Partial<ChallengeDraft>) => onChange({ ...value, ...patch })
+  const standardDifficulties = [Difficulty.Baby, Difficulty.Easy, Difficulty.Normal, Difficulty.Hard]
+  const difficulties = standardDifficulties.includes(value.difficulty)
+    ? standardDifficulties : [...standardDifficulties, value.difficulty]
 
   return (
     <Stack gap="md">
@@ -38,9 +42,22 @@ export const ChallengeBasicsForm = ({ value, onChange, disabled }: Props) => {
         />
         <Select
           label={t('editorDifficulty')}
-          data={Object.values(Difficulty).map((difficulty) => ({ value: difficulty, label: difficulty }))}
+          data={difficulties.map((difficulty) => ({
+            value: difficulty,
+            label: `${tSkillTrees(`difficulty.${difficulty.toLowerCase()}`)}${standardDifficulties.includes(difficulty) ? '' : tSkillTrees('difficulty.legacySuffix')}`,
+          }))}
           value={value.difficulty}
           onChange={(difficulty) => difficulty && set({ difficulty: difficulty as Difficulty })}
+          disabled={disabled}
+        />
+        <NumberInput
+          label={t('editorScore')}
+          description={t('editorScoreHint')}
+          min={0}
+          max={10000}
+          allowDecimal={false}
+          value={value.score}
+          onChange={(score) => set({ score: Math.max(0, Math.min(10000, Number(score) || 0)) })}
           disabled={disabled}
         />
         <NumberInput

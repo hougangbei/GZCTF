@@ -142,8 +142,20 @@ public sealed class SkillTreeEnrollmentService(AppDbContext db)
 
     public async Task<MyLearningResponse> GetMyLearningAsync(Guid userId, CancellationToken token)
     {
+        var publishedTrees = await db.SkillTrees
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(tree => tree.Revisions)
+                .ThenInclude(revision => revision.Categories)
+                    .ThenInclude(reference => reference.Category)
+            .Where(tree => tree.DeletedAtUtc == null && tree.CurrentPublishedRevisionId != null)
+            .OrderBy(tree => tree.Name)
+            .ThenBy(tree => tree.Id)
+            .ToListAsync(token);
+
         var enrollments = await db.SkillTreeEnrollments
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(enrollment => enrollment.SkillTree)
                 .ThenInclude(tree => tree.Revisions)
                     .ThenInclude(revision => revision.Categories)
@@ -152,13 +164,22 @@ public sealed class SkillTreeEnrollmentService(AppDbContext db)
             .OrderBy(enrollment => enrollment.EnrolledAtUtc)
             .ToListAsync(token);
 
-        var revisions = enrollments
-            .Select(enrollment => (Enrollment: enrollment, Revision: ResolveRevision(enrollment.SkillTree)))
-            .Where(item => item.Revision is not null)
+        var enrollmentByTree = enrollments.ToDictionary(enrollment => enrollment.SkillTreeId);
+        var visibleTrees = publishedTrees
+            .Select(tree => (Tree: tree, Enrollment: enrollmentByTree.GetValueOrDefault(tree.Id)))
+            .Concat(enrollments
+                .Where(enrollment => enrollment.SkillTree.DeletedAtUtc != null)
+                .Select(enrollment => (Tree: enrollment.SkillTree, Enrollment: (SkillTreeEnrollment?)enrollment)))
+            .GroupBy(item => item.Tree.Id)
+            .Select(group => group.First())
+            .ToList();
+
+        var revisions = visibleTrees
+            .Select(item => (item.Tree, item.Enrollment, Revision: ResolveRevision(item.Tree)))
             .ToList();
 
         var categoryIds = revisions
-            .SelectMany(item => item.Revision!.Categories
+            .SelectMany(item => (item.Revision?.Categories ?? [])
                 .Where(reference => reference.Category.DeletedAtUtc == null)
                 .Select(reference => reference.CategoryId))
             .Distinct()
@@ -213,9 +234,8 @@ public sealed class SkillTreeEnrollmentService(AppDbContext db)
 
         var records = revisions.Select(item =>
         {
-            var tree = item.Enrollment.SkillTree;
-            var revision = item.Revision!;
-            var activeCategories = revision.Categories
+            var tree = item.Tree;
+            var activeCategories = (item.Revision?.Categories ?? [])
                 .Where(reference => reference.Category.DeletedAtUtc == null)
                 .ToList();
             var treeContents = activeContents
@@ -245,7 +265,7 @@ public sealed class SkillTreeEnrollmentService(AppDbContext db)
                 tree.Id,
                 tree.Name,
                 tree.IconKey,
-                item.Enrollment.IsCurrent && tree.DeletedAtUtc == null,
+                item.Enrollment?.IsCurrent == true && tree.DeletedAtUtc == null,
                 tree.DeletedAtUtc != null,
                 activeCategories.Count,
                 completedCategoryCount,

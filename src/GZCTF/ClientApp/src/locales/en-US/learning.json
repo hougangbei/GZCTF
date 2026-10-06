@@ -35,6 +35,8 @@
   "adminEditChallenge": "Edit challenge",
   "editorBasics": "Basic information",
   "editorDifficulty": "Difficulty",
+  "editorScore": "Challenge score",
+  "editorScoreHint": "First solve earns this fixed score; a zero-point challenge still counts as solved.",
   "editorExpectedMinutes": "Expected minutes",
   "editorSubmissionLimit": "Submission limit",
   "editorSubmissionLimitHint": "0 means unlimited attempts per learner.",

@@ -32,6 +32,7 @@ export type ChallengeDraft = {
   type: ChallengeType
   ctfCategory: ChallengeCategory
   difficulty: Difficulty
+  score: number
   expectedMinutes: number
   submissionLimit: number
   isEnabled: boolean
@@ -99,6 +100,7 @@ export const challengeDraftFromResponse = (data: ChallengeEditResponse): Challen
     type,
     ctfCategory: data.challenge?.ctfCategory ?? ChallengeCategory.Misc,
     difficulty: data.challenge?.difficulty ?? Difficulty.Normal,
+    score: data.challenge?.score ?? 100,
     expectedMinutes: data.challenge?.expectedMinutes ?? 60,
     submissionLimit: data.challenge?.submissionLimit ?? 0,
     isEnabled: data.challenge?.isEnabled ?? true,
@@ -140,6 +142,7 @@ export const challengeCommandFromDraft = (
     type: draft.type,
     ctfCategory: draft.ctfCategory,
     difficulty: draft.difficulty,
+    score: draft.score,
     isEnabled: draft.isEnabled,
     expectedMinutes: draft.expectedMinutes,
     submissionLimit: draft.submissionLimit,

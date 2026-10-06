@@ -662,6 +662,8 @@ export interface ChallengeSummaryResponse {
   ctfCategory?: ChallengeCategory;
   /** Challenge difficulty */
   difficulty?: Difficulty;
+  /** @format int32 */
+  score?: number;
   publicationState?: ChallengePublicationState;
   isEnabled?: boolean;
   rowVersion?: number;
@@ -730,6 +732,8 @@ export interface ChallengeCommand {
   type?: ChallengeType | null;
   ctfCategory?: ChallengeCategory | null;
   difficulty?: Difficulty | null;
+  /** @format int32 */
+  score?: number | null;
   sourceType?: string | null;
   sourceId?: string | null;
   sourceName?: string | null;
