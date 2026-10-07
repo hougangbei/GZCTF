@@ -85,6 +85,7 @@ export const ChallengeWorkspace = ({
       )
       if (result.accepted) {
         setSolveMode(result.solveMode === undefined || result.solveMode === null ? undefined : String(result.solveMode))
+        await mutateInstance().catch(() => undefined)
         await mutate((key) => {
           const path = Array.isArray(key) ? key[0] : key
           return typeof path === 'string' && path.startsWith('/api/my-learning')

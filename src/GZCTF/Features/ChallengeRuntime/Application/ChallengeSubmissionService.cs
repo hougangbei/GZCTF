@@ -90,29 +90,46 @@ public sealed class ChallengeSubmissionService(
             }
 
             var mode = await DetermineSolveModeAsync(userId, challengeId, token);
-            await using var transaction = await db.Database.BeginTransactionAsync(token);
-            try
+            ChallengeSubmissionResult result;
+            await using (var transaction = await db.Database.BeginTransactionAsync(token))
             {
-                var existing = await db.ChallengeProgress.AnyAsync(item =>
-                    item.UserId == userId && item.ChallengeId == challengeId, token);
-                if (existing)
+                try
                 {
-                    await transaction.CommitAsync(token);
-                    return new ChallengeSubmissionResult(true, false, null, null, submission.Id);
+                    var existing = await db.ChallengeProgress.AnyAsync(item =>
+                        item.UserId == userId && item.ChallengeId == challengeId, token);
+                    if (existing)
+                    {
+                        await transaction.CommitAsync(token);
+                        result = new ChallengeSubmissionResult(true, false, null, null, submission.Id);
+                    }
+                    else
+                    {
+                        db.ChallengeProgress.Add(new ChallengeProgress
+                        {
+                            UserId = userId,
+                            ChallengeId = challengeId,
+                            SolveMode = mode
+                        });
+                        await dailyProjection.RecordFirstSolveAsync(userId, DateOnly.FromDateTime(DateTime.UtcNow), token);
+
+                        submission.FirstSolve = true;
+                        submission.SolveMode = mode;
+                        await db.SaveChangesAsync(token);
+                        await transaction.CommitAsync(token);
+                        result = new ChallengeSubmissionResult(true, true, mode, null, submission.Id);
+                    }
                 }
-
-                db.ChallengeProgress.Add(new ChallengeProgress
+                catch (DbUpdateException)
                 {
-                    UserId = userId,
-                    ChallengeId = challengeId,
-                    SolveMode = mode
-                });
-                await dailyProjection.RecordFirstSolveAsync(userId, DateOnly.FromDateTime(DateTime.UtcNow), token);
+                    await transaction.RollbackAsync(token);
+                    db.ChangeTracker.Clear();
+                    result = new ChallengeSubmissionResult(true, false, null, null, submission.Id);
+                }
+            }
 
-                submission.FirstSolve = true;
-                submission.SolveMode = mode;
-                await db.SaveChangesAsync(token);
-                await transaction.CommitAsync(token);
+            await StopSolvedContainerAsync(challenge, userId, challengeId);
+            if (result.FirstSolve)
+            {
                 await dashboardDeltas.PublishFirstSolveAsync(userId, token);
                 try
                 {
@@ -129,18 +146,27 @@ public sealed class ChallengeSubmissionService(
                 {
                     logger.LogWarning(error, "Failed to prepare QQ solve notification");
                 }
-                return new ChallengeSubmissionResult(true, true, mode, null, submission.Id);
             }
-            catch (DbUpdateException)
-            {
-                await transaction.RollbackAsync(token);
-                db.ChangeTracker.Clear();
-                return new ChallengeSubmissionResult(true, false, null, null, submission.Id);
-            }
+            return result;
         }
         finally
         {
             if (limitTransaction is not null) await limitTransaction.DisposeAsync();
+        }
+    }
+
+    private async Task StopSolvedContainerAsync(CanonicalChallenge challenge, Guid userId, Guid challengeId)
+    {
+        if (!challenge.Type.IsContainer()) return;
+        try
+        {
+            await runtime.StopAsync(userId, challengeId, CancellationToken.None);
+        }
+        catch (Exception error)
+        {
+            logger.LogWarning(error,
+                "Flag accepted but challenge container could not be stopped for user {UserId} and challenge {ChallengeId}",
+                userId, challengeId);
         }
     }
 
