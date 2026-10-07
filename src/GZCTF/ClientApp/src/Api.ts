@@ -502,6 +502,15 @@ export interface CohortMemberResponse {
   /** @format guid */
   id?: string;
   userName?: string;
+  realName?: string;
+  emailConfirmed?: boolean;
+  approvalStatus?: string;
+}
+
+export interface ActiveCohortResponse {
+  /** @format guid */
+  id: string;
+  name: string;
 }
 
 export interface CohortMembersCommand {
@@ -884,6 +893,8 @@ export type RegisterModel = ModelWithCaptcha & {
   email: string;
   realName?: string | null;
   stdNumber?: string | null;
+  /** @format guid */
+  cohortId: string;
 };
 
 export interface ModelWithCaptcha {

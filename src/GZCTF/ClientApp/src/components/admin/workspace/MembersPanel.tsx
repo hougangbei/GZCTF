@@ -1,12 +1,26 @@
-import { Badge, Button, Card, Group, Modal, MultiSelect, SimpleGrid, Stack, Table, Text, TextInput, UnstyledButton } from '@mantine/core'
+import { Badge, Button, Card, Checkbox, Group, Modal, MultiSelect, SimpleGrid, Stack, Table, Text, TextInput, UnstyledButton } from '@mantine/core'
 import { showNotification } from '@mantine/notifications'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
-import api, { type UserInfoModel } from '@Api'
+import useSWR from 'swr'
+import api, { fetcher, type UserInfoModel } from '@Api'
 import { showErrorMsg } from '@Utils/Shared'
 import classes from '@Components/admin/workspace/AdminWorkspace.module.css'
 import type { CreatePanelProps } from '@Components/admin/workspace/types'
+
+type Registrant = {
+  id: string
+  userName: string
+  realName: string | null
+  cohortId: string | null
+  cohortName: string | null
+  emailConfirmed: boolean
+  approvalStatus: string
+}
+
+type RegistrantPage = { total: number; items: Registrant[] }
+const registrantPageSize = 20
 
 export const MembersPanel = ({ createOpen, onClose, onOpen }: CreatePanelProps) => {
   // The learning namespace must be requested explicitly; `learning:`-prefixed
@@ -18,16 +32,27 @@ export const MembersPanel = ({ createOpen, onClose, onOpen }: CreatePanelProps) 
   const [name, setName] = useState('')
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [registrantSearchInput, setRegistrantSearchInput] = useState('')
+  const [registrantSearch, setRegistrantSearch] = useState('')
+  const [unassignedOnly, setUnassignedOnly] = useState(false)
+  const [registrantPage, setRegistrantPage] = useState(0)
   const [candidates, setCandidates] = useState<UserInfoModel[]>([])
   const [searched, setSearched] = useState(false)
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
   const [pending, setPending] = useState(false)
-  const { data: members, mutate: mutateMembers } = api.adminCohorts.useAdminCohortsMembers(
+  const { data: members, error: membersError, isLoading: membersLoading, mutate: mutateMembers } = api.adminCohorts.useAdminCohortsMembers(
     selectedCohortId ?? '',
     undefined,
     undefined,
     Boolean(selectedCohortId)
   )
+  const { data: registrants, error: registrantsError, isLoading: registrantsLoading, mutate: mutateRegistrants } =
+    useSWR<RegistrantPage>(['/api/admin/cohorts/registrants', {
+      offset: registrantPage * registrantPageSize,
+      limit: registrantPageSize,
+      search: registrantSearch,
+      unassignedOnly,
+    }], fetcher)
 
   useEffect(() => {
     if (!selectedCohortId && cohorts?.[0]?.id) setSelectedCohortId(cohorts[0].id)
@@ -80,7 +105,8 @@ export const MembersPanel = ({ createOpen, onClose, onOpen }: CreatePanelProps) 
       if (!selectedCohortId || selectedUserIds.length === 0) return
       await api.adminCohorts.adminCohortsAssign(selectedCohortId, { userIds: selectedUserIds })
       setSelectedUserIds([])
-      await Promise.all([mutateMembers(), mutateCohorts()])
+      const [, , refreshed] = await Promise.all([mutateMembers(), mutateCohorts(), mutateRegistrants()])
+      if (registrantPage > 0 && refreshed?.items.length === 0) setRegistrantPage(registrantPage - 1)
       showNotification({ color: 'green', message: tSkillTrees('workspace.membersAssigned') })
     })
 
@@ -88,9 +114,29 @@ export const MembersPanel = ({ createOpen, onClose, onOpen }: CreatePanelProps) 
     run(async () => {
       if (!selectedCohortId) return
       await api.adminCohorts.adminCohortsClear(selectedCohortId, userId)
-      await Promise.all([mutateMembers(), mutateCohorts()])
+      await Promise.all([mutateMembers(), mutateCohorts(), mutateRegistrants()])
       showNotification({ color: 'green', message: tSkillTrees('workspace.memberRemoved') })
     })
+
+  const assignRegistrant = (userId: string) =>
+    run(async () => {
+      if (!selectedCohortId) return
+      await api.adminCohorts.adminCohortsAssign(selectedCohortId, { userIds: [userId] })
+      const [, , refreshed] = await Promise.all([mutateMembers(), mutateCohorts(), mutateRegistrants()])
+      if (registrantPage > 0 && refreshed?.items.length === 0) setRegistrantPage(registrantPage - 1)
+      showNotification({ color: 'green', message: tSkillTrees('workspace.membersAssigned') })
+    })
+
+  const statusBadges = (emailConfirmed: boolean, approvalStatus: string) => (
+    <Group gap={4} wrap="nowrap">
+      <Badge color={emailConfirmed ? 'teal' : 'orange'} variant="light" size="sm">
+        {tSkillTrees(emailConfirmed ? 'workspace.emailVerified' : 'workspace.emailUnverified')}
+      </Badge>
+      <Badge color={approvalStatus === 'Approved' ? 'teal' : approvalStatus === 'Rejected' ? 'red' : 'orange'} variant="light" size="sm">
+        {tSkillTrees(`workspace.approval${approvalStatus === 'Approved' || approvalStatus === 'Rejected' ? approvalStatus : 'Pending'}`)}
+      </Badge>
+    </Group>
+  )
 
   const hasCohorts = Boolean(cohorts && cohorts.length > 0)
 
@@ -101,6 +147,92 @@ export const MembersPanel = ({ createOpen, onClose, onOpen }: CreatePanelProps) 
           {tSkillTrees('workspace.userManagement')}
         </Button>
       </Text>
+      <Card withBorder className={classes.panelCard}>
+        <Stack gap="sm">
+          <Group justify="space-between">
+            <Text fw={600}>{tSkillTrees('workspace.allRegistrants')}</Text>
+            {registrants && <Badge variant="outline">{registrants.total}</Badge>}
+          </Group>
+          <Group align="end" gap="sm">
+            <TextInput
+              label={tSkillTrees('workspace.searchRegistrants')}
+              value={registrantSearchInput}
+              className={classes.growInput}
+              onChange={(event) => setRegistrantSearchInput(event.currentTarget.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  setRegistrantPage(0)
+                  setRegistrantSearch(registrantSearchInput.trim())
+                }
+              }}
+            />
+            <Button variant="light" onClick={() => {
+              setRegistrantPage(0)
+              setRegistrantSearch(registrantSearchInput.trim())
+            }}>{t('learning:adminSearch')}</Button>
+          </Group>
+          <Checkbox
+            label={tSkillTrees('workspace.unassignedOnly')}
+            checked={unassignedOnly}
+            onChange={(event) => {
+              setRegistrantPage(0)
+              setUnassignedOnly(event.currentTarget.checked)
+            }}
+          />
+          {registrantsError ? (
+            <Group>
+              <Text c="red" size="sm">{t('learning:loadFailed')}</Text>
+              <Button variant="light" size="xs" onClick={() => void mutateRegistrants()}>{tSkillTrees('workspace.retry')}</Button>
+            </Group>
+          ) : registrantsLoading ? (
+            <Text c="dimmed" size="sm">{t('learning:loading')}</Text>
+          ) : registrants?.items.length ? (
+            <Table.ScrollContainer minWidth={680}>
+              <Table verticalSpacing="xs">
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>{tSkillTrees('workspace.memberName')}</Table.Th>
+                    <Table.Th>{tSkillTrees('workspace.realName')}</Table.Th>
+                    <Table.Th>{tSkillTrees('workspace.cohort')}</Table.Th>
+                    <Table.Th>{tSkillTrees('workspace.accountStatus')}</Table.Th>
+                    <Table.Th>{tSkillTrees('workspace.actions')}</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {registrants.items.map((item) => (
+                    <Table.Tr key={item.id}>
+                      <Table.Td>{item.userName}</Table.Td>
+                      <Table.Td>{item.realName || '—'}</Table.Td>
+                      <Table.Td>{item.cohortName || tSkillTrees('workspace.unassigned')}</Table.Td>
+                      <Table.Td>{statusBadges(item.emailConfirmed, item.approvalStatus)}</Table.Td>
+                      <Table.Td>
+                        {!item.cohortId && selectedCohortId && (
+                          <Button size="compact-xs" variant="light" loading={pending} onClick={() => assignRegistrant(item.id)}>
+                            {tSkillTrees('workspace.assignToSelected', { name: selectedCohort?.name })}
+                          </Button>
+                        )}
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          ) : (
+            <Text c="dimmed" size="sm">{tSkillTrees('workspace.noRegistrants')}</Text>
+          )}
+          {registrants && registrants.total > registrantPageSize && (
+            <Group justify="flex-end">
+              <Button variant="default" size="xs" disabled={registrantPage === 0} onClick={() => setRegistrantPage(registrantPage - 1)}>
+                {tSkillTrees('workspace.previous')}
+              </Button>
+              <Text size="sm">{registrantPage + 1}</Text>
+              <Button variant="default" size="xs" disabled={(registrantPage + 1) * registrantPageSize >= registrants.total} onClick={() => setRegistrantPage(registrantPage + 1)}>
+                {tSkillTrees('workspace.next')}
+              </Button>
+            </Group>
+          )}
+        </Stack>
+      </Card>
       {cohortsLoading ? (
         <Text c="dimmed">{t('learning:loading')}</Text>
       ) : cohortsError ? (
@@ -190,12 +322,24 @@ export const MembersPanel = ({ createOpen, onClose, onOpen }: CreatePanelProps) 
             <Card withBorder>
               <Stack gap="sm">
                 <Text fw={600}>{t('learning:adminCurrentMembers')}</Text>
-                {members && members.length > 0 ? (
+                {membersError ? (
+                  <Group>
+                    <Text size="sm" c="red">{t('learning:loadFailed')}</Text>
+                    <Button variant="light" size="xs" onClick={() => void mutateMembers()}>{tSkillTrees('workspace.retry')}</Button>
+                  </Group>
+                ) : membersLoading ? (
+                  <Text size="sm" c="dimmed">{t('learning:loading')}</Text>
+                ) : members && members.length > 0 ? (
                   <Table verticalSpacing="xs">
                     <Table.Tbody>
                       {members.map((member) => (
                         <Table.Tr key={member.id}>
-                          <Table.Td>{member.userName}</Table.Td>
+                          <Table.Td>
+                            <Stack gap={2}>
+                              <Text size="sm">{member.userName}{member.realName ? ` · ${member.realName}` : ''}</Text>
+                              {statusBadges(Boolean(member.emailConfirmed), member.approvalStatus ?? 'Pending')}
+                            </Stack>
+                          </Table.Td>
                           <Table.Td w={1}>
                             <Button
                               size="compact-xs"

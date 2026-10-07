@@ -37,6 +37,7 @@
     "welcome": "{{decodeEmail}}, 你好👋"
   },
   "label": {
+    "cohort": "年级",
     "bio": "描述",
     "captcha": "验证码",
     "email": "邮箱",
@@ -93,6 +94,14 @@
       "pending_review": "邮箱已验证，请等待管理员审核",
       "success": "账户已验证，请登录"
     }
+  },
+  "cohort": {
+    "placeholder": "请选择年级",
+    "required": "请选择年级后再注册",
+    "invalid": "所选年级已停用或不存在，请重新选择。",
+    "load_failed": "年级列表加载失败。",
+    "retry": "重试",
+    "empty": "目前没有开放注册的年级，请联系管理员。"
   },
   "password": {
     "empty": "密码不能为空",

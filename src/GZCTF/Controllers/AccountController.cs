@@ -1,5 +1,6 @@
 ﻿using System.Net.Mime;
 using GZCTF.Middlewares;
+using GZCTF.Models;
 using GZCTF.Models.Internal;
 using GZCTF.Models.Request.Account;
 using GZCTF.Repositories.Interface;
@@ -9,6 +10,7 @@ using GZCTF.Services.Mail;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
@@ -28,6 +30,7 @@ public class AccountController(
     IConfigService configService,
     IOptionsSnapshot<AccountPolicy> accountPolicy,
     IOptionsSnapshot<GlobalConfig> globalConfig,
+    AppDbContext db,
     UserManager<UserInfo> userManager,
     SignInManager<UserInfo> signInManager,
     ILogger<AccountController> logger,
@@ -72,10 +75,15 @@ public class AccountController(
         if (string.IsNullOrWhiteSpace(password))
             return BadRequest(new RequestResponse(localizer[nameof(Resources.Program.Model_PasswordRequired)]));
 
+        if (model.CohortId is not Guid cohortId ||
+            !await db.Cohorts.AsNoTracking().AnyAsync(cohort => cohort.Id == cohortId && cohort.IsActive, token))
+            return BadRequest(new RequestResponse("Please select an active cohort."));
+
         var user = new UserInfo
         {
             UserName = model.UserName, Email = model.Email, Role = Role.User,
             RealName = realName ?? string.Empty, StdNumber = stdNumber ?? string.Empty,
+            CohortId = cohortId,
             RegisterTimeUtc = DateTimeOffset.UtcNow,
             ApprovalStatus = requireReview
                 ? RegistrationApprovalStatus.Pending : RegistrationApprovalStatus.Approved
@@ -91,9 +99,17 @@ public class AccountController(
             {
                 var pending = await userManager.FindByEmailAsync(model.Email);
                 if (pending is null || pending.EmailConfirmed ||
+                    pending.Role != Role.User ||
                     pending.ApprovalStatus != RegistrationApprovalStatus.Pending ||
                     !await userManager.CheckPasswordAsync(pending, password))
                     return HandleIdentityError(result.Errors);
+
+                if (pending.CohortId != cohortId)
+                {
+                    pending.CohortId = cohortId;
+                    var update = await userManager.UpdateAsync(pending);
+                    if (!update.Succeeded) return HandleIdentityError(update.Errors);
+                }
                 user = pending;
             }
             else

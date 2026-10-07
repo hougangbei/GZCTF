@@ -35,6 +35,12 @@ public class RegisterModel : ModelWithCaptcha
         ErrorMessageResourceType = typeof(Resources.Program))]
     public string Email { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Active cohort selected during registration
+    /// </summary>
+    [Required]
+    public Guid? CohortId { get; set; }
+
     [MaxLength(Limits.MaxUserDataLength)]
     public string? RealName { get; set; }
 

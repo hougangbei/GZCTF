@@ -37,6 +37,7 @@
     "welcome": "Hello, {{decodeEmail}}👋"
   },
   "label": {
+    "cohort": "Cohort",
     "bio": "Description",
     "captcha": "Captcha",
     "email": "Email",
@@ -93,6 +94,14 @@
       "pending_review": "Email verified; waiting for administrator approval",
       "success": "Account has been verified, please login"
     }
+  },
+  "cohort": {
+    "placeholder": "Select your cohort",
+    "required": "Select a cohort before registering",
+    "invalid": "That cohort is no longer available. Please select another one.",
+    "load_failed": "Could not load cohorts.",
+    "retry": "Retry",
+    "empty": "No cohorts are open for registration. Please contact an administrator."
   },
   "password": {
     "empty": "Password cannot be empty",
