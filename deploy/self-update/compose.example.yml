@@ -43,6 +43,8 @@ services:
       GZCTF_ConnectionStrings__RedisCache: redis:6379
       GZCTF_xorKey: ${GZCTF_XOR_KEY:?set GZCTF_XOR_KEY in .env}
       GZCTF_ADMIN_PASSWORD: ${GZCTF_ADMIN_PASSWORD:?set GZCTF_ADMIN_PASSWORD in .env}
+      GZCTF_ForwardedOptions__ForwardedHeaders: XForwardedFor, XForwardedProto
+      GZCTF_ForwardedOptions__KnownProxies__0: ${GZCTF_TRUSTED_PROXY:-}
       GZCTF_EmailConfig__SenderAddress: ${SMTP_SENDER_ADDRESS:-}
       GZCTF_EmailConfig__SenderName: ${SMTP_SENDER_NAME:-GZCTF}
       GZCTF_EmailConfig__UserName: ${SMTP_USERNAME:-}

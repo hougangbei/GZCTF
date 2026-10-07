@@ -59,6 +59,17 @@ docker compose --env-file .env -f compose.yml -f waf.compose.yml -f waf.methods.
 
 覆盖文件允许平台实际使用的 `PUT`、`DELETE` 方法，并对管理员保存题目时 `runtimeConfigurationJson` 中的 `{userId}` 占位符排除 CRS 规则 `942550` 的误报。排除范围限于题目更新接口的该字段，其他 WAF 检查继续执行。以后运行带 WAF 的 Compose 命令也要包含 `waf.methods.compose.yml`，否则重建 WAF 时会丢失该挂载。
 
+## 透过 WAF 记录真实客户端 IP
+
+应用默认只信任本机转发头。若 WAF 和应用在同一个 Compose 网络中且服务名为 `waf`，先启动 WAF，再在主 `compose.yml` 的 `app.environment` 加入以下两项，并在 `.env` 中设置 `GZCTF_TRUSTED_PROXY=waf`。更新程序只读取主 `compose.yml`，因此这些环境项必须写在主文件里：
+
+```yaml
+GZCTF_ForwardedOptions__ForwardedHeaders: XForwardedFor, XForwardedProto
+GZCTF_ForwardedOptions__KnownProxies__0: ${GZCTF_TRUSTED_PROXY:-}
+```
+
+用 `docker compose --env-file .env -f compose.yml -f waf.compose.yml -f waf.methods.compose.yml config --quiet` 检查配置，再运行同样的 Compose 参数加 `up -d --no-deps app` 重启应用。应用启动时解析 `waf` 的容器地址，只接受来自该容器的 `X-Forwarded-For` 和 `X-Forwarded-Proto`。不要把整个 Docker 网段或任意来源设为可信代理；若修改了 WAF 服务名，需同步修改 `.env`。已存储的历史 IP 不会被改写，用户再次访问需要登录的页面后会更新最近 IP。
+
 ## 操作限制
 
 - GZCTF 的 Docker 题目容器管理需要应用访问 Docker Socket；这会给予应用控制宿主机 Docker 的高权限，建议将题目容器迁到独立 Docker 主机。更新程序本身使用单独的 Unix Socket，不通过网页执行任意 Docker 命令。

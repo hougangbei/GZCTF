@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Net;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -597,7 +598,12 @@ public class ForwardedOptions : ForwardedHeadersOptions
 
         // Handle KnownProxies
         Action<string> addProxies = proxy =>
-            Array.ForEach(proxy.ResolveIP(), ip => options.KnownProxies.Add(ip));
+            Array.ForEach(proxy.ResolveIP(), ip =>
+            {
+                options.KnownProxies.Add(ip);
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
+                    options.KnownProxies.Add(ip.MapToIPv6());
+            });
 
         KnownProxies?.ForEach(addProxies);
         TrustedProxies?.ForEach(addProxies);
