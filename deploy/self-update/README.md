@@ -57,7 +57,7 @@ docker compose --env-file .env -f compose.yml -f waf.compose.yml -f waf.methods.
 docker compose --env-file .env -f compose.yml -f waf.compose.yml -f waf.methods.compose.yml up -d --no-deps waf
 ```
 
-覆盖文件只给 CRS 增加平台实际使用的 `PUT`、`DELETE` 方法，其他 WAF 规则继续执行。以后运行带 WAF 的 Compose 命令也要包含 `waf.methods.compose.yml`，否则重建 WAF 时会丢失该挂载。
+覆盖文件允许平台实际使用的 `PUT`、`DELETE` 方法，并对管理员保存题目时 `runtimeConfigurationJson` 中的 `{userId}` 占位符排除 CRS 规则 `942550` 的误报。排除范围限于题目更新接口的该字段，其他 WAF 检查继续执行。以后运行带 WAF 的 Compose 命令也要包含 `waf.methods.compose.yml`，否则重建 WAF 时会丢失该挂载。
 
 ## 操作限制
 
