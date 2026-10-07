@@ -262,7 +262,10 @@ const AdminChallengeEdit = () => {
                 rowVersion={publishVersion ?? data?.publication?.rowVersion ?? 0}
                 initialCategoryIds={data?.publication?.categoryIds ?? []}
                 onClose={() => setPublishOpen(false)}
-                onPublished={async () => { await mutate() }}
+                onPublished={async () => {
+                  await mutate()
+                  navigate('/admin/skill-trees?tab=challenges')
+                }}
               />
             </>
           )}

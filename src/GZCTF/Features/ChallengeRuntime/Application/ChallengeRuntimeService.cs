@@ -140,8 +140,9 @@ public sealed class ChallengeRuntimeService(
 
     public async Task StopAsync(Guid userId, Guid challengeId, CancellationToken token = default)
     {
-        var instance = await GetOwnedInstanceAsync(userId, challengeId, token);
-        if (instance.Status == ChallengeInstanceStatus.Stopped)
+        var instance = await db.UserChallengeInstances.SingleOrDefaultAsync(item =>
+            item.UserId == userId && item.ChallengeId == challengeId && item.IsActive, token);
+        if (instance is null || instance.Status == ChallengeInstanceStatus.Stopped)
             return;
         if (instance.ContainerId is Guid containerId)
         {

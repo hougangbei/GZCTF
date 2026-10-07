@@ -1,5 +1,5 @@
 import useSWR, { useSWRConfig } from 'swr'
-import api, { ChallengeInstanceStatus, ChallengeSolveMode, fetcher, type ChallengeSummaryResponse } from '@Api'
+import api, { ChallengeInstanceStatus, ChallengeSolveMode, fetcher, type ChallengeInstanceResponse, type ChallengeSummaryResponse } from '@Api'
 
 const localeQuery = (locale: string) => encodeURIComponent(locale || 'en')
 
@@ -24,16 +24,17 @@ export const useChallenge = (id: string | undefined, locale: string, enabled: bo
   }>(id && enabled ? `/api/challenges/${id}?locale=${localeQuery(locale)}` : null, fetcher)
 
 export const useChallengeInstance = (id: string | undefined, enabled: boolean) =>
-  useSWR<{
-    id: string
-    status: ChallengeInstanceStatus
-    startedAtUtc?: string
-    expiresAtUtc?: string
-    publicIp?: string
-    publicPort?: string
-    attachmentFileName?: string
-    attachmentSha256?: string
-  }>(id && enabled ? `/api/challenges/${id}/instances` : null, fetcher)
+  useSWR<ChallengeInstanceResponse | null>(
+    id && enabled ? `/api/challenges/${id}/instances` : null,
+    async (path: string) => {
+      try {
+        return await fetcher(path) as ChallengeInstanceResponse
+      } catch (error) {
+        if ((error as { response?: { status?: number } })?.response?.status === 404) return null
+        throw error
+      }
+    },
+  )
 
 export const useLearningMutations = () => {
   const { mutate } = useSWRConfig()
@@ -79,7 +80,7 @@ export const useLearningMutations = () => {
 
   const stopInstance = async (challengeId: string) => {
     await api.challengeInstances.challengeInstancesStop(challengeId)
-    await mutate(`/api/challenges/${challengeId}/instances`, undefined, false)
+    await mutate(`/api/challenges/${challengeId}/instances`, null, false)
   }
 
   const submitChallenge = async (challengeId: string, flag: string) =>

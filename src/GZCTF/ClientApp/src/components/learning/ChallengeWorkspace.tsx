@@ -1,5 +1,5 @@
 import { Alert, Badge, Button, Group, Stack, Text, TextInput, Title } from '@mantine/core'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useSWRConfig } from 'swr'
@@ -42,6 +42,8 @@ export const ChallengeWorkspace = ({
   const [message, setMessage] = useState<string>()
   const [messageType, setMessageType] = useState<'success' | 'error'>('error')
   const [solveMode, setSolveMode] = useState<string>()
+  const instanceActionInFlight = useRef(false)
+  const [instanceActionPending, setInstanceActionPending] = useState(false)
 
   if (!challenge && !error) return <Text>{t('loading')}</Text>
   if (error) return <Text c="red">{t('loadFailed')}</Text>
@@ -54,6 +56,18 @@ export const ChallengeWorkspace = ({
       setMessageType('error')
       setMessage((error as { response?: { status?: number } })?.response?.status === 409
         ? tSkillTrees('instances.limitReached') : t('actionFailed'))
+    }
+  }
+
+  const runInstanceAction = async (action: () => Promise<unknown>) => {
+    if (instanceActionInFlight.current) return
+    instanceActionInFlight.current = true
+    setInstanceActionPending(true)
+    try {
+      await run(action)
+    } finally {
+      instanceActionInFlight.current = false
+      setInstanceActionPending(false)
     }
   }
 
@@ -163,8 +177,9 @@ export const ChallengeWorkspace = ({
                 <Group gap="xs">
                   <Button
                     variant="light"
+                    disabled={instanceActionPending}
                     onClick={() =>
-                      run(async () => {
+                      runInstanceAction(async () => {
                         await extendInstance(challengeId)
                         await mutateInstance()
                       })
@@ -175,10 +190,10 @@ export const ChallengeWorkspace = ({
                   <Button
                     color="red"
                     variant="subtle"
+                    loading={instanceActionPending}
                     onClick={() =>
-                      run(async () => {
+                      runInstanceAction(async () => {
                         await stopInstance(challengeId)
-                        await mutateInstance(undefined, false)
                       })
                     }
                   >
@@ -189,8 +204,9 @@ export const ChallengeWorkspace = ({
             ) : challenge!.hasContainer ? (
               <Button
                 variant="light"
+                loading={instanceActionPending}
                 onClick={() =>
-                  run(async () => {
+                  runInstanceAction(async () => {
                     await startInstance(challengeId)
                     await mutateInstance()
                   })
