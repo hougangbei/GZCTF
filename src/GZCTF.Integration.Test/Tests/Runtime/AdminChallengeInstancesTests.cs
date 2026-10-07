@@ -64,6 +64,8 @@ public sealed class AdminChallengeInstancesTests(GZCTFApplicationFactory factory
 
         Assert.Equal(HttpStatusCode.NoContent,
             (await admin.DeleteAsync($"/api/admin/challenge-instances/{instanceId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await admin.DeleteAsync($"/api/admin/challenge-instances/{instanceId}")).StatusCode);
         await using var verifyScope = factory.Services.CreateAsyncScope();
         var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
         var stopped = await verifyDb.UserChallengeInstances.SingleAsync(item => item.Id == instanceId);

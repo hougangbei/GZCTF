@@ -34,7 +34,8 @@ const LearningLeaderboard = () => {
       type: 'line',
       name: member.userName,
       step: 'end',
-      showSymbol: false,
+      showSymbol: true,
+      symbolSize: 8,
       data: member.points.map((point) => [`${point.date}T00:00:00Z`, metric === 'score' ? point.score : point.solvedCount]),
     }) satisfies SeriesOption),
   }), [data, metric, metricLabel, t])

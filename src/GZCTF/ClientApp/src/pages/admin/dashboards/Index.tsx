@@ -7,7 +7,7 @@ import { WithRole } from '@Components/WithRole'
 import { showErrorMsg } from '@Utils/Shared'
 
 const DashboardCard = ({ dashboard, refresh }: { dashboard: AdminDashboardResponse; refresh: () => Promise<unknown> }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'learning'])
   const id = dashboard.id ?? ''
   const { data: tokens, mutate: mutateTokens } = api.adminDashboards.useAdminDashboardsListTokens(id, undefined, Boolean(id))
   const [rawLink, setRawLink] = useState<string>()
@@ -62,7 +62,7 @@ const DashboardCard = ({ dashboard, refresh }: { dashboard: AdminDashboardRespon
 
 const AdminDashboards = () => {
   const { data: dashboards, mutate } = api.adminDashboards.useAdminDashboardsList()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'learning'])
   const [name, setName] = useState('')
   const [topCount, setTopCount] = useState<number | string>(10)
   const [pending, setPending] = useState(false)

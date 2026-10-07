@@ -10,7 +10,7 @@ import { showErrorMsg } from '@Utils/Shared'
 
 const AdminLessons = () => {
   const { data: lessons, mutate } = useAdminLessons()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'learning'])
   const [title, setTitle] = useState('')
   const [creating, setCreating] = useState(false)
   const create = async () => {

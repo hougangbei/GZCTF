@@ -11,7 +11,7 @@ import { showErrorMsg } from '@Utils/Shared'
 
 const AdminLessonEdit = () => {
   const { id } = useParams()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'learning'])
   const { t: tSkillTrees } = useTranslation('skillTrees')
   const { data, mutate } = api.adminLessons.useAdminLessonsGet(
     id ?? '', { locale: 'en' }, undefined, Boolean(id)
@@ -24,10 +24,10 @@ const AdminLessonEdit = () => {
   const [publishRowVersion, setPublishRowVersion] = useState<number>()
   if (!id) return null
 
-  const save = async () => {
+  const save = async (): Promise<number | undefined> => {
     setSaving(true)
     try {
-      await api.adminLessons.adminLessonsUpdate(id, {
+      const response = await api.adminLessons.adminLessonsUpdate(id, {
         locale: 'en',
         localizations: mergeLessonLocalization(data?.localizations ?? [], {
           locale: 'en',
@@ -35,9 +35,11 @@ const AdminLessonEdit = () => {
           body: body ?? localization?.body ?? '',
         }),
       })
-      await mutate()
+      await mutate(response.data, { revalidate: false })
+      return response.data.publication?.rowVersion
     } catch (error) {
       showErrorMsg(error, t)
+      return undefined
     } finally {
       setSaving(false)
     }
@@ -65,8 +67,9 @@ const AdminLessonEdit = () => {
           variant="light"
           loading={saving}
           onClick={async () => {
-            await save()
-            setPublishRowVersion(data.publication?.rowVersion)
+            const version = await save()
+            if (version === undefined) return
+            setPublishRowVersion(version)
             setPublishOpen(true)
           }}
         >

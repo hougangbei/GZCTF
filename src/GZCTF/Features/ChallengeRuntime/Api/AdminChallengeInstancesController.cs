@@ -73,8 +73,9 @@ public sealed class AdminChallengeInstancesController(
     public async Task<IActionResult> Stop(Guid id, CancellationToken token)
     {
         var instance = await db.UserChallengeInstances.AsNoTracking()
-            .FirstOrDefaultAsync(item => item.Id == id && item.IsActive, token);
+            .FirstOrDefaultAsync(item => item.Id == id, token);
         if (instance is null) return NotFound();
+        if (!instance.IsActive) return NoContent();
         try
         {
             await runtime.StopAsync(instance.UserId, instance.ChallengeId, token);

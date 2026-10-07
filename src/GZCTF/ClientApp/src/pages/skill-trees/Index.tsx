@@ -17,7 +17,6 @@ const SkillTreeIndex = () => {
       <Stack gap="xl">
         <Stack gap={4}>
           <Title order={1}>{t('list.title')}</Title>
-          <Text c="dimmed">{t('list.empty')}</Text>
         </Stack>
         {error ? (
           <Group>

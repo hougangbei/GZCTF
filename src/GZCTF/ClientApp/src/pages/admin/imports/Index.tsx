@@ -9,7 +9,7 @@ import { showErrorMsg } from '@Utils/Shared'
 
 const AdminImports = () => {
   const { data: batches, mutate } = useImportBatches()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'learning'])
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const upload = async () => {

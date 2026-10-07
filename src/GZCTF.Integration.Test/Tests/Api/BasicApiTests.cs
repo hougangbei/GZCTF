@@ -1,8 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
+using GZCTF.Features.Dashboard.Domain;
 using GZCTF.Integration.Test.Base;
+using GZCTF.Models;
 using GZCTF.Models.Request.Account;
 using GZCTF.Utils;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -63,8 +66,18 @@ public class BasicApiTests(GZCTFApplicationFactory factory, ITestOutputHelper ou
 
         var userName = TestDataSeeder.RandomName();
         var email = $"{userName}@example.com";
+        var cohort = new Cohort { Name = $"Test-{Guid.NewGuid():N}" };
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Cohorts.Add(cohort);
+            await db.SaveChangesAsync();
+        }
 
-        var registerModel = new RegisterModel { UserName = userName, Email = email, Password = "P@ssw0rd!123" };
+        var registerModel = new RegisterModel
+        {
+            UserName = userName, Email = email, Password = "P@ssw0rd!123", CohortId = cohort.Id
+        };
 
         var registerResponse = await client.PostAsJsonAsync("/api/Account/Register", registerModel);
         output.WriteLine($"Register status: {registerResponse.StatusCode}");

@@ -50,8 +50,11 @@ public class SkillTreeEnrollmentTests(GZCTFApplicationFactory factory)
 
         var record = await client.GetFromJsonAsync<MyLearningResponse>("/api/my-learning", JsonOptions);
         Assert.NotNull(record);
-        Assert.Equal(2, record!.SkillTrees.Count);
-        Assert.All(record.SkillTrees, tree =>
+        var seededTrees = record!.SkillTrees
+            .Where(tree => tree.SkillTreeId == seed.FirstTreeId || tree.SkillTreeId == seed.SecondTreeId)
+            .ToArray();
+        Assert.Equal(2, seededTrees.Length);
+        Assert.All(seededTrees, tree =>
         {
             Assert.Equal(1, tree.ChallengeCount);
             Assert.Equal(1, tree.CompletedChallengeCount);

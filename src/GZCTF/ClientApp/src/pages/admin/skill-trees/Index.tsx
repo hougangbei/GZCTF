@@ -21,7 +21,7 @@ const isKnownTab = (value: string | null): value is AdminTab =>
   value === 'writeups' || value === 'writeupManagement' || value === 'instances'
 
 const AdminWorkspace = () => {
-  const { t } = useTranslation('skillTrees')
+  const { t } = useTranslation(['skillTrees', 'admin'])
   const [searchParams, setSearchParams] = useSearchParams()
   const requested = searchParams.get('tab')
   const tab: AdminTab = isKnownTab(requested) ? requested : 'trees'
