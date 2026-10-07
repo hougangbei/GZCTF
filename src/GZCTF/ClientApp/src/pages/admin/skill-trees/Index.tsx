@@ -13,12 +13,13 @@ import classes from '@Components/admin/workspace/AdminWorkspace.module.css'
 import { WithNavBar } from '@Components/WithNavbar'
 import { WithRole } from '@Components/WithRole'
 import { usePageTitle } from '@Hooks/usePageTitle'
+import { UsersPanel } from '../Users'
 
-type AdminTab = 'trees' | 'categories' | 'challenges' | 'members' | 'writeups' | 'writeupManagement' | 'instances'
+type AdminTab = 'trees' | 'categories' | 'challenges' | 'members' | 'users' | 'writeups' | 'writeupManagement' | 'instances'
 
 const isKnownTab = (value: string | null): value is AdminTab =>
   value === 'trees' || value === 'categories' || value === 'challenges' || value === 'members' ||
-  value === 'writeups' || value === 'writeupManagement' || value === 'instances'
+  value === 'users' || value === 'writeups' || value === 'writeupManagement' || value === 'instances'
 
 const AdminWorkspace = () => {
   const { t } = useTranslation(['skillTrees', 'admin'])
@@ -32,6 +33,7 @@ const AdminWorkspace = () => {
     categories: t('category.title'),
     challenges: t('workspace.tabs.challenges'),
     members: t('workspace.tabs.members'),
+    users: t('admin:tab.users'),
     writeups: t('writeups.reviewMenu'),
     writeupManagement: t('writeups.manageMenu'),
     instances: t('instances.menu'),
@@ -72,6 +74,7 @@ const AdminWorkspace = () => {
                 <Tabs.Tab value="categories">{tabLabels.categories}</Tabs.Tab>
                 <Tabs.Tab value="challenges">{tabLabels.challenges}</Tabs.Tab>
                 <Tabs.Tab value="members">{tabLabels.members}</Tabs.Tab>
+                <Tabs.Tab value="users">{tabLabels.users}</Tabs.Tab>
                 <Tabs.Tab value="writeups">{tabLabels.writeups}</Tabs.Tab>
                 <Tabs.Tab value="writeupManagement">{tabLabels.writeupManagement}</Tabs.Tab>
                 <Tabs.Tab value="instances">{tabLabels.instances}</Tabs.Tab>
@@ -100,6 +103,7 @@ const AdminWorkspace = () => {
             {tab === 'members' && (
               <MembersPanel createOpen={createOpen} onClose={closeCreate} onOpen={openCreate} />
             )}
+            {tab === 'users' && <UsersPanel />}
             {tab === 'writeups' && <WriteupsPanel />}
             {tab === 'writeupManagement' && <WriteupsPanel mode="management" />}
             {tab === 'instances' && <InstancesPanel />}

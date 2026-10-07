@@ -1,9 +1,7 @@
 import { Group, GroupProps, LoadingOverlay, Stack } from '@mantine/core'
 import {
   mdiAccountCogOutline,
-  mdiAccountGroupOutline,
   mdiFileDocumentOutline,
-  mdiFlagOutline,
   mdiInformationOutline,
   mdiPackageVariantClosed,
   mdiSitemapOutline,
@@ -30,8 +28,6 @@ export const WithAdminTab: FC<AdminTabProps> = ({ head, headProps, isLoading, ch
   const { t } = useTranslation()
 
   const pages = [
-    { icon: mdiFlagOutline, title: t('admin.tab.games.index'), path: 'games' },
-    { icon: mdiAccountGroupOutline, title: t('admin.tab.teams'), path: 'teams' },
     { icon: mdiAccountCogOutline, title: t('admin.tab.users'), path: 'users' },
     {
       icon: mdiPackageVariantClosed,
@@ -57,11 +53,11 @@ export const WithAdminTab: FC<AdminTabProps> = ({ head, headProps, isLoading, ch
     if (tab >= 0) {
       setActiveTab(tab)
     } else {
-      navigate(pages[0].path)
+      navigate(`/admin/${pages[0].path}`, { replace: true })
     }
   }, [location])
 
-  usePageTitle(pages[tabIndex].title)
+  usePageTitle(pages[tabIndex >= 0 ? tabIndex : 0].title)
 
   return (
     <Stack gap="xs" align="center" pt="md">

@@ -2,7 +2,6 @@ import { Badge, Button, Card, Checkbox, Group, Modal, MultiSelect, SimpleGrid, S
 import { showNotification } from '@mantine/notifications'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
 import useSWR from 'swr'
 import api, { fetcher, type UserInfoModel } from '@Api'
 import { showErrorMsg } from '@Utils/Shared'
@@ -142,11 +141,7 @@ export const MembersPanel = ({ createOpen, onClose, onOpen }: CreatePanelProps) 
 
   return (
     <Stack gap="md">
-      <Text size="sm" c="dimmed">{tSkillTrees('workspace.registeredUsersHint')}{' '}
-        <Button component={Link} to="/admin/users" variant="subtle" size="compact-sm">
-          {tSkillTrees('workspace.userManagement')}
-        </Button>
-      </Text>
+      <Text size="sm" c="dimmed">{tSkillTrees('workspace.registeredUsersHint')}</Text>
       <Card withBorder className={classes.panelCard}>
         <Stack gap="sm">
           <Group justify="space-between">

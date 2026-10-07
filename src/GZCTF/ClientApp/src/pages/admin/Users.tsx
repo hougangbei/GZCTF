@@ -5,6 +5,7 @@ import {
   Button,
   Code,
   Group,
+  LoadingOverlay,
   Paper,
   ScrollArea,
   Stack,
@@ -31,9 +32,10 @@ import React, { FC, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ActionIconWithConfirm } from '@Components/ActionIconWithConfirm'
 import { AdminPage } from '@Components/admin/AdminPage'
+import type { AdminTabProps } from '@Components/admin/WithAdminTab'
 import { RegistrationReviewPanel } from '@Components/admin/RegistrationReviewPanel'
 import { UserEditModal, RoleColorMap } from '@Components/admin/UserEditModal'
-import { showErrorMsg } from '@Utils/Shared'
+import { DEFAULT_LOADING_OVERLAY, showErrorMsg } from '@Utils/Shared'
 import { useArrayResponse } from '@Hooks/useArrayResponse'
 import { useUser } from '@Hooks/useUser'
 import api, { Role, UserInfoModel } from '@Api'
@@ -41,7 +43,15 @@ import tableClasses from '@Styles/Table.module.css'
 
 const ITEM_COUNT_PER_PAGE = 30
 
-const Users: FC = () => {
+const InlineUsersLayout: FC<AdminTabProps> = ({ head, isLoading, children }) => (
+  <Stack gap="xs" pos="relative" w="100%">
+    {head && <Group justify="space-between" wrap="wrap" gap="sm">{head}</Group>}
+    {children}
+    <LoadingOverlay visible={isLoading ?? false} overlayProps={DEFAULT_LOADING_OVERLAY} />
+  </Stack>
+)
+
+const Users: FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const [page, setPage] = useState(1)
   const [update, setUpdate] = useState(new Date())
   const [editModalOpened, setEditModalOpened] = useState(false)
@@ -191,8 +201,10 @@ const Users: FC = () => {
     }
   }
 
+  const Layout = embedded ? InlineUsersLayout : AdminPage
+
   return (
-    <AdminPage
+    <Layout
       isLoading={searching || !users}
       head={
         <>
@@ -344,8 +356,10 @@ const Users: FC = () => {
           }}
         />
       </Paper>
-    </AdminPage>
+    </Layout>
   )
 }
+
+export const UsersPanel: FC = () => <Users embedded />
 
 export default Users
