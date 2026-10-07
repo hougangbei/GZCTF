@@ -173,8 +173,10 @@ const Register: FC = () => {
         onChange={(event) => setUname(event.currentTarget.value)}
       />
       <TextInput required label={t('account.label.real_name')} value={realName}
+        w="100%"
         disabled={disabled} onChange={(event) => setRealName(event.currentTarget.value)} />
       <TextInput required label={t('account.label.student_id')} value={stdNumber}
+        w="100%"
         disabled={disabled} onChange={(event) => setStdNumber(event.currentTarget.value)} />
       <Select
         required
