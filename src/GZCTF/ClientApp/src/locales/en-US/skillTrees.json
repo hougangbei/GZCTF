@@ -157,6 +157,7 @@
     "categoryRequired": "At least one category is required before publication.",
     "categoryHasNoTree": "The selected category does not belong to any active skill tree.",
     "invalidPublication": "The content could not be published.",
+    "challengeBodyRequired": "Add a challenge description before publishing.",
     "staticFlagRequired": "Add at least one static Flag before publishing.",
     "attachmentPoolRequired": "Upload attachments and set a Flag for each one before publishing.",
     "attachmentMissing": "An attachment is missing from storage. Upload it again before publishing.",

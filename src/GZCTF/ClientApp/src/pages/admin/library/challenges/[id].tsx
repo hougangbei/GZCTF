@@ -85,6 +85,10 @@ const AdminChallengeEdit = () => {
   }
 
   const publish = async () => {
+    if (!draft?.body.trim()) {
+      setFormError(tSkillTrees('errors.challengeBodyRequired'))
+      return
+    }
     const version = await save()
     if (version !== undefined) {
       setPublishVersion(version)

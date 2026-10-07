@@ -157,6 +157,7 @@
     "categoryRequired": "发布前必须至少选择一个类别。",
     "categoryHasNoTree": "所选类别不属于任何有效技能树。",
     "invalidPublication": "内容发布失败。",
+    "challengeBodyRequired": "发布前请填写题目描述。",
     "staticFlagRequired": "发布前请添加至少一个静态 Flag。",
     "attachmentPoolRequired": "发布前请上传附件并为每个附件填写 Flag。",
     "attachmentMissing": "附件在存储中不存在，请重新上传后再发布。",
