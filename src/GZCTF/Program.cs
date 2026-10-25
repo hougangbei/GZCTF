@@ -40,7 +40,8 @@ builder.ConfigureDatabase();
 builder.ConfigureStorage();
 builder.ConfigureCacheAndSignalR();
 builder.ConfigureIdentity();
-builder.ConfigureTelemetry();
+if (!UpdateValidation)
+    builder.ConfigureTelemetry();
 
 builder.AddServiceConfigurations();
 builder.AddCustomServices();
@@ -48,6 +49,24 @@ builder.AddWebServices();
 builder.AddDevelopmentServices();
 
 var app = builder.Build();
+
+// Isolated candidate process: migrate the agent-supplied database before reporting readiness.
+// The host agent launches this only with GZCTF_UPDATE_VALIDATION=true and loopback ports.
+if (UpdateValidation)
+{
+    // Keep the console startup logger; deployed sinks may contact external services.
+    await app.RunPrelaunchWorkAsync();
+    app.MapGet("/healthz", () => Results.Text("Healthy"));
+    app.MapGet("/update-validation", async (AppDbContext db, CancellationToken token) => Results.Ok(new
+    {
+        project = "GZCTF",
+        migrations = db.Database.GetMigrations().ToArray(),
+        appliedMigrations = (await db.Database.GetAppliedMigrationsAsync(token)).ToArray()
+    }));
+    await app.RunAsync();
+    await Log.CloseAndFlushAsync();
+    return;
+}
 
 if (args.Length >= 2 && args[0] == "about" && args[1] == "unlock")
 {

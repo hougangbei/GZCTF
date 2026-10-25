@@ -1,3 +1,4 @@
+using System.Net;
 using Serilog;
 using StackExchange.Redis;
 
@@ -31,8 +32,19 @@ internal static class AppBuilderExtensions
                 kestrelSection.Bind(options);
             }).UseKestrel(options =>
             {
-                options.ListenAnyIP(ServerPort);
-                options.ListenAnyIP(MetricPort);
+                var address = Environment.GetEnvironmentVariable("GZCTF_BIND_ADDRESS");
+                if (!string.IsNullOrWhiteSpace(address))
+                {
+                    if (!IPAddress.TryParse(address, out var bindAddress))
+                        throw new InvalidOperationException("GZCTF_BIND_ADDRESS must be an IP address.");
+                    options.Listen(bindAddress, ServerPort);
+                    options.Listen(bindAddress, MetricPort);
+                }
+                else
+                {
+                    options.ListenAnyIP(ServerPort);
+                    options.ListenAnyIP(MetricPort);
+                }
             });
 
             builder.Logging.ClearProviders();

@@ -1,0 +1,26 @@
+{
+  "deployment_mode": "native",
+  "work_dir": "/opt/gzctf/updates",
+  "backup_dir": "/opt/gzctf/backups",
+  "files_dir": "/opt/gzctf/files",
+  "socket_path": "/opt/gzctf/run/updater.sock",
+  "token_file": "/opt/gzctf/updater.token",
+  "allowed_source_roots": ["/opt/gzctf/update-sources"],
+  "allow_private_downloads": false,
+  "tools": {"dotnet": "/usr/bin/dotnet", "pnpm": "/usr/bin/pnpm", "node": "/usr/bin/node", "docker": "/usr/bin/docker"},
+  "native": {
+    "current_link": "/opt/gzctf/current",
+    "pid_file": "/opt/gzctf/run/application.json",
+    "settings_file": "/opt/gzctf/appsettings.json",
+    "server_port": 8080,
+    "metric_port": 3000
+  },
+  "database": {
+    "container": "gzctf-db-1",
+    "name": "gzctf",
+    "user": "gzctf",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "password": "REPLACE_WITH_EXISTING_DATABASE_PASSWORD"
+  }
+}

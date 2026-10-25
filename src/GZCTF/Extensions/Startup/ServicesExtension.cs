@@ -133,7 +133,8 @@ internal static class ServicesExtension
             builder.Services.AddSingleton<IMailSender, MailSender>();
             builder.Services.AddSingleton<TrafficRecorderRegistry>();
 
-            builder.Services.AddHostedService<CronJobService>();
+            if (!UpdateValidation)
+                builder.Services.AddHostedService<CronJobService>();
         }
 
         internal void AddWebServices()
