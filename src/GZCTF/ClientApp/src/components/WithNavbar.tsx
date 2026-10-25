@@ -14,6 +14,7 @@ import { Role } from '@Api'
 import classes from './WithNavbar.module.css'
 
 interface WithNavBarProps extends React.PropsWithChildren {
+  className?: string
   width?: string
   minWidth?: number
   isLoading?: boolean
@@ -30,7 +31,7 @@ export interface AppControlProps {
   onNavigate?: () => void
 }
 
-export const WithNavBar: FC<WithNavBarProps> = ({ children, width, isLoading, minWidth, withFooter = false, withHeader, stickyHeader = false }) => {
+export const WithNavBar: FC<WithNavBarProps> = ({ children, className, width, isLoading, minWidth, withFooter = false, withHeader, stickyHeader = false }) => {
   const theme = useMantineTheme()
   const colorScheme = useComputedColorScheme('light', { getInitialValueInEffect: false })
   const { user } = useUser()
@@ -62,7 +63,7 @@ export const WithNavBar: FC<WithNavBarProps> = ({ children, width, isLoading, mi
         gutter={22}
         opacity={colorScheme === 'dark' ? 0.018 : 0.025}
       >
-        <AppShell p={0} header={{ height: 56 }}>
+        <AppShell className={className} p={0} header={{ height: 56 }}>
           <AppHeader openColorModal={() => setColorModalOpened(true)} mobile={mobile} navOpened={navOpened} onNavToggle={() => setNavOpened(open => !open)} onNavigate={() => setNavOpened(false)} />
           {mobile && navOpened && <button type="button" className={classes.scrim} aria-label={t('common.accessibility.close_navigation')} onClick={() => setNavOpened(false)} />}
           <AppShell.Main id="main-content" tabIndex={-1} inert={Boolean(mobile && navOpened)} aria-hidden={mobile && navOpened || undefined}>
