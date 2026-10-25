@@ -48,7 +48,7 @@ test('ranking stays readable on phones and switches to the requested metric', as
   await expect(page.getByRole('heading', { name: '学习者排行' })).toBeVisible()
   await expect(page.getByRole('table')).toBeVisible()
   await expect(page.locator('tbody tr').first()).toContainText('cipher')
-  await expect(page.getByRole('heading', { name: '进步轨迹' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '积分走势' })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
 
   await page.getByText('累计解题数', { exact: true }).click()
@@ -71,4 +71,69 @@ test('leaderboard error offers retry and recovers into the empty state', async (
   await page.getByRole('button', { name: '重新加载' }).click()
   await expect(page.getByRole('heading', { name: '还没有人上榜' })).toBeVisible()
   expect(calls).toBeGreaterThanOrEqual(2)
+})
+
+
+test('competition board puts the trend first and remains dark under a light site theme', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('language', JSON.stringify('zh-CN'))
+    localStorage.setItem('mantine-color-scheme-value', 'light')
+  })
+  await page.route('**/api/learning-leaderboard?*', route => route.fulfill({ json: score }))
+  await page.goto('/leaderboard')
+  await expect(page.getByRole('table')).toBeVisible()
+  const trend = await page.getByRole('heading', { name: '积分走势' }).boundingBox()
+  const table = await page.getByRole('table').boundingBox()
+  expect(trend && table && trend.y < table.y).toBe(true)
+  await expect(page.getByText('每 15 秒自动更新')).toBeVisible()
+  const board = page.locator('[data-competition-board]')
+  expect(await board.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(20, 20, 20)')
+  expect(await board.evaluate(el => getComputedStyle(el).color)).toBe('rgb(238, 238, 238)')
+  await expect(page.locator('tbody tr[data-rank="1"]')).toContainText('cipher')
+})
+
+test('long and hostile usernames stay plain text at 320px', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 })
+  const username = '<img src=x onerror=alert(1)>' + '用户名'.repeat(20)
+  await page.route('**/api/learning-leaderboard?*', route => route.fulfill({ json: {
+    ...score, entries: [{ rank: 1, userName: username, score: 99999999, solvedCount: 1200 }],
+    series: [{ userName: username, points: [{ date: '2026-10-25', score: 99999999, solvedCount: 1200 }] }],
+  } }))
+  await page.goto('/leaderboard')
+  await expect(page.getByRole('table')).toContainText(username)
+  await expect(page.locator('tbody img')).toHaveCount(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
+})
+
+test('resizing from desktop to phone keeps the chart inside its section', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.route('**/api/learning-leaderboard?*', route => route.fulfill({ json: score }))
+  await page.goto('/leaderboard')
+  const chart = page.getByRole('img').filter({ has: page.locator('canvas') })
+  await expect(chart.locator('canvas')).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect.poll(async () => {
+    const outer = await chart.boundingBox()
+    const canvas = await chart.locator('canvas').boundingBox()
+    return outer && canvas ? Math.abs(canvas.height - outer.height) : 999
+  }).toBeLessThan(2)
+})
+
+test('approved Figma table has distinct neutral stripes and identifies the signed-in learner', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('language', JSON.stringify('zh-CN')))
+  await page.route('**/api/account/profile', route => route.fulfill({ json: { userName: 'learner', role: 'User' } }))
+  await page.route('**/api/learning-leaderboard?*', route => route.fulfill({ json: score }))
+  await page.goto('/leaderboard')
+  const rows = page.locator('tbody tr')
+  await expect(rows).toHaveCount(4)
+  expect(await rows.nth(0).evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(32, 32, 32)')
+  expect(await rows.nth(1).evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(48, 48, 48)')
+  await expect(rows.nth(3)).toHaveAttribute('data-self', 'true')
+  await expect(rows.nth(3)).toContainText('你的位置')
+  await expect(rows.nth(3)).toHaveAttribute('aria-current', 'true')
+  expect(await page.locator('.mantine-AppShell-header').evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(20, 20, 20)')
+  expect(await page.locator('footer p.mantine-Text-root').evaluate(el => getComputedStyle(el).color)).toBe('rgb(181, 181, 181)')
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(rows.nth(3)).toContainText('9 题')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
 })

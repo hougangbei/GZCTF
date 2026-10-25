@@ -12,6 +12,7 @@ All notable changes to [**GZCTF**](https://github.com/GZTimeWalker/GZCTF) will b
 
 ### Changed
 
+- Redesign the learning leaderboard with a neutral charcoal palette, clearer striped rows, current-user emphasis, and responsive score trends.
 - Refresh the public pages and administration screens with a responsive shared navigation, accessible page states, configurable branding, and theme controls.
 - Improve community writeup actions, skill tree navigation, and leaderboard presentation.
 
