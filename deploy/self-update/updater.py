@@ -26,6 +26,8 @@ from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Any
 
+from update_errors import UpdateError
+
 
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 REPOSITORY_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
@@ -37,11 +39,6 @@ LOG = logging.getLogger("gzctf-updater")
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
-
-class UpdateError(Exception):
-    def __init__(self, status: int, message: str):
-        self.status = status
-        super().__init__(message)
 
 
 class Updater:
@@ -329,14 +326,34 @@ class Handler(BaseHTTPRequestHandler):
         if not self._authorized():
             self._send(401, {"message": "Unauthorized"})
             return
-        if self.path != "/apply":
+        if self.path not in {"/apply", "/validate"}:
             self._send(404, {"message": "Not found"})
             return
         try:
             size = int(self.headers.get("Content-Length", "0"))
-            if size < 1 or size > 2048:
+            if size < 1 or size > 8192:
                 raise UpdateError(400, "请求内容无效。")
             payload = json.loads(self.rfile.read(size))
+            if not isinstance(payload, dict):
+                raise UpdateError(400, "请求内容无效。")
+            if self.path == "/validate" or "validationId" in payload:
+                from managed_updates import ManagedUpdater
+                if not isinstance(self.server.updater, ManagedUpdater):
+                    raise UpdateError(503, "宿主机仍在使用旧版镜像更新程序，请按文档启用多来源更新。")
+                source = payload.get("source")
+                if not isinstance(source, dict):
+                    raise UpdateError(400, "更新来源无效。")
+                if self.path == "/validate":
+                    result = self.server.updater.begin_validation(source)
+                else:
+                    identifier = payload.get("validationId")
+                    if not isinstance(identifier, str) or not re.fullmatch(r"[0-9a-f]{32}", identifier):
+                        raise UpdateError(400, "校验标识无效。")
+                    result = self.server.updater.begin_apply(identifier, source)
+                self._send(202, result)
+                return
+            if not isinstance(self.server.updater, Updater):
+                raise UpdateError(400, "请先校验更新来源，再使用校验结果执行更新。")
             target_sha = payload.get("targetSha")
             if not isinstance(target_sha, str):
                 raise UpdateError(400, "目标提交无效。")
@@ -358,23 +375,63 @@ class UpdaterServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
     updater: Updater
 
 
+class UpdaterTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+
 def main() -> None:
     if len(sys.argv) != 2:
         raise SystemExit("Usage: updater.py /absolute/path/to/updater.json")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    updater = Updater(Path(sys.argv[1]))
+    config_path = Path(sys.argv[1]).resolve()
+    config = json.loads(config_path.read_text())
+    if config.get("deployment_mode"):
+        from managed_updates import ManagedUpdater
+        if config_path.stat().st_mode & 0o077:
+            raise ValueError("updater config must be private (chmod 600)")
+        for key in ("work_dir", "backup_dir", "files_dir", "socket_path", "token_file"):
+            if not Path(config[key]).is_absolute():
+                raise ValueError(f"{key} must be an absolute path")
+        token_file = Path(config["token_file"])
+        if token_file.stat().st_mode & 0o077:
+            raise ValueError("updater token must be private")
+        updater = ManagedUpdater(config)
+        updater.token = token_file.read_text().strip()
+        if len(updater.token) < 32:
+            raise ValueError("updater token must contain at least 32 characters")
+        updater.config["socket_path"] = Path(config["socket_path"])
+    else:
+        updater = Updater(config_path)
     socket_path = updater.config["socket_path"]
     socket_path.parent.mkdir(mode=0o750, parents=True, exist_ok=True)
-    if socket_path.exists():
-        socket_path.unlink()
-    with UpdaterServer(str(socket_path), Handler) as server:
+    import fcntl
+    lock_file = open(str(socket_path) + ".lock", "a")
+    try:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        raise SystemExit("An updater already owns this socket.")
+    listen_tcp = config.get("listen_tcp")
+    if listen_tcp:
+        if listen_tcp.get("host") != "127.0.0.1" or not isinstance(listen_tcp.get("port"), int) or not 1024 <= listen_tcp["port"] <= 65535:
+            raise ValueError("TCP updater must bind a non-privileged IPv4 loopback port")
+        address = ("127.0.0.1", listen_tcp["port"])
+        server_type = UpdaterTCPServer
+    else:
+        if socket_path.exists():
+            socket_path.unlink()
+        address = str(socket_path)
+        server_type = UpdaterServer
+    with server_type(address, Handler) as server:
         server.updater = updater
-        os.chmod(socket_path, 0o660)
-        LOG.info("GZCTF updater listening on %s", socket_path)
+        if not listen_tcp:
+            os.chmod(socket_path, 0o660)
+        LOG.info("GZCTF updater listening on %s", address)
         try:
             server.serve_forever(poll_interval=0.5)
         finally:
-            socket_path.unlink(missing_ok=True)
+            if not listen_tcp:
+                socket_path.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

@@ -8,6 +8,9 @@ import { useEffect, useRef } from 'react'
 import { SWRConfiguration } from 'swr'
 import api, { ClientConfig, ContainerPortMappingType } from '@Api'
 
+export const getPlatformName = (config?: Pick<ClientConfig, 'title'> | null) =>
+  config?.title?.trim() || 'GZCTF'
+
 export const OnceSWRConfig: SWRConfiguration = {
   refreshInterval: 0,
   revalidateOnFocus: false,

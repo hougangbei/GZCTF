@@ -8,6 +8,8 @@ const mockAdmin = async (page: Page) => {
     route.fulfill({ json: { userId: '30000000-0000-0000-0000-000000000001', userName: 'review-admin', role: 'Admin' } })
   )
   await page.route('**/api/info/config', (route) => route.fulfill({ json: { title: 'GZ' } }))
+  await page.route(/\/api\/admin\/cohorts\/registrants(?:\?|$)/, (route) =>
+    route.fulfill({ json: { items: [], total: 0 } }))
   await page.addInitScript(() => localStorage.setItem('language', JSON.stringify('en-US')))
 }
 
@@ -94,7 +96,7 @@ test('changing cohorts clears the members selected for the previous cohort', asy
 
   await page.goto('/admin/skill-trees?tab=members')
   await page.getByRole('textbox', { name: 'Search users' }).fill('Learner')
-  await page.getByRole('button', { name: 'Search', exact: true }).click()
+  await page.getByRole('button', { name: 'Search', exact: true }).last().click()
   await page.getByRole('combobox', { name: 'Members to assign' }).click()
   await page.getByRole('option', { name: 'Learner' }).click()
   await page.keyboard.press('Escape')

@@ -1,4 +1,4 @@
-import { Box, Group, GroupProps, MantineColor, useMantineColorScheme, useMantineTheme } from '@mantine/core'
+import { Box, Group, GroupProps, MantineColor, useComputedColorScheme, useMantineTheme } from '@mantine/core'
 import { clamp } from '@mantine/hooks'
 import React, { FC, useEffect, useState } from 'react'
 import { LogoHeader } from '@Components/LogoHeader'
@@ -51,7 +51,7 @@ export const IconTabs: FC<IconTabsProps> = (props) => {
   const { active, onTabChange, tabs, withIcon, aside, disabled, ...others } = props
   const [activeTab, setActiveTab] = useState(active ?? 0)
   const theme = useMantineTheme()
-  const { colorScheme } = useMantineColorScheme()
+  const colorScheme = useComputedColorScheme('light', { getInitialValueInEffect: false })
   const resolveColor = (color?: MantineColor) =>
     color ? theme.colors[theme.primaryColor][colorScheme === 'dark' ? 4 : 6] : undefined
   const current = clamp(activeTab, 0, tabs.length - 1)

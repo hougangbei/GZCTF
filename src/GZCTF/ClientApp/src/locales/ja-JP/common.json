@@ -1,4 +1,12 @@
 {
+  "accessibility": {
+    "navigation": "メインナビゲーション",
+    "open_navigation": "ナビゲーションを開く",
+    "close_navigation": "ナビゲーションを閉じる",
+    "skip_to_content": "本文へ移動",
+    "language": "言語",
+    "footer_navigation": "フッターナビゲーション"
+  },
   "avatar": {
     "save": "アイコンを保存する",
     "upload_failed": "アイコンを更新できませんでした",
@@ -19,6 +27,13 @@
       "title": "ページが存在しません"
     },
     "about": {
+      "subtitle": "ラボの取り組みと歩みをご紹介します。",
+      "emptyTitle": "コンテンツを準備中です",
+      "emptyDescription": "ラボの紹介を準備しています。しばらくしてからご覧ください。",
+      "explorePosts": "記事を見る",
+      "loadFailed": "紹介ページを読み込めません。",
+      "retry": "再読み込み",
+      "edit": "内容を編集",
       "contributors": "貢献者",
       "documentation": "公式ドキュメント",
       "repository": "GitHub リポジトリ",
@@ -27,7 +42,9 @@
       "version": "バージョン"
     },
     "color": {
+      "apply": "適用",
       "custom": {
+        "contrast_error": "この色は十分なコントラストを確保できません。",
         "description": "カスタムカラーを指定する",
         "label": "カスタムカラー",
         "placeholder": "デフォルトカラーを使用"
@@ -115,6 +132,7 @@
     "delete": "削除"
   },
   "tab": {
+    "laboratory_blog": "Laboratory blog",
     "about": "プラットフォーム情報",
     "account": {
       "clean_cache": "キャッシュを削除",
@@ -130,6 +148,7 @@
     "theme": {
       "dark": "ダーク",
       "light": "ライト",
+      "system": "システム",
       "switch_to": "テーマを{{theme}}に切り替える"
     }
   },

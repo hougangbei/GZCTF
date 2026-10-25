@@ -1,4 +1,12 @@
 {
+  "accessibility": {
+    "navigation": "主導覽",
+    "open_navigation": "開啟導覽",
+    "close_navigation": "關閉導覽",
+    "skip_to_content": "跳至主要內容",
+    "language": "語言",
+    "footer_navigation": "頁尾導覽"
+  },
   "avatar": {
     "save": "保存頭像",
     "upload_failed": "頭像更新失敗",
@@ -19,6 +27,13 @@
       "title": "頁面不存在"
     },
     "about": {
+      "subtitle": "了解實驗室的方向與成長紀錄。",
+      "emptyTitle": "內容正在整理",
+      "emptyDescription": "實驗室介紹正在整理，敬請期待。",
+      "explorePosts": "瀏覽文章",
+      "loadFailed": "關於頁面暫時無法載入",
+      "retry": "重新載入",
+      "edit": "編輯內容",
       "contributors": "貢獻者",
       "documentation": "官方文檔",
       "repository": "GitHub 倉庫",
@@ -27,7 +42,9 @@
       "version": "版本資訊"
     },
     "color": {
+      "apply": "套用",
       "custom": {
+        "contrast_error": "此顏色的對比度不足",
         "description": "選擇自定義顏色",
         "label": "自定義顏色",
         "placeholder": "使用默認顏色"
@@ -43,7 +60,7 @@
         "label": "顏色主題來源",
         "managed": "管理員提供"
       },
-      "title": "修改平臺顏色"
+      "title": "主題設定"
     },
     "drop_zone": {
       "content": "拖放圖片或點擊此處以選擇{{type}}",
@@ -115,6 +132,7 @@
     "delete": "刪除"
   },
   "tab": {
+    "laboratory_blog": "實驗室部落格",
     "about": "關於",
     "account": {
       "clean_cache": "清除緩存",
@@ -130,6 +148,7 @@
     "theme": {
       "dark": "深色",
       "light": "淺色",
+      "system": "跟隨系統",
       "switch_to": "切換到{{theme}}主題"
     }
   },

@@ -13,7 +13,7 @@ import { ErrorFallback } from '@Components/ErrorFallback'
 import { WsrxProvider } from '@Components/WsrxProvider'
 import { localCacheProvider } from '@Utils/Cache'
 import { useLanguage } from '@Utils/I18n'
-import { useCustomTheme } from '@Utils/ThemeOverride'
+import { themeCssVariablesResolver, useCustomTheme } from '@Utils/ThemeOverride'
 import { useBanner } from '@Hooks/useConfig'
 import { fetcher } from '@Api'
 import '@mantine/core/styles.css'
@@ -30,7 +30,7 @@ export const App: FC = () => {
   const { theme } = useCustomTheme()
 
   return (
-    <MantineProvider theme={theme} defaultColorScheme="dark" deduplicateInlineStyles stylesTransform={emotionTransform}>
+    <MantineProvider theme={theme} defaultColorScheme="auto" cssVariablesResolver={themeCssVariablesResolver} deduplicateInlineStyles stylesTransform={emotionTransform}>
       <MantineEmotionProvider>
         <ErrorBoundary FallbackComponent={ErrorFallback}>
           <Notifications zIndex={5000} />

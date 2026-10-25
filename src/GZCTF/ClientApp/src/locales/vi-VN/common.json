@@ -1,4 +1,12 @@
 {
+  "accessibility": {
+    "navigation": "Điều hướng chính",
+    "open_navigation": "Mở điều hướng",
+    "close_navigation": "Đóng điều hướng",
+    "skip_to_content": "Chuyển đến nội dung",
+    "language": "Ngôn ngữ",
+    "footer_navigation": "Điều hướng chân trang"
+  },
   "avatar": {
     "save": "Lưu ảnh đại diện",
     "upload_failed": "Cập nhật ảnh đại diện thất bại",
@@ -19,6 +27,13 @@
       "title": "Trang không tồn tại"
     },
     "about": {
+      "subtitle": "Tìm hiểu về phòng lab và hành trình phát triển.",
+      "emptyTitle": "Nội dung đang được chuẩn bị",
+      "emptyDescription": "Giới thiệu về phòng lab đang được hoàn thiện. Hãy quay lại sau.",
+      "explorePosts": "Xem bài viết",
+      "loadFailed": "Trang Giới thiệu tạm thời không khả dụng.",
+      "retry": "Tải lại",
+      "edit": "Chỉnh sửa nội dung",
       "contributors": "Người đóng góp",
       "documentation": "Tài liệu chính thức",
       "repository": "Kho GitHub",
@@ -27,7 +42,9 @@
       "version": "Phiên bản"
     },
     "color": {
+      "apply": "Áp dụng",
       "custom": {
+        "contrast_error": "Màu này không có đủ độ tương phản.",
         "description": "Chọn màu cơ bản bạn muốn sử dụng",
         "label": "Màu cơ bản tùy chỉnh",
         "placeholder": "Sử dụng màu mặc định"
@@ -115,6 +132,7 @@
     "delete": "Xóa"
   },
   "tab": {
+    "laboratory_blog": "Laboratory blog",
     "about": "Giới thiệu",
     "account": {
       "clean_cache": "Xóa bộ nhớ đệm",
@@ -130,6 +148,7 @@
     "theme": {
       "dark": "chế độ tối",
       "light": "chế độ sáng",
+      "system": "Hệ thống",
       "switch_to": "Chuyển sang {{theme}}"
     }
   },

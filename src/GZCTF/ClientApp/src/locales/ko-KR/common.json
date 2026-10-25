@@ -1,4 +1,12 @@
 {
+  "accessibility": {
+    "navigation": "주 탐색",
+    "open_navigation": "탐색 열기",
+    "close_navigation": "탐색 닫기",
+    "skip_to_content": "본문으로 건너뛰기",
+    "language": "언어",
+    "footer_navigation": "바닥글 탐색"
+  },
   "avatar": {
     "save": "프로필 사진 저장",
     "upload_failed": "프로필 사진 업데이트 실패",
@@ -19,6 +27,13 @@
       "title": "페이지가 존재하지 않습니다"
     },
     "about": {
+      "subtitle": "연구실의 방향과 성장 과정을 살펴보세요.",
+      "emptyTitle": "콘텐츠를 준비 중입니다",
+      "emptyDescription": "연구실 소개를 준비하고 있습니다. 잠시 후 다시 확인해 주세요.",
+      "explorePosts": "게시글 보기",
+      "loadFailed": "소개 페이지를 불러올 수 없습니다.",
+      "retry": "다시 불러오기",
+      "edit": "내용 편집",
       "contributors": "기여자",
       "documentation": "공식 문서",
       "repository": "GitHub 저장소",
@@ -27,7 +42,9 @@
       "version": "버전"
     },
     "color": {
+      "apply": "적용",
       "custom": {
+        "contrast_error": "이 색상은 대비가 충분하지 않습니다.",
         "description": "당신이 원하는 베이스 색상을 선택해주세요",
         "label": "커스텀 베이스 색상",
         "placeholder": "기본 색상 사용"
@@ -115,6 +132,7 @@
     "delete": "삭제"
   },
   "tab": {
+    "laboratory_blog": "Laboratory blog",
     "about": "정보",
     "account": {
       "clean_cache": "캐시 초기화",
@@ -130,6 +148,7 @@
     "theme": {
       "dark": "다크 모드",
       "light": "라이트 모드",
+      "system": "시스템",
       "switch_to": "{{theme}}로 바꾸기"
     }
   },

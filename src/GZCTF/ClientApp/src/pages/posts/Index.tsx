@@ -1,10 +1,11 @@
-import { Button, Group, Pagination, Stack } from '@mantine/core'
+import { Button, Group, Pagination, Stack, Title } from '@mantine/core'
 import { mdiPlus } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import { FC, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { PostCard } from '@Components/PostCard'
+import { getCollectionStatus, PageState } from '@Components/PageState'
 import { WithNavBar } from '@Components/WithNavbar'
 import { RequireRole } from '@Components/WithRole'
 import { showErrorMsg } from '@Utils/Shared'
@@ -17,7 +18,7 @@ import misc from '@Styles/Misc.module.css'
 const ITEMS_PER_PAGE = 10
 
 const Posts: FC = () => {
-  const { data: posts, mutate } = api.info.useInfoGetPosts(OnceSWRConfig)
+  const { data: posts, error, mutate } = api.info.useInfoGetPosts(OnceSWRConfig)
 
   const [activePage, setPage] = useState(1)
   const { role } = useUserRole()
@@ -55,30 +56,40 @@ const Posts: FC = () => {
   }
 
   return (
-    <WithNavBar isLoading={!posts} minWidth={0} withHeader stickyHeader>
-      <Stack justify="space-between" mih="calc(100vh - 78px)">
-        <Stack>
-          {posts?.slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE).map((post) => (
-            <PostCard key={post.id} post={post} onTogglePinned={onTogglePinned} />
-          ))}
-        </Stack>
+    <WithNavBar minWidth={0}>
+      <Title order={1} size="h2" mb="lg">{t('post.title.index')}</Title>
+      <PageState
+        status={getCollectionStatus(posts, error)}
+        loadingMessage={t('learning:loading')}
+        emptyMessage={t('common.content.no_data')}
+        errorMessage={t('common.error.encountered')}
+        retryLabel={t('common.button.try_again')}
+        onRetry={() => { void mutate() }}
+      >
+        <Stack justify="space-between" gap="lg">
+          <Stack>
+            {posts?.slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE).map((post) => (
+              <PostCard key={post.id} post={post} onTogglePinned={onTogglePinned} />
+            ))}
+          </Stack>
 
-        <Pagination.Root
-          total={Math.ceil((posts?.length ?? 0) / ITEMS_PER_PAGE)}
-          siblings={3}
-          value={activePage}
-          onChange={setPage}
-          mb="xl"
-        >
-          <Group gap={5} justify="flex-end">
-            <Pagination.First />
-            <Pagination.Previous />
-            <Pagination.Items />
-            <Pagination.Next />
-            <Pagination.Last />
-          </Group>
-        </Pagination.Root>
-      </Stack>
+          <Pagination.Root
+            total={Math.ceil((posts?.length ?? 0) / ITEMS_PER_PAGE)}
+            siblings={3}
+            value={activePage}
+            onChange={setPage}
+            mb="xl"
+          >
+            <Group gap={5} justify="flex-end">
+              <Pagination.First />
+              <Pagination.Previous />
+              <Pagination.Items />
+              <Pagination.Next />
+              <Pagination.Last />
+            </Group>
+          </Pagination.Root>
+        </Stack>
+      </PageState>
       {RequireRole(Role.Admin, role) && (
         <Button
           component={Link}

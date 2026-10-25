@@ -7,7 +7,7 @@ import {
   Stack,
   Text,
   Title,
-  useMantineColorScheme,
+  useComputedColorScheme,
   useMantineTheme,
 } from '@mantine/core'
 import { mdiFormatQuoteOpen, mdiPencilOutline, mdiPinOffOutline, mdiPinOutline } from '@mdi/js'
@@ -31,7 +31,7 @@ export const PostCard: FC<PostCardProps> = ({ post, onTogglePinned }) => {
   const theme = useMantineTheme()
   const { role } = useUserRole()
   const { t } = useTranslation()
-  const { colorScheme } = useMantineColorScheme()
+  const colorScheme = useComputedColorScheme('light', { getInitialValueInEffect: false })
   const [disabled, setDisabled] = useState(false)
 
   const { locale } = useLanguage()

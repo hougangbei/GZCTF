@@ -387,6 +387,11 @@
         "title": "Chính sách container."
       },
       "platform": {
+        "laboratory_blog": {
+          "label": "Laboratory blog URL",
+          "description": "Opens from the navigation in a new tab. Leave blank to hide.",
+          "error": "Enter an absolute URL starting with http:// or https://."
+        },
         "api_encryption": {
           "description": "Mã hóa dữ liệu nhạy cảm một số API",
           "label": "Bật Mã hóa API",
@@ -413,7 +418,7 @@
           "label": "Logo nền tảng."
         },
         "name": {
-          "description": "Tên nền tảng sẽ được hiển thị với ::CTF.",
+          "description": "Tên nền tảng sẽ hiển thị đúng như đã nhập.",
           "label": "Tên nền tảng."
         },
         "slogan": {
@@ -581,7 +586,7 @@
       "footer": "`Kiểm tra` <mbr/> Một cái gì đó...",
       "logo": {
         "custom": "Logo tùy chỉnh",
-        "default": "Sử dụng biểu tượng GZCTF"
+        "default": "Sử dụng biểu tượng mặc định"
       }
     },
     "teams": {
@@ -608,5 +613,81 @@
     "settings": "Cài đặt",
     "teams": "Đội",
     "users": "Người dùng"
+  },
+  "updates": {
+    "title": "Update management",
+    "description": "Choose an update source, validate its contents, then apply the verified version manually.",
+    "sourceTitle": "Update source",
+    "sourceKind": "Source type",
+    "sources": {
+      "github": "GitHub repository",
+      "package": "Package URL",
+      "directory": "Server directory"
+    },
+    "locations": {
+      "github": "GitHub repository",
+      "package": "Package URL",
+      "directory": "Server directory"
+    },
+    "githubHelp": "Enter a GitHub repository URL. The updater retrieves and builds the selected revision.",
+    "packageHelp": "Enter the URL of a release archive compatible with this deployment.",
+    "directoryHelp": "This path is on the deployment server, not the computer running your browser.",
+    "ref": "Branch or tag",
+    "sha256": "SHA256 (optional)",
+    "save": "Save source",
+    "saved": "Update source saved",
+    "saving": "Saving source…",
+    "unsaved": "Save these changes before validating. A changed source requires a new validation.",
+    "validate": "Validate source",
+    "saveFailed": "Could not save the update source. Check the source and try again.",
+    "validateFailed": "Could not start validation. Check the update service and try again.",
+    "report": "Validation report",
+    "version": "Target version",
+    "artifactHash": "Artifact SHA256",
+    "checks": {
+      "passed": "Passed",
+      "failed": "Failed",
+      "running": "Running"
+    },
+    "expires": "Valid until {{time}}",
+    "expired": "Validation expired. Validate the source again before applying.",
+    "needsValidation": "Save the source and validate it before applying an update.",
+    "current": "Current version / commit",
+    "unknown": "Unknown",
+    "task": "Update status",
+    "target": "Target commit",
+    "backup": "Backup directory",
+    "changedAt": "Status changed",
+    "apply": "Apply update",
+    "cancel": "Cancel",
+    "loadFailed": "Could not load update status. Please try again later.",
+    "applyFailed": "Could not start the update. Refresh the status and validate again.",
+    "notConfigured": "Install and start the update service on the deployment server, then configure the agent URL and shared token for the app. See deploy/self-update/README.md. You can save a source now; validation becomes available once the service is connected.",
+    "warning": "Applying an update briefly stops the app. The updater first backs up the database and uploads. Database migrations may require restoring that backup if the update fails.",
+    "confirmTitle": "Confirm platform update",
+    "confirmBody": "Apply the validated version {{version}}? The app will briefly stop after data is backed up. Database migrations may require restoring the backup to roll back.",
+    "phases": {
+      "idle": "Awaiting validation",
+      "disabled": "Not configured",
+      "validating": "Validating source",
+      "ready": "Ready to apply",
+      "invalid": "Validation failed",
+      "accepted": "Update accepted",
+      "pulling": "Pulling image",
+      "backingUp": "Backing up data",
+      "starting": "Starting new version",
+      "succeeded": "Update succeeded",
+      "failed": "Update failed",
+      "interrupted": "Update interrupted",
+      "recoveryRequired": "Manual recovery required"
+    },
+    "legacyAgent": "This update service supports the original image updater only. Saved sources take effect after upgrading the host update service to support multiple sources; source validation is unavailable until then.",
+    "legacyConfirmBody": "Update the platform image to {{sha}}? The app will briefly stop after backups. Database migrations may require restoring the backup to roll back.",
+    "latest": "Latest available commit",
+    "publishedAt": "Build completed",
+    "workflow": "View GitHub build",
+    "available": "Update available",
+    "noUpdate": "No update available",
+    "refresh": "Check again"
   }
 }

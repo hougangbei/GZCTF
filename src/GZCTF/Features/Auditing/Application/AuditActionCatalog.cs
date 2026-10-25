@@ -52,6 +52,8 @@ public static class AuditActionCatalog
             ["lessons.publish"] = new("lessons.publish", "challenges", "lesson"),
             ["settings.qq.update"] = new("settings.qq.update", "settings", "qq_settings"),
             ["settings.qq.test"] = new("settings.qq.test", "settings", "qq_test"),
+            ["updates.source.save"] = new("updates.source.save", "settings", "deployment"),
+            ["updates.validate"] = new("updates.validate", "settings", "deployment"),
             ["updates.apply"] = new("updates.apply", "settings", "deployment"),
             ["imports.zip"] = new("imports.zip", "content", "import_batch", true),
             ["writeups.review"] = new("writeups.review", "content", "writeup"),

@@ -3,6 +3,24 @@
 All notable changes to [**GZCTF**](https://github.com/GZTimeWalker/GZCTF) will be documented in this file.
 
 ---
+## [Unreleased] - 2026-10-25
+
+### Added
+
+- Add an administrator-configurable laboratory blog link to desktop and mobile navigation.
+- Support managed updates from source code or release packages, with isolated validation, backups, and rollback.
+
+### Changed
+
+- Refresh the public pages and administration screens with a responsive shared navigation, accessible page states, configurable branding, and theme controls.
+- Improve community writeup actions, skill tree navigation, and leaderboard presentation.
+
+### Fixed
+
+- Refresh both configuration cache layers immediately after administrators save platform settings.
+- Keep account and administration responses out of persistent browser caches, and verify administrator permissions before loading protected screens.
+
+---
 ## [1.8.7](https://github.com/GZTimeWalker/GZCTF/compare/v1.8.6..v1.8.7) - 2026-07-05
 
 ### ⛰️ Features

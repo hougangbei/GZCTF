@@ -93,6 +93,35 @@ public sealed class CommunityWriteupTests(GZCTFApplicationFactory factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData(" ", "Visitor")]
+    [InlineData("Solution", " ")]
+    public async Task Submission_requires_title_and_author(string title, string author)
+    {
+        var challengeId = await SeedChallengeAsync();
+        using var visitor = factory.CreateClient();
+        using var form = PdfForm(title, author, "%PDF-1.4\nexample\n%%EOF");
+
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await visitor.PostAsync($"/api/challenges/{challengeId}/community-writeups", form)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Submission_rejects_pdf_over_twenty_megabytes()
+    {
+        var challengeId = await SeedChallengeAsync();
+        using var visitor = factory.CreateClient();
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent("Oversized solution"), "title");
+        form.Add(new StringContent("Visitor"), "authorName");
+        var bytes = new byte[20 * 1024 * 1024 + 1];
+        Encoding.ASCII.GetBytes("%PDF-").CopyTo(bytes, 0);
+        form.Add(new ByteArrayContent(bytes), "file", "large.pdf");
+
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await visitor.PostAsync($"/api/challenges/{challengeId}/community-writeups", form)).StatusCode);
+    }
+
     private static MultipartFormDataContent PdfForm(string title, string author, string contents, string fileName = "solution.pdf")
     {
         var form = new MultipartFormDataContent();

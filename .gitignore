@@ -260,3 +260,11 @@ docs
 
 # Node package lock files (npm)
 **/package-lock.json
+.gstack/
+
+# Local deployment data and generated test artifacts
+.local-run/
+__pycache__/
+*.py[cod]
+**/playwright-report/
+**/test-results/

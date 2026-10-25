@@ -10,6 +10,7 @@ import useSWR from 'swr'
 import { AccountView } from '@Components/AccountView'
 import { Captcha, useCaptchaRef } from '@Components/Captcha'
 import { StrengthPasswordInput } from '@Components/StrengthPasswordInput'
+import { clearPrivateCache } from '@Utils/Cache'
 import { encryptApiData } from '@Utils/Crypto'
 import { tryGetClientError } from '@Utils/Shared'
 import { useConfig } from '@Hooks/useConfig'
@@ -125,7 +126,10 @@ const Register: FC = () => {
         })
         cleanUp(true)
 
-        if (res.data.data === RegisterStatus.LoggedIn) navigate('/')
+        if (res.data.data === RegisterStatus.LoggedIn) {
+          clearPrivateCache()
+          navigate('/')
+        }
         else if (res.data.data === RegisterStatus.EmailConfirmationRequired)
           navigate('/account/pending', { state: { email } })
         else navigate('/account/login')

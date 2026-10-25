@@ -1,31 +1,35 @@
-import { Center, Loader, Stack, Text } from '@mantine/core'
+import { Button, Skeleton } from '@mantine/core'
 import { useParams, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useSkillTree } from '@Hooks/useSkillTrees'
 import { SkillTreeOutline } from '@Components/skill-trees/SkillTreeOutline'
 import { WithNavBar } from '@Components/WithNavbar'
 import { usePageTitle } from '@Hooks/usePageTitle'
+import classes from '@Components/skill-trees/SkillTreeOutline.module.css'
 
 const SkillTreeDetail = () => {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const { t } = useTranslation('skillTrees')
-  const { data: tree, error } = useSkillTree(id)
+  const { data: tree, error, mutate } = useSkillTree(id)
   usePageTitle(tree?.name ?? t('list.title'))
 
   return (
-    <WithNavBar minWidth={0}>
-      <Stack gap="lg">
-        {!tree && !error ? (
-          <Center>
-            <Loader />
-          </Center>
-        ) : error ? (
-          <Text c="red">{t('errors.generic')}</Text>
-        ) : (
-          <SkillTreeOutline tree={tree!} selectedCategoryId={searchParams.get('category') ?? undefined} />
-        )}
-      </Stack>
+    <WithNavBar minWidth={0} withFooter>
+      {!tree && !error ? (
+        <div className={classes.detailState} role="status" aria-busy="true">
+          <span>{t('loading')}</span>
+          <Skeleton height={28} width="40%" radius="sm" />
+          <Skeleton height={18} width="70%" radius="sm" />
+        </div>
+      ) : error && !tree ? (
+        <div className={classes.detailState} role="alert">
+          <p>{t('errors.generic')}</p>
+          <Button onClick={() => { void mutate() }}>{t('editor.reload')}</Button>
+        </div>
+      ) : (
+        <SkillTreeOutline tree={tree!} selectedCategoryId={searchParams.get('category') ?? undefined} />
+      )}
     </WithNavBar>
   )
 }

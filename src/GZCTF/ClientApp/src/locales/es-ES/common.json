@@ -1,4 +1,12 @@
 {
+  "accessibility": {
+    "navigation": "Navegación principal",
+    "open_navigation": "Abrir navegación",
+    "close_navigation": "Cerrar navegación",
+    "skip_to_content": "Saltar al contenido",
+    "language": "Idioma",
+    "footer_navigation": "Navegación del pie de página"
+  },
   "avatar": {
     "save": "Guardar Avatar",
     "upload_failed": "Error al actualizar el avatar",
@@ -19,6 +27,13 @@
       "title": "La página no existe"
     },
     "about": {
+      "subtitle": "Conoce el laboratorio y su trayectoria.",
+      "emptyTitle": "Estamos preparando el contenido",
+      "emptyDescription": "La presentación del laboratorio está en preparación. Vuelve pronto.",
+      "explorePosts": "Ver publicaciones",
+      "loadFailed": "La página Acerca de no está disponible temporalmente.",
+      "retry": "Volver a cargar",
+      "edit": "Editar contenido",
       "contributors": "Contribuyentes",
       "documentation": "Documentación Oficial",
       "repository": "Repositorio GitHub",
@@ -27,7 +42,9 @@
       "version": "Versión"
     },
     "color": {
+      "apply": "Aplicar",
       "custom": {
+        "contrast_error": "Este color no ofrece suficiente contraste.",
         "description": "Selecciona el color base que deseas usar",
         "label": "Color Base Personalizado",
         "placeholder": "Usar color predeterminado"
@@ -115,6 +132,7 @@
     "delete": "Eliminar"
   },
   "tab": {
+    "laboratory_blog": "Laboratory blog",
     "about": "Acerca de",
     "account": {
       "clean_cache": "Limpiar caché",
@@ -130,6 +148,7 @@
     "theme": {
       "dark": "modo oscuro",
       "light": "modo claro",
+      "system": "Sistema",
       "switch_to": "Cambiar a {{theme}}"
     }
   },

@@ -1,4 +1,12 @@
 {
+  "accessibility": {
+    "navigation": "Navigasi utama",
+    "open_navigation": "Buka navigasi",
+    "close_navigation": "Tutup navigasi",
+    "skip_to_content": "Lewati ke konten",
+    "language": "Bahasa",
+    "footer_navigation": "Navigasi footer"
+  },
   "avatar": {
     "save": "Simpan avatar",
     "upload_failed": "Gagal memperbarui avatar",
@@ -19,6 +27,13 @@
       "title": "Halaman tidak ada"
     },
     "about": {
+      "subtitle": "Kenali laboratorium dan perkembangannya.",
+      "emptyTitle": "Konten sedang disiapkan",
+      "emptyDescription": "Pengenalan laboratorium sedang disiapkan. Kunjungi lagi nanti.",
+      "explorePosts": "Lihat artikel",
+      "loadFailed": "Halaman Tentang sementara tidak tersedia.",
+      "retry": "Muat ulang",
+      "edit": "Sunting konten",
       "contributors": "Kontributor",
       "documentation": "Dokumentasi Resmi",
       "repository": "Repositori GitHub",
@@ -27,7 +42,9 @@
       "version": "Versi"
     },
     "color": {
+      "apply": "Terapkan",
       "custom": {
+        "contrast_error": "Warna ini tidak memiliki kontras yang cukup.",
         "description": "Pilih warna dasar yang ingin kamu gunakan",
         "label": "Pilih warna dasar",
         "placeholder": "Gunakan warna standar"
@@ -115,6 +132,7 @@
     "delete": "Hapus"
   },
   "tab": {
+    "laboratory_blog": "Laboratory blog",
     "about": "Tentang",
     "account": {
       "clean_cache": "Hapus Cache",
@@ -130,6 +148,7 @@
     "theme": {
       "dark": "mode gelap",
       "light": "mode terang",
+      "system": "Sistem",
       "switch_to": "Ubah ke {{theme}}"
     }
   },

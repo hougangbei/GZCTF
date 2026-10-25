@@ -9,7 +9,10 @@ internal static class IdentityExtension
     {
         public void ConfigureIdentity()
         {
-            builder.Services.AddDataProtection().PersistKeysToDbContext<AppDbContext>();
+            var dataProtection = builder.Services.AddDataProtection().PersistKeysToDbContext<AppDbContext>();
+            var applicationName = builder.Configuration["DataProtection:ApplicationName"];
+            if (!string.IsNullOrWhiteSpace(applicationName))
+                dataProtection.SetApplicationName(applicationName);
 
             builder.Services.AddAuthentication(o =>
                 {

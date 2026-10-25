@@ -229,7 +229,7 @@ public class ManagedConfig
 /// <summary>
 /// Global settings
 /// </summary>
-public class GlobalConfig
+public class GlobalConfig : IValidatableObject
 {
     /// <summary>
     /// Default site description
@@ -237,7 +237,7 @@ public class GlobalConfig
     public const string DefaultDescription = "GZ::CTF is an open source CTF platform";
 
     /// <summary>
-    /// Platform prefix name
+    /// Platform name shown to users
     /// </summary>
     [CacheFlush(CacheKey.Index)]
     [CacheFlush(CacheKey.ClientConfig)]
@@ -260,6 +260,12 @@ public class GlobalConfig
     /// </summary>
     [CacheFlush(CacheKey.ClientConfig)]
     public string? FooterInfo { get; set; }
+
+    /// <summary>
+    /// Optional laboratory blog URL shown in public navigation
+    /// </summary>
+    [CacheFlush(CacheKey.ClientConfig)]
+    public string? LaboratoryBlogUrl { get; set; }
 
     /// <summary>
     /// Custom theme color
@@ -292,7 +298,19 @@ public class GlobalConfig
     /// Platform name, used for email and homepage rendering
     /// </summary>
     [JsonIgnore]
-    public string Platform => string.IsNullOrEmpty(Title) ? "GZ::CTF" : $"{Title}::CTF";
+    public string Platform => string.IsNullOrWhiteSpace(Title) ? "GZCTF" : Title.Trim();
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (!string.IsNullOrEmpty(LaboratoryBlogUrl) &&
+            (LaboratoryBlogUrl.Any(char.IsWhiteSpace) ||
+             !Uri.TryCreate(LaboratoryBlogUrl, UriKind.Absolute, out var uri) ||
+             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) ||
+             string.IsNullOrEmpty(uri.Host)))
+            yield return new ValidationResult(
+                "The laboratory blog URL must be an absolute HTTP or HTTPS URL.",
+                [nameof(LaboratoryBlogUrl)]);
+    }
 }
 
 /// <summary>
@@ -302,7 +320,7 @@ public class GlobalConfig
 public partial class ClientConfig
 {
     /// <summary>
-    /// Platform prefix name
+    /// Platform name shown to users
     /// </summary>
     public string Title { get; set; } = "GZ";
 
@@ -315,6 +333,11 @@ public partial class ClientConfig
     /// Footer information
     /// </summary>
     public string? FooterInfo { get; set; }
+
+    /// <summary>
+    /// Optional laboratory blog URL shown in public navigation
+    /// </summary>
+    public string? LaboratoryBlogUrl { get; set; }
 
     /// <summary>
     /// Custom theme color
@@ -368,6 +391,7 @@ public partial class ClientConfig
             Title = globalConfig.Title,
             Slogan = globalConfig.Slogan,
             FooterInfo = globalConfig.FooterInfo,
+            LaboratoryBlogUrl = globalConfig.LaboratoryBlogUrl,
             CustomTheme = globalConfig.CustomTheme,
             LogoUrl = globalConfig.LogoUrl,
             ApiPublicKey = globalConfig.ApiEncryption ? managedConfig.ApiEncryption.PublicKey : null,

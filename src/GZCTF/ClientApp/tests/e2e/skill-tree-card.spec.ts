@@ -65,15 +65,16 @@ test.describe('skill tree discovery', () => {
     await expect(page.getByRole('dialog', { name: '第一道题' })).toBeVisible()
     await expect(page.getByRole('dialog').getByText('阅读这段题目正文')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Join' })).toHaveCount(0)
-    await page.getByRole('button', { name: /查看 WP|View WP/ }).click()
+    await page.getByRole('tab', { name: /查看解题|Browse writeups/ }).click()
     await expect(page.getByRole('link', { name: /Solution A/ })).toBeVisible()
     await expect(page.getByRole('link', { name: /Solution B/ })).toBeVisible()
+    await page.getByRole('tab', { name: /提交 WP|Submit WP/ }).click()
     await page.getByRole('textbox', { name: /WP 标题|WP title/ }).fill('My solution')
     await page.getByRole('textbox', { name: /作者|Author/ }).fill('Visitor')
     await page.locator('input[type="file"]').setInputFiles({
       name: 'solution.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\nexample\n%%EOF'),
     })
-    await page.getByRole('button', { name: /提交 WP|Submit WP/ }).click()
+    await page.getByRole('region', { name: /社区 WP|Community writeups/ }).getByRole('button', { name: /提交 WP|Submit WP/ }).click()
     await expect(page.getByText(/待审核|pending review/i)).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)

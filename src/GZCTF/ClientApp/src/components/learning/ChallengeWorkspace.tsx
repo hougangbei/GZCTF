@@ -10,6 +10,7 @@ import { useUser } from '@Hooks/useUser'
 import { ChallengeInstanceStatus } from '@Api'
 import classes from './ChallengeWorkspace.module.css'
 import { CommunityWriteups } from './CommunityWriteups'
+import { WriteupActions, type WriteupRequest } from './WriteupActions'
 
 export type ChallengeWorkspaceProps = {
   challengeId: string
@@ -36,6 +37,8 @@ export const ChallengeWorkspace = ({
   const { mutate } = useSWRConfig()
   const { startInstance, extendInstance, stopInstance, submitChallenge, nextHint, revealWriteup } =
     useLearningMutations()
+  const [wpRequest, setWpRequest] = useState<WriteupRequest>()
+  const official = useRef<HTMLDivElement>(null)
   const [flag, setFlag] = useState('')
   const [hints, setHints] = useState<string[]>([])
   const [writeup, setWriteup] = useState<string>()
@@ -54,8 +57,11 @@ export const ChallengeWorkspace = ({
       await action()
     } catch (error) {
       setMessageType('error')
-      setMessage((error as { response?: { status?: number } })?.response?.status === 409
-        ? tSkillTrees('instances.limitReached') : t('actionFailed'))
+      setMessage(
+        (error as { response?: { status?: number } })?.response?.status === 409
+          ? tSkillTrees('instances.limitReached')
+          : t('actionFailed')
+      )
     }
   }
 
@@ -108,7 +114,10 @@ export const ChallengeWorkspace = ({
   const revealOfficialWriteup = async () => {
     await run(async () => {
       const result = await revealWriteup(challengeId, locale)
-      if (result) setWriteup(result.content)
+      if (result) {
+        setWriteup(result.content)
+        requestAnimationFrame(() => official.current?.scrollIntoView({ block: 'nearest' }))
+      }
     })
   }
 
@@ -246,6 +255,12 @@ export const ChallengeWorkspace = ({
                 {t('submit')}
               </Button>
             </form>
+            <WriteupActions
+              challengeId={challengeId}
+              hasOfficial={challenge!.hasWriteup}
+              onOfficial={() => void revealOfficialWriteup()}
+              onRequest={(tab) => setWpRequest((current) => ({ tab, id: (current?.id ?? 0) + 1 }))}
+            />
             {message && (
               <Alert color={messageType === 'success' ? 'teal' : 'red'} className={classes.feedback}>
                 {message}
@@ -285,11 +300,15 @@ export const ChallengeWorkspace = ({
             {hints.map((hint, index) => (
               <Alert key={`${index}-${hint}`}>{hint}</Alert>
             ))}
-            {writeup && <Markdown source={writeup} />}
+            {writeup && (
+              <div ref={official}>
+                <Markdown source={writeup} />
+              </div>
+            )}
           </Stack>
         </section>
       )}
-      <CommunityWriteups challengeId={challengeId} />
+      <CommunityWriteups challengeId={challengeId} request={wpRequest} />
     </div>
   )
 }

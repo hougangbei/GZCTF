@@ -7,8 +7,13 @@ namespace GZCTF;
 
 public class Server
 {
-    internal const int MetricPort = 3000;
-    internal const int ServerPort = 8080;
+    internal static readonly int MetricPort = ParsePort(Environment.GetEnvironmentVariable("GZCTF_METRIC_PORT"), 3000);
+    internal static readonly int ServerPort = ParsePort(Environment.GetEnvironmentVariable("GZCTF_SERVER_PORT"), 8080);
+    internal static bool UpdateValidation => Environment.GetEnvironmentVariable("GZCTF_UPDATE_VALIDATION") == "true";
+
+    internal static int ParsePort(string? value, int fallback) =>
+        int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var port) && port is > 0 and <= 65535
+            ? port : fallback;
 
     internal static readonly string[] SupportedCultures =
     [

@@ -7,6 +7,7 @@ import { t } from 'i18next'
 import { createContext, useCallback, use, useEffect, useMemo, useState } from 'react'
 import { showErrorMsg } from '@Utils/Shared'
 import { useConfig } from '@Hooks/useConfig'
+import { ContainerPortMappingType } from '@Api'
 
 interface CustomWsrxOptions {
   name: string
@@ -104,7 +105,7 @@ export const WsrxProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   const doWsrxConnect = useDebouncedCallback(async () => {
     try {
-      wsrx.connect()
+      await wsrx.connect()
     } catch (err) {
       if (err instanceof WsrxError && err.kind !== WsrxErrorKind.DaemonUnavailable) HandleWsrxError(err, t)
     }
@@ -113,13 +114,13 @@ export const WsrxProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   useEffect(() => {
     if (wsrxOptions) {
       wsrx.setOptions(getWsrxConfig(wsrxOptions))
-      doWsrxConnect()
+      if (platformConfig.config.portMapping === ContainerPortMappingType.PlatformProxy) doWsrxConnect()
     }
-  }, [wsrx, wsrxOptions, doWsrxConnect])
+  }, [wsrx, wsrxOptions, doWsrxConnect, platformConfig.config.portMapping])
 
   useEffect(() => {
     if (platformConfig?.config.title) {
-      const newName = platformConfig.config.title + '::CTF'
+      const newName = platformConfig.config.title
       setWsrxOptions((prevOptions) => {
         if (prevOptions.name === newName) return prevOptions
         return {

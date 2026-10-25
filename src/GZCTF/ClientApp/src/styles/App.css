@@ -1,17 +1,79 @@
-/*
- * Base styles for the application
- */
+/* Shared GZCTF surfaces, adapted from the public HaoBaChang visual reference. */
+:root,
+[data-mantine-color-scheme='light'] {
+  --hbc-bg: #f9fafb;
+  --hbc-card: #fff;
+  --hbc-surface: #f3f5fa;
+  --hbc-ink: #1e293b;
+  --hbc-muted: #64748b;
+  --hbc-border: #e2e8f0;
+  --artex-background: var(--hbc-bg);
+  --artex-sidebar: var(--hbc-surface);
+  --artex-card: var(--hbc-card);
+  --artex-surface: var(--hbc-surface);
+  --artex-foreground: var(--hbc-ink);
+  --artex-muted: var(--hbc-muted);
+  --artex-border: var(--hbc-border);
+}
+
+[data-mantine-color-scheme='dark'] {
+  --hbc-bg: #111827;
+  --hbc-card: #1f2937;
+  --hbc-surface: #273449;
+  --hbc-ink: #f8fafc;
+  --hbc-muted: #cbd5e1;
+  --hbc-border: #37465d;
+  --artex-background: var(--hbc-bg);
+  --artex-sidebar: var(--hbc-surface);
+  --artex-card: var(--hbc-card);
+  --artex-surface: var(--hbc-surface);
+  --artex-foreground: var(--hbc-ink);
+  --artex-muted: var(--hbc-muted);
+  --artex-border: var(--hbc-border);
+}
 
 body {
   padding: 0;
   margin: 0;
 
-  background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-gray-7));
-  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-0));
+  background-color: var(--hbc-bg);
+  color: var(--hbc-ink);
 
   @media print {
     background-color: light-dark(var(--mantine-color-white), var(--mantine-color-gray-7));
   }
+}
+
+.mantine-Card-root,
+.mantine-Paper-root {
+  border: 1px solid var(--hbc-border);
+  border-radius: 0.9rem;
+  background: var(--hbc-card);
+  box-shadow: 0 8px 26px rgb(30 41 59 / 3%);
+}
+
+.mantine-Input-input,
+.mantine-Select-input,
+.mantine-Textarea-input {
+  border-color: var(--hbc-border);
+  border-radius: 0.65rem;
+}
+
+.mantine-Input-input::placeholder,
+.mantine-Select-input::placeholder,
+.mantine-Textarea-input::placeholder {
+  color: var(--hbc-muted);
+  opacity: 1;
+}
+
+.mantine-Button-root,
+.mantine-ActionIcon-root {
+  border-radius: 0.65rem;
+}
+
+:is(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--hbc-primary);
+  outline-offset: 2px;
 }
 
 ::-webkit-scrollbar {

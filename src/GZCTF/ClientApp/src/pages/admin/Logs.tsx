@@ -38,7 +38,6 @@ const Logs: FC = () => {
 
   return (
     <AdminPage
-      minWidth={390}
       isLoading={false}
       head={
         <Group justify="space-between" w="100%" wrap="wrap">

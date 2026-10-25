@@ -1,4 +1,12 @@
 {
+  "accessibility": {
+    "navigation": "主导航",
+    "open_navigation": "打开导航",
+    "close_navigation": "关闭导航",
+    "skip_to_content": "跳转到主要内容",
+    "language": "语言",
+    "footer_navigation": "页脚导航"
+  },
   "avatar": {
     "save": "保存头像",
     "upload_failed": "头像更新失败",
@@ -19,6 +27,13 @@
       "title": "页面不存在"
     },
     "about": {
+      "subtitle": "了解实验室的方向与成长记录。",
+      "emptyTitle": "内容正在整理",
+      "emptyDescription": "实验室介绍正在整理，敬请期待。",
+      "explorePosts": "浏览文章",
+      "loadFailed": "关于页面暂时无法加载",
+      "retry": "重新加载",
+      "edit": "编辑内容",
       "contributors": "贡献者",
       "documentation": "官方文档",
       "repository": "GitHub 仓库",
@@ -27,7 +42,9 @@
       "version": "版本信息"
     },
     "color": {
+      "apply": "应用",
       "custom": {
+        "contrast_error": "该颜色对比度不足",
         "description": "选择自定义颜色",
         "label": "自定义颜色",
         "placeholder": "使用默认颜色"
@@ -43,7 +60,7 @@
         "label": "颜色主题来源",
         "managed": "管理员提供"
       },
-      "title": "修改平台颜色"
+      "title": "主题设置"
     },
     "drop_zone": {
       "content": "拖放图片或点击此处以选择{{type}}",
@@ -115,6 +132,7 @@
     "delete": "删除"
   },
   "tab": {
+    "laboratory_blog": "实验室博客",
     "about": "关于",
     "account": {
       "clean_cache": "清除缓存",
@@ -130,6 +148,7 @@
     "theme": {
       "dark": "深色",
       "light": "浅色",
+      "system": "跟随系统",
       "switch_to": "切换到{{theme}}主题"
     }
   },

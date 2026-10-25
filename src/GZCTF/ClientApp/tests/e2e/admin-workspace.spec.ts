@@ -9,17 +9,19 @@ const mockAdmin = async (page: Page) => {
   await page.route('**/api/account/profile', (route) =>
     route.fulfill({ json: { userId: '30000000-0000-0000-0000-000000000001', userName: 'workspace-admin', role: 'Admin' } })
   )
+  await page.route(/\/api\/admin\/cohorts\/registrants(?:\?|$)/, (route) =>
+    route.fulfill({ json: { items: [], total: 0 } }))
   await page.addInitScript(() => localStorage.setItem('language', JSON.stringify('zh-CN')))
 }
 
 test.describe('admin workspace', () => {
-  test('all six tabs remain accessible on a narrow screen', async ({ page }) => {
+  test('all eight tabs remain accessible on a narrow screen', async ({ page }) => {
     await mockAdmin(page)
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/admin/skill-trees')
 
     const tabs = page.getByRole('tab')
-    await expect(tabs).toHaveCount(6)
+    await expect(tabs).toHaveCount(8)
     const positions = await tabs.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().top))
     expect(new Set(positions.map(Math.round)).size).toBe(1)
     await page.getByRole('tab', { name: '成员管理' }).click()
@@ -27,7 +29,7 @@ test.describe('admin workspace', () => {
     await expect(page.getByRole('button', { name: '创建年级' }).first()).toBeVisible()
   })
 
-  test('six tabs switch in place and legacy addresses land on their tabs', async ({ page }) => {
+  test('eight tabs switch in place and legacy addresses land on their tabs', async ({ page }) => {
     test.setTimeout(120_000)
     await mockAdmin(page)
 
@@ -48,7 +50,7 @@ test.describe('admin workspace', () => {
 
     // 1. The workspace shows the four tabs in order.
     await page.goto('/admin/skill-trees')
-    const labels = ['技能树', '全局类别', '题目管理', '成员管理', 'WP 审核', '实例管理']
+    const labels = ['技能树', '全局类别', '题目管理', '成员管理', '用户管理', 'WP 审核', 'WP 管理', '实例管理']
     for (const label of labels) {
       await expect(page.getByRole('tab', { name: label })).toBeVisible()
     }
@@ -98,7 +100,7 @@ test.describe('admin workspace', () => {
       challengeTitle: 'Container challenge', status: 'Running',
       startedAtUtc: new Date().toISOString(), expiresAtUtc: new Date().toISOString(),
     }
-    await page.route('**/api/admin/community-writeups?status=pending', (route) =>
+    await page.route(/\/api\/admin\/community-writeups\?status=pending(?:&|$)/, (route) =>
       route.fulfill({ json: pending ? [writeup] : [] }))
     await page.route('**/api/admin/community-writeups/*/review', (route) => {
       pending = false
@@ -317,7 +319,7 @@ test.describe('admin workspace', () => {
 
     // 2. Search candidate users and assign them to the current cohort.
     await page.getByRole('textbox', { name: '搜索成员' }).fill('bob')
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await page.getByRole('button', { name: '搜索', exact: true }).last().click()
     await page.getByRole('combobox', { name: '选择要分配的成员' }).click()
     await page.getByRole('option', { name: 'workspace-bob' }).click()
     await page.keyboard.press('Escape')

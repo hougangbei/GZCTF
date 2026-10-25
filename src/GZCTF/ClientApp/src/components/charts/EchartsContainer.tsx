@@ -1,4 +1,4 @@
-import { useMantineColorScheme } from '@mantine/core'
+import { useComputedColorScheme } from '@mantine/core'
 import type { EChartsOption } from 'echarts'
 import * as echarts from 'echarts'
 import { FC, useEffect, useRef } from 'react'
@@ -14,7 +14,7 @@ export const EchartsContainer: FC<EchartsContainerProps> = (props) => {
   const chartInstance = useRef<echarts.ECharts | null>(null)
   const { option, opts, style, ...rest } = props
 
-  const { colorScheme } = useMantineColorScheme()
+  const colorScheme = useComputedColorScheme('light', { getInitialValueInEffect: false })
 
   useEffect(() => {
     if (chartRef.current && !chartInstance.current) {
