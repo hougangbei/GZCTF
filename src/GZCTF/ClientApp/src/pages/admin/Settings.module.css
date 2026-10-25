@@ -1,0 +1,17 @@
+.saveButton {
+  position: fixed;
+  right: 2rem;
+  bottom: 2rem;
+  z-index: 100;
+  box-shadow: var(--mantine-shadow-lg);
+}
+
+@media (max-width: 48em) {
+  .saveButton {
+    position: static;
+    align-self: flex-end;
+    margin-bottom: 0.75rem;
+  }
+}
+
+@media print { .saveButton { display: none; } }

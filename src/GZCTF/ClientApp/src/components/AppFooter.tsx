@@ -1,41 +1,28 @@
-import { Center, Divider, Stack, Text } from '@mantine/core'
 import { FC } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { Copyright } from '@Components/Copyright'
 import { FooterRender } from '@Components/FooterRender'
-import { MainIcon } from '@Components/icon/MainIcon'
 import { useIsMobile } from '@Utils/ThemeOverride'
 import { useConfig } from '@Hooks/useConfig'
 import classes from '@Styles/AppFooter.module.css'
-import logoClasses from '@Styles/LogoHeader.module.css'
 
 export const AppFooter: FC = () => {
   const { config } = useConfig()
   const isMobile = useIsMobile()
+  const { t } = useTranslation()
 
   return (
-    <>
-      <div className={classes.spacer} />
-      <div className={classes.wrapper}>
-        <Center mx="auto" h="100%">
-          <Stack gap="sm" w={isMobile ? '100%' : '80%'}>
-            <Stack w="100%" align="center" gap={2}>
-              <MainIcon size={isMobile ? '3rem' : '4rem'} />
-              <Text fw="bold" size={isMobile ? '2rem' : '2.5rem'}>
-                GZ<span className={logoClasses.brand}>::</span>CTF
-              </Text>
-            </Stack>
-            {isMobile ? (
-              <>
-                <Copyright isMobile={isMobile} />
-                {config.footerInfo && <Divider />}
-              </>
-            ) : (
-              <Divider label={<Copyright isMobile={isMobile} />} labelPosition="center" />
-            )}
-            {config.footerInfo && <FooterRender source={config.footerInfo} />}
-          </Stack>
-        </Center>
+    <footer className={classes.wrapper}>
+      <div className={classes.inner}>
+        <nav aria-label={t('common.accessibility.footer_navigation')} className={classes.links}>
+          <Link to="/skill-trees">{t('skillTrees:navigation.title')}</Link>
+          <Link to="/posts">{t('common.tab.post')}</Link>
+          <Link to="/about">{t('common.tab.about')}</Link>
+        </nav>
+        <Copyright isMobile={isMobile} />
+        {config.footerInfo && <FooterRender source={config.footerInfo} />}
       </div>
-    </>
+    </footer>
   )
 }

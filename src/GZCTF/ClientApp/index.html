@@ -3,8 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <script nonce="%nonce%" data-mantine-script>
+      try {
+        const stored = localStorage.getItem('mantine-color-scheme-value');
+        const mode = stored === 'light' || stored === 'dark' || stored === 'auto' ? stored : 'auto';
+        document.documentElement.setAttribute('data-mantine-color-scheme',
+          mode === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode);
+      } catch (error) {
+        document.documentElement.setAttribute('data-mantine-color-scheme', 'light');
+      }
+    </script>
     <meta content="%description%" name="description" />
-    <meta content="%title%, GZCTF" name="keywords" />
+    <meta content="%title%" name="keywords" />
     <meta property="og:image" content="/favicon.webp" />
     <link href="/favicon.webp" rel="icon" type="image/webp" />
     <title>%title%</title>

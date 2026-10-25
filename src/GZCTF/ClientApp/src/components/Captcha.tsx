@@ -1,4 +1,4 @@
-import { Box, BoxProps, useMantineColorScheme } from '@mantine/core'
+import { Box, BoxProps, useComputedColorScheme } from '@mantine/core'
 import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
 import { HashPow } from '@Components/HashPow'
@@ -38,7 +38,7 @@ export const Captcha = forwardRef<CaptchaInstance, CaptchaProps>((props, ref) =>
   const { action, ...others } = props
 
   const { info, error } = useCaptchaConfig()
-  const { colorScheme } = useMantineColorScheme()
+  const colorScheme = useComputedColorScheme('light', { getInitialValueInEffect: false })
   const type = info?.type ?? CaptchaProvider.None
 
   const backendRef = useRef<CaptchaInstance>(null)

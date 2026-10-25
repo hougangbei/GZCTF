@@ -1,9 +1,9 @@
-import { generateColors } from '@mantine/colors-generator'
 import {
   ActionIcon,
   Avatar,
   Badge,
   Code,
+  CSSVariablesResolver,
   Loader,
   MantineThemeOverride,
   Menu,
@@ -13,13 +13,13 @@ import {
   Tabs,
   Tooltip,
   TooltipFloating,
-  createTheme,
   useMantineTheme,
 } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 import { useLocalStorage, useMediaQuery } from '@mantine/hooks'
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { useConfig } from '@Hooks/useConfig'
+import { resolveThemePalette } from '@Utils/ThemePalette'
 import tooltipClasses from '@Styles/Tooltip.module.css'
 
 const CustomTheme: MantineThemeOverride = {
@@ -37,16 +37,16 @@ const CustomTheme: MantineThemeOverride = {
       '#141414',
     ],
     brand: [
-      '#E1FFF9',
-      '#CFFCF1',
-      '#A2F7E2',
-      '#72F1D2',
-      '#4BEDC4',
-      '#2AE5B5',
-      '#18CB9E',
-      '#00AA85',
-      '#007F6E',
-      '#005A4C',
+      '#EEF0FF',
+      '#E0E4FF',
+      '#C6CAFF',
+      '#A5A8FB',
+      '#8386F6',
+      '#6366F1',
+      '#5558E8',
+      '#4749D1',
+      '#3638A8',
+      '#292B7E',
     ],
     alert: [
       '#FFB4B4',
@@ -86,12 +86,14 @@ const CustomTheme: MantineThemeOverride = {
     ],
   },
   primaryColor: 'brand',
+  primaryShade: { light: 6, dark: 3 },
+  autoContrast: true,
   fontFamily:
-    'Lexend, -apple-system, BlinkMacSystemFont, Helvetica Neue, PingFang SC, Microsoft YaHei, Source Han Sans SC, Noto Sans CJK SC, sans-serif',
+    'Roboto, -apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif',
   fontFamilyMonospace:
     'JetBrains Mono, ui-monospace, SFMono-Regular, Monaco, Consolas, Courier New, monospace, sans-serif',
   headings: {
-    fontFamily: 'Lexend, sans-serif',
+    fontFamily: 'Roboto, -apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif',
   },
   breakpoints: {
     xs: '30em',
@@ -183,6 +185,31 @@ const CustomTheme: MantineThemeOverride = {
   },
 }
 
+export const themeCssVariablesResolver: CSSVariablesResolver = () => ({
+  variables: {
+    '--hbc-primary': 'var(--mantine-primary-color-filled)',
+    '--hbc-primary-hover': 'var(--mantine-primary-color-filled-hover)',
+    '--hbc-primary-foreground': 'var(--mantine-primary-color-contrast)',
+    '--hbc-primary-soft': 'var(--mantine-primary-color-light)',
+  },
+  light: {
+    '--hbc-bg': '#f9fafb',
+    '--hbc-card': '#ffffff',
+    '--hbc-surface': '#f3f5fa',
+    '--hbc-ink': '#1e293b',
+    '--hbc-muted': '#64748b',
+    '--hbc-border': '#e2e8f0',
+  },
+  dark: {
+    '--hbc-bg': '#111827',
+    '--hbc-card': '#1f2937',
+    '--hbc-surface': '#273449',
+    '--hbc-ink': '#f8fafc',
+    '--hbc-muted': '#cbd5e1',
+    '--hbc-border': '#37465d',
+  },
+})
+
 export enum ColorProvider {
   Managed = 'Managed',
   Default = 'Default',
@@ -223,7 +250,7 @@ export const useCustomColor = () => {
 
   const setCustomColor = (color: CustomColor) => {
     // validate custom color, do not save invalid values
-    if (color.provider === ColorProvider.Custom && !/^#[0-9A-F]{6}$/i.test(color.color)) return
+    if (color.provider === ColorProvider.Custom && !resolveThemePalette(color.color)) return
 
     setCustomColorInner(color)
   }
@@ -237,31 +264,17 @@ export const useCustomTheme = () => {
   const { config } = useConfig()
   const { customColor } = useCustomColor()
 
-  const resolveManaged = (color: string | null | undefined) => {
-    return color && /^#[0-9A-F]{6}$/i.test(color) ? color : null
-  }
+  const resolvedColor = customColor.provider === ColorProvider.Custom
+    ? customColor.color
+    : customColor.provider === ColorProvider.Managed ? config.customTheme : null
 
-  const [theme, setTheme] = useState<MantineThemeOverride>(createTheme(CustomTheme))
-
-  useEffect(() => {
-    if (customColor.provider === ColorProvider.Default) {
-      setTheme(CustomTheme)
-      return
-    }
-
-    const resolvedColor =
-      customColor.provider === ColorProvider.Custom
-        ? customColor.color
-        : customColor.provider === ColorProvider.Managed
-          ? resolveManaged(config.customTheme)
-          : null
-
-    if (resolvedColor) {
-      setTheme({
+  const theme = useMemo<MantineThemeOverride>(() => {
+    const palette = resolveThemePalette(resolvedColor)
+    return palette ? {
         ...CustomTheme,
         colors: {
           ...CustomTheme.colors,
-          custom: generateColors(resolvedColor),
+          custom: palette.colors,
         },
         components: {
           ...CustomTheme.components,
@@ -272,11 +285,9 @@ export const useCustomTheme = () => {
           }),
         },
         primaryColor: 'custom',
-      })
-    } else {
-      setTheme(CustomTheme)
-    }
-  }, [customColor, config.customTheme])
+        primaryShade: { light: palette.lightShade, dark: palette.darkShade },
+    } : CustomTheme
+  }, [resolvedColor])
 
   return { theme }
 }

@@ -1,12 +1,66 @@
 .header {
-  width: 100%;
-  z-index: 150;
-  border: none;
-  box-shadow: var(--mantine-shadow-md);
-
-  background-color: light-dark(var(--mantine-color-light-0), var(--mantine-color-gray-8));
+  z-index: 200;
+  height: 56px;
+  border-bottom: 1px solid var(--hbc-border);
+  background: var(--hbc-card);
+  color: var(--hbc-ink);
+  box-shadow: 0 4px 18px rgb(30 41 59 / 5%);
 }
 
-.button {
-  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-0));
+.inner {
+  display: flex;
+  width: 100%;
+  max-width: 1440px;
+  height: 100%;
+  align-items: center;
+  gap: 1.1rem;
+  margin: 0 auto;
+  padding: 0 clamp(1rem, 3vw, 2.5rem);
+}
+
+.brand {
+  display: inline-flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--hbc-ink);
+  font-size: 1rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.brandName { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.brand:focus-visible { outline: 2px solid var(--hbc-primary); outline-offset: 3px; }
+.spacer { min-width: 0; flex: 1; }
+.actions { flex: 0 0 auto; }
+
+.themeButton {
+  min-width: 5.25rem;
+  border: 1px solid var(--hbc-border);
+  border-radius: 999px;
+  background: var(--hbc-bg);
+  color: var(--hbc-muted);
+}
+.themeButton:hover { background: var(--hbc-primary-soft); color: var(--hbc-primary); }
+.loginButton { min-height: 2.35rem; border-radius: 0.55rem; background: var(--hbc-primary); color: var(--hbc-primary-foreground); }
+.loginButton:hover { background: var(--hbc-primary-hover); }
+.accountButton { max-width: 9rem; border-radius: 0.55rem; }
+.iconAction { color: var(--hbc-muted); }
+.iconAction:hover { color: var(--hbc-primary); background: var(--hbc-primary-soft); }
+
+@media (max-width: 68.75em) {
+  .inner { gap: 0.5rem; }
+  .actions { margin-left: auto; }
+}
+
+@media (max-width: 34em) {
+  .brand { font-size: 0.9rem; }
+  .themeButton { min-width: 2.25rem; width: 2.25rem; padding: 0; font-size: 0; }
+  .themeButton :global(.mantine-Button-section) { margin: 0; }
+  .loginButton { width: 2.4rem; padding: 0; font-size: 0; }
+  .loginButton :global(.mantine-Button-section) { margin: 0; }
+  .accountButton { max-width: 2.4rem; padding: 0; font-size: 0; }
+  .accountButton :global(.mantine-Button-section) { margin: 0; }
+  .iconAction { display: none; }
 }

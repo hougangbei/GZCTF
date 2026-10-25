@@ -1,22 +1,78 @@
-import { Button, Center, Loader, Stack, Text } from '@mantine/core'
-import { useEffect, useState } from 'react'
+import { Button, Skeleton } from '@mantine/core'
+import { mdiArrowRight, mdiInformationOutline, mdiPencilOutline, mdiReload } from '@mdi/js'
+import { Icon } from '@mdi/react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
+import useSWR from 'swr'
+import { Role, fetcher } from '@Api'
 import { WithNavBar } from '@Components/WithNavbar'
 import { usePageTitle } from '@Hooks/usePageTitle'
 import { useUser } from '@Hooks/useUser'
-import { Role } from '@Api'
 import { AboutRenderer } from '../features/about/AboutRenderer'
 import type { AboutDocument } from '../features/about/types'
+import classes from './AboutPage.module.css'
+
+type PublicAbout = { published: boolean; document?: AboutDocument }
 
 const About = () => {
   const { t } = useTranslation()
   const { user } = useUser()
-  const [data, setData] = useState<{ published: boolean; document?: AboutDocument }>()
-  useEffect(() => { fetch('/api/about').then((r) => r.json()).then(setData).catch(() => setData({ published: false })) }, [])
-  usePageTitle(data?.document?.title ?? t('common.title.about'))
-  return <WithNavBar minWidth={0}><Stack maw={1200} mx="auto" w="100%" px="md" py="md" pos="relative">
-    {user?.role === Role.Admin && <Button component="a" href="/admin/about" variant="light" size="xs" ml="auto">编辑</Button>}
-    {!data ? <Center mih={240}><Loader /></Center> : data.published && data.document ? <AboutRenderer document={data.document} /> : <Center mih={360}><Stack ta="center" gap="xs"><Text ff="monospace" c="cyan" size="xl">&gt; 内容建设中</Text><Text c="dimmed">实验室介绍正在整理，敬请期待。</Text></Stack></Center>}
-  </Stack></WithNavBar>
+  const { data, error, mutate } = useSWR<PublicAbout>('/api/about', fetcher, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  })
+  const published = data?.published && data.document
+  const title = published ? data.document!.title : t('common.title.about')
+  usePageTitle(title)
+
+  return <WithNavBar minWidth={0} withFooter>
+    <div className={classes.page}>
+      {user?.role === Role.Admin && <Link className={classes.edit} to="/admin/about">
+        <Icon path={mdiPencilOutline} size={0.75} aria-hidden="true" />
+        {t('common.content.about.edit')}
+      </Link>}
+
+      {published ? <>
+        {error && <div className={classes.stale} role="alert">
+          <span>{t('common.content.about.loadFailed')}</span>
+          <Button size="compact-sm" variant="subtle" onClick={() => { void mutate() }}>
+            {t('common.content.about.retry')}
+          </Button>
+        </div>}
+        <AboutRenderer document={data.document!} subtitle={t('common.content.about.subtitle')} />
+      </> : <>
+        <header className={classes.header}>
+          <h1>{t('common.title.about')}</h1>
+          <p>{t('common.content.about.subtitle')}</p>
+        </header>
+
+        {!data && !error ? (
+          <section className={classes.loading} role="status" aria-busy="true">
+            <span className={classes.srOnly}>{t('common.content.about.subtitle')}</span>
+            <Skeleton height={26} width="30%" radius="sm" />
+            <Skeleton height={140} radius="md" />
+          </section>
+        ) : error ? (
+          <section className={classes.statePanel} role="alert">
+            <span className={classes.stateIcon} aria-hidden="true"><Icon path={mdiInformationOutline} size={1.7} /></span>
+            <h2>{t('common.content.about.loadFailed')}</h2>
+            <Button leftSection={<Icon path={mdiReload} size={0.8} />} onClick={() => { void mutate() }}>
+              {t('common.content.about.retry')}
+            </Button>
+          </section>
+        ) : (
+          <section className={classes.statePanel} role="status">
+            <span className={classes.stateIcon} aria-hidden="true"><Icon path={mdiInformationOutline} size={1.7} /></span>
+            <h2>{t('common.content.about.emptyTitle')}</h2>
+            <p>{t('common.content.about.emptyDescription')}</p>
+            <Link className={classes.action} to="/posts">
+              {t('common.content.about.explorePosts')}<Icon path={mdiArrowRight} size={0.8} aria-hidden="true" />
+            </Link>
+          </section>
+        )}
+      </>}
+    </div>
+  </WithNavBar>
 }
+
 export default About

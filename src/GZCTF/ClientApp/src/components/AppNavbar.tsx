@@ -1,242 +1,61 @@
-import {
-  ActionIcon,
-  AppShell,
-  Avatar,
-  Menu,
-  MenuDivider,
-  Popover,
-  Stack,
-  Tooltip,
-  useMantineColorScheme,
-} from '@mantine/core'
-import {
-  mdiAccountCircleOutline,
-  mdiCached,
-  mdiChartLine,
-  mdiFileTreeOutline,
-  mdiFileCheckOutline,
-  mdiHomeVariantOutline,
-  mdiInformationOutline,
-  mdiLogin,
-  mdiLogout,
-  mdiNoteTextOutline,
-  mdiPalette,
-  mdiPackageVariantClosed,
-  mdiTranslate,
-  mdiWeatherNight,
-  mdiWeatherSunny,
-  mdiWrenchOutline,
-  mdiTransitConnectionVariant,
-} from '@mdi/js'
+import { mdiBookOpenPageVariantOutline, mdiChartLine, mdiFileCheckOutline, mdiFileTreeOutline, mdiHomeVariantOutline, mdiInformationOutline, mdiNoteTextOutline, mdiPackageVariantClosed, mdiWrenchOutline } from '@mdi/js'
 import { Icon } from '@mdi/react'
-import cx from 'clsx'
-import React, { FC, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router'
-import { LogoBox } from '@Components/LogoBox'
-import { AppControlProps } from '@Components/WithNavbar'
-import { WsrxManager } from '@Components/WsrxManager'
-import { clearLocalCache } from '@Utils/Cache'
-import { LanguageMap, SupportedLanguages, useLanguage } from '@Utils/I18n'
+import { useUser } from '@Hooks/useUser'
 import { useConfig } from '@Hooks/useConfig'
-import { useLogOut, useUser } from '@Hooks/useUser'
-import { ContainerPortMappingType, Role } from '@Api'
+import { getLaboratoryBlogUrl } from '@Utils/LaboratoryBlog'
+import { Role } from '@Api'
 import classes from '@Styles/AppNavbar.module.css'
-import misc from '@Styles/Misc.module.css'
 
-interface NavbarItem {
-  icon: string
-  label: string
-  link: string
-  admin?: boolean
+type NavItem = { icon: string; label: string; link: string; admin?: boolean; external?: boolean }
+
+interface AppNavbarProps {
+  mobile: boolean
+  mobileHidden: boolean
+  onNavigate: () => void
 }
 
-export interface NavbarLinkProps {
-  icon: string
-  label: string
-  link?: string
-  onClick?: () => void
-  isActive?: boolean
-}
-
-const NavbarLink: FC<NavbarLinkProps> = (props: NavbarLinkProps) => {
-  const { t } = useTranslation()
-
-  return (
-    <Tooltip label={t(props.label)} classNames={classes} position="right">
-      <ActionIcon
-        onClick={props.onClick}
-        component={Link}
-        to={props.link ?? '#'}
-        data-active={props.isActive || undefined}
-        className={classes.link}
-      >
-        <Icon path={props.icon} size={1} />
-      </ActionIcon>
-    </Tooltip>
-  )
-}
-
-export const AppNavbar: FC<AppControlProps> = ({ openColorModal }) => {
-  const location = useLocation()
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme()
-
-  const logout = useLogOut()
-  const { user, error } = useUser()
+export function AppNavbar({ mobile, mobileHidden, onNavigate }: AppNavbarProps) {
+  const { t } = useTranslation(['translation', 'skillTrees'])
+  const { user } = useUser()
   const { config } = useConfig()
-  const { t } = useTranslation()
-  const { setLanguage, supportedLanguages } = useLanguage()
-
-  const items: NavbarItem[] = [
+  const blogUrl = getLaboratoryBlogUrl(config.laboratoryBlogUrl)
+  const location = useLocation()
+  const items: NavItem[] = [
     { icon: mdiHomeVariantOutline, label: 'common.tab.home', link: '/' },
-    { icon: mdiNoteTextOutline, label: 'common.tab.post', link: '/posts' },
     { icon: mdiFileTreeOutline, label: 'skillTrees:navigation.title', link: '/skill-trees' },
+    { icon: mdiNoteTextOutline, label: 'common.tab.post', link: '/posts' },
     { icon: mdiChartLine, label: 'skillTrees:leaderboard.title', link: '/leaderboard' },
     { icon: mdiInformationOutline, label: 'common.tab.about', link: '/about' },
+    ...(blogUrl ? [{ icon: mdiBookOpenPageVariantOutline, label: 'common.tab.laboratory_blog', link: blogUrl, external: true }] : []),
     { icon: mdiWrenchOutline, label: 'common.tab.admin', link: '/admin/skill-trees', admin: true },
     { icon: mdiFileCheckOutline, label: 'skillTrees:writeups.reviewMenu', link: '/admin/skill-trees?tab=writeups', admin: true },
     { icon: mdiPackageVariantClosed, label: 'skillTrees:instances.menu', link: '/admin/skill-trees?tab=instances', admin: true },
   ]
-
-  const getLabel = (path: string, search: string) => {
-    if (path.startsWith('/admin')) {
-      const tab = new URLSearchParams(search).get('tab')
-      if (tab === 'writeups') return 'skillTrees:writeups.reviewMenu'
-      if (tab === 'instances') return 'skillTrees:instances.menu'
-      return 'common.tab.admin'
-    }
-    return items.find((item) => item.link === '/' ? path === '/' : path.startsWith(item.link))?.label
-  }
-
-  const [active, setActive] = useState(getLabel(location.pathname, location.search) ?? '')
-
-  useEffect(() => {
-    if (location.pathname === '/') {
-      setActive(items[0].label)
-    } else {
-      setActive(getLabel(location.pathname, location.search) ?? '')
-    }
-  }, [location.pathname, location.search])
-
-  const links = items
-    .filter((m) => !m.admin || user?.role === Role.Admin)
-    .map((link) => <NavbarLink key={link.label} {...link} isActive={link.label === active} />)
-
-  const loggedIn = user && !error
+  const active = location.pathname.startsWith('/admin') ? new URLSearchParams(location.search).get('tab') : null
 
   return (
-    <AppShell.Navbar className={classes.navbar}>
-      {/* Logo */}
-      <AppShell.Section grow>
-        <LogoBox size="100%" className={classes.logo} component={Link} to="/" />
-      </AppShell.Section>
-
-      {/* Common Nav */}
-      <AppShell.Section className={cx(classes.section, misc.justifyCenter)}>{links}</AppShell.Section>
-
-      <AppShell.Section className={cx(classes.section, misc.justifyEnd)}>
-        <Stack w="100%" align="center" justify="center" gap={5}>
-          {/* WebSocket Reflector X Integration */}
-          {config.portMapping === ContainerPortMappingType.PlatformProxy && (
-            <Popover position="right" offset={24} width={320}>
-              <Popover.Target>
-                <ActionIcon className={classes.link}>
-                  <Icon path={mdiTransitConnectionVariant} size={1} />
-                </ActionIcon>
-              </Popover.Target>
-              <Popover.Dropdown>
-                <WsrxManager />
-              </Popover.Dropdown>
-            </Popover>
-          )}
-
-          {/* Language */}
-          <Menu position="right" offset={24} width={160}>
-            <Menu.Target>
-              <ActionIcon className={classes.link}>
-                <Icon path={mdiTranslate} size={1} />
-              </ActionIcon>
-            </Menu.Target>
-
-            <Menu.Dropdown>
-              {supportedLanguages.map((lang: SupportedLanguages) => (
-                <Menu.Item key={lang} fw={500} onClick={() => setLanguage(lang)}>
-                  {LanguageMap[lang] ?? lang}
-                </Menu.Item>
-              ))}
-            </Menu.Dropdown>
-          </Menu>
-
-          {/* Color Mode */}
-          <Tooltip
-            label={t('common.tab.theme.switch_to', {
-              theme: colorScheme === 'dark' ? t('common.tab.theme.light') : t('common.tab.theme.dark'),
-            })}
-            classNames={classes}
-            position="right"
-          >
-            <ActionIcon onClick={() => toggleColorScheme()} className={classes.link}>
-              {colorScheme === 'dark' ? (
-                <Icon path={mdiWeatherSunny} size={1} />
-              ) : (
-                <Icon path={mdiWeatherNight} size={1} />
-              )}
-            </ActionIcon>
-          </Tooltip>
-
-          {/* User Info */}
-          <Menu position="right-end" offset={24}>
-            <Menu.Target>
-              <ActionIcon className={classes.link}>
-                {user?.avatar ? (
-                  <Avatar alt="avatar" src={user?.avatar} radius="md" size="md">
-                    {user.userName?.slice(0, 1) ?? 'U'}
-                  </Avatar>
-                ) : (
-                  <Icon path={mdiAccountCircleOutline} size={1} />
-                )}
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-              {loggedIn && (
-                <>
-                  <Menu.Label>{user?.userName}</Menu.Label>
-                  <Menu.Item
-                    component={Link}
-                    to="/account/profile"
-                    leftSection={<Icon path={mdiAccountCircleOutline} size={1} />}
-                  >
-                    {t('common.tab.account.profile')}
-                  </Menu.Item>
-                  <Menu.Item component={Link} to="/account/learning" leftSection={<Icon path={mdiFileTreeOutline} size={1} />}>
-                    {t('skillTrees:list.title')}
-                  </Menu.Item>
-                </>
-              )}
-              <Menu.Item onClick={clearLocalCache} leftSection={<Icon path={mdiCached} size={1} />}>
-                {t('common.tab.account.clean_cache')}
-              </Menu.Item>
-              <Menu.Item onClick={openColorModal} leftSection={<Icon path={mdiPalette} size={1} />}>
-                {t('common.content.color.title')}
-              </Menu.Item>
-              <MenuDivider />
-              {loggedIn ? (
-                <Menu.Item color="red" onClick={logout} leftSection={<Icon path={mdiLogout} size={1} />}>
-                  {t('common.tab.account.logout')}
-                </Menu.Item>
-              ) : (
-                <Menu.Item
-                  component={Link}
-                  to={`/account/login?from=${location.pathname}`}
-                  leftSection={<Icon path={mdiLogin} size={1} />}
-                >
-                  {t('common.tab.account.login')}
-                </Menu.Item>
-              )}
-            </Menu.Dropdown>
-          </Menu>
-        </Stack>
-      </AppShell.Section>
-    </AppShell.Navbar>
+    <nav className={classes.navbar} data-mobile={mobile || undefined} data-open={mobile && !mobileHidden || undefined} aria-label={t('common.accessibility.navigation')} aria-hidden={mobileHidden || undefined} inert={mobileHidden}>
+      {items.filter(item => !item.admin || user?.role === Role.Admin).map(item => {
+        if (item.external) {
+          return (
+            <a key={item.link} href={item.link} target="_blank" rel="noopener noreferrer" className={classes.link} onClick={onNavigate}>
+              <Icon path={item.icon} size={0.8} aria-hidden="true" />
+              <span>{t(item.label)}</span>
+            </a>
+          )
+        }
+        const selected = item.admin
+          ? location.pathname.startsWith('/admin') && (item.link.includes('tab=') ? item.link.includes(`tab=${active}`) : !active)
+          : item.link === '/' ? location.pathname === '/' : location.pathname.startsWith(item.link)
+        return (
+          <Link key={item.link} to={item.link} className={classes.link} aria-current={selected ? 'page' : undefined} onClick={onNavigate}>
+            <Icon path={item.icon} size={0.8} aria-hidden="true" />
+            <span>{t(item.label)}</span>
+          </Link>
+        )
+      })}
+    </nav>
   )
 }

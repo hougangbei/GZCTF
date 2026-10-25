@@ -1,4 +1,5 @@
 .default {
+  flex: 0 0 auto;
   transition:
     border-color 100ms ease,
     color 100ms ease,
@@ -80,6 +81,8 @@
 
 .panes {
   display: flex;
+  max-width: 100%;
+  overflow-x: auto;
   gap: calc(var(--mantine-spacing-xs) / 2);
   justify-content: right;
   flex-wrap: nowrap;

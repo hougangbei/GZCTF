@@ -1,10 +1,10 @@
-import { ActionIcon, Avatar, Box, Card, Group, Stack, Text, Title, useMantineTheme } from '@mantine/core'
+import { ActionIcon, Anchor, Avatar, Box, Card, Group, Stack, Text, Title, useMantineTheme } from '@mantine/core'
 import { mdiPencilOutline, mdiPinOffOutline, mdiPinOutline } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import dayjs from 'dayjs'
 import { FC, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import { Markdown } from '@Components/MarkdownRenderer'
 import { PostCardProps } from '@Components/PostCard'
 import { RequireRole } from '@Components/WithRole'
@@ -16,18 +16,21 @@ export const MobilePostCard: FC<PostCardProps> = ({ post, onTogglePinned }) => {
   const [disabled, setDisabled] = useState(false)
 
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const theme = useMantineTheme()
 
   return (
     <Card shadow="sm" p="sm">
       <Stack gap="xs">
-        <Box onClick={() => navigate(`/posts/${post.id}`)}>
+        <Box>
           <Title order={3} pb={4}>
-            <Text fw="bold" fz="h3" span c={theme.primaryColor}>
-              {post.isPinned ? `${t('post.content.pinned')} ` : '>>> '}
-            </Text>
-            {post.title}
+            {post.isPinned && (
+              <Text fw="bold" fz="h3" span c={theme.primaryColor}>
+                {`${t('post.content.pinned')} `}
+              </Text>
+            )}
+            <Anchor component={Link} to={`/posts/${post.id}`} c="inherit" underline="hover">
+              {post.title}
+            </Anchor>
           </Title>
           <Markdown source={post.summary} />
         </Box>

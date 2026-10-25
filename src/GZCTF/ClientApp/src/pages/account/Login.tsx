@@ -9,6 +9,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router'
 import { AccountView } from '@Components/AccountView'
 import { Captcha, useCaptchaRef } from '@Components/Captcha'
 import { encryptApiData } from '@Utils/Crypto'
+import { clearPrivateCache } from '@Utils/Cache'
 import { tryGetClientError } from '@Utils/Shared'
 import { useConfig } from '@Hooks/useConfig'
 import { usePageTitle } from '@Hooks/usePageTitle'
@@ -87,6 +88,7 @@ const Login: FC = () => {
         password: await encryptApiData(t, pwd, config.apiPublicKey),
         challenge: token,
       })
+      clearPrivateCache()
 
       updateNotification({
         id: 'login-status',

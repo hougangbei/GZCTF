@@ -11,6 +11,11 @@ const IDB_DB_NAME = 'gzctf-cache'
 const IDB_STORE = 'swr'
 const IDB_KEY = 'cache-map'
 
+const PUBLIC_CACHE_KEYS = new Set(['/api/config', '/api/posts/latest', '/api/posts', '/api/skill-trees', '/api/about'])
+
+export const shouldPersistCacheKey = (key: unknown): boolean =>
+  typeof key === 'string' && PUBLIC_CACHE_KEYS.has(key)
+
 type BinaryLike = Uint8Array | ArrayBuffer
 
 class PersistentCache implements Cache<any> {
@@ -29,12 +34,12 @@ class PersistentCache implements Cache<any> {
   }
   set(key: any, value: any) {
     this.map.set(key, value)
-    schedulePersist()
+    if (shouldPersistCacheKey(key)) schedulePersist()
     return this
   }
   delete(key: any) {
     const r = this.map.delete(key)
-    schedulePersist()
+    if (shouldPersistCacheKey(key)) schedulePersist()
     return r as any
   }
   clear() {
@@ -82,6 +87,8 @@ class PersistentCache implements Cache<any> {
 
 const inMemoryCache = new PersistentCache()
 
+const publicEntries = () => inMemoryCache.snapshotEntries().filter(([key]) => shouldPersistCacheKey(key))
+
 let idbSupported = typeof indexedDB !== 'undefined'
 let dbPromise: Promise<IDBDatabase> | null = null
 let hydrationStarted = false
@@ -110,7 +117,7 @@ const openDB = (): Promise<IDBDatabase> => {
 }
 
 const encodeMap = (cache: PersistentCache): Uint8Array => {
-  const json = JSON.stringify(cache.snapshotEntries())
+  const json = JSON.stringify(cache.snapshotEntries().filter(([key]) => shouldPersistCacheKey(key)))
   return gzip(textEncoder.encode(json))
 }
 
@@ -120,6 +127,13 @@ const decodeMap = (bin: BinaryLike): [any, any][] => {
   return JSON.parse(json)
 }
 
+const restorePublicEntries = (entries: [any, any][]) => {
+  const safeEntries = entries.filter(([key]) => shouldPersistCacheKey(key))
+  const added = inMemoryCache.bulkAdd(safeEntries)
+  if (safeEntries.length !== entries.length) schedulePersist()
+  return added
+}
+
 const fallbackHydrateLocalStorage = () => {
   try {
     const raw = localStorage.getItem(LEGACY_CACHE_KEY)
@@ -127,7 +141,7 @@ const fallbackHydrateLocalStorage = () => {
     const decompressed = LZString.decompress(raw)
     if (!decompressed) return
     const entries: [any, any][] = JSON.parse(decompressed || '[]')
-    inMemoryCache.bulkAdd(entries)
+    restorePublicEntries(entries)
     localStorage.removeItem(LEGACY_CACHE_KEY)
     console.info('[cache] migrated legacy localStorage cache')
   } catch (e) {
@@ -137,7 +151,7 @@ const fallbackHydrateLocalStorage = () => {
 
 const fallbackPersistLocalStorage = () => {
   try {
-    const serialized = JSON.stringify(inMemoryCache.snapshotEntries())
+    const serialized = JSON.stringify(publicEntries())
     const compressed = LZString.compress(serialized)
     localStorage.setItem(LEGACY_CACHE_KEY, compressed)
   } catch (e) {
@@ -183,7 +197,7 @@ const hydrateFromIDB = async () => {
         const data = req.result as BinaryLike | undefined
         if (data) {
           const decoded = decodeMap(data)
-          const added = inMemoryCache.bulkAdd(decoded)
+          const added = restorePublicEntries(decoded)
           if (added) console.info('[cache] hydrated from IndexedDB, new entries:', added)
         }
         hydrated = true
@@ -227,6 +241,13 @@ export const localCacheProvider = (): Cache<any> => {
   setupPersistenceSideEffects()
   if (!hydrationStarted && !hydrated) fallbackHydrateLocalStorage()
   return inMemoryCache
+}
+
+export const clearPrivateCache = () => {
+  for (const key of Array.from(inMemoryCache.keys())) {
+    if (!shouldPersistCacheKey(key)) inMemoryCache.delete(key)
+  }
+  schedulePersist()
 }
 
 export const clearLocalCache = () => {

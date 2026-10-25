@@ -1,8 +1,8 @@
-import { Anchor, Center, List, Stack, Text, Title } from '@mantine/core'
+import { Anchor, List, Stack, Text, Title } from '@mantine/core'
 import { FC } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { Link, useLocation, useNavigate } from 'react-router'
-import { LogoHeader } from '@Components/LogoHeader'
+import { Link, useLocation } from 'react-router'
+import { AccountView } from '@Components/AccountView'
 import { usePageTitle } from '@Hooks/usePageTitle'
 import misc from '@Styles/Misc.module.css'
 
@@ -11,14 +11,12 @@ const EmailConfirmationPending: FC = () => {
   const email = location.state?.email || 'ctf@example.com'
 
   const { t } = useTranslation()
-  const navigate = useNavigate()
 
   usePageTitle(t('account.title.verify_email'))
 
   return (
-    <Center h="100vh">
-      <Stack align="center" justify="center" maw={400} px="md">
-        <LogoHeader onClick={() => navigate('/')} />
+    <AccountView>
+      <Stack align="center" justify="center" w="100%">
         <Stack gap="xs" align="center" justify="center">
           <Title order={3} ta="center">
             {t('account.content.verify_email.title')}
@@ -45,7 +43,7 @@ const EmailConfirmationPending: FC = () => {
           </Anchor>
         </Stack>
       </Stack>
-    </Center>
+    </AccountView>
   )
 }
 

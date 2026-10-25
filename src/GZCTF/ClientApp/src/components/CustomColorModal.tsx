@@ -1,36 +1,46 @@
-import { generateColors } from '@mantine/colors-generator'
-import { Text, ColorInput, Group, Modal, ModalProps, Radio, Stack, InputBase, useMantineTheme } from '@mantine/core'
-import { useDebouncedValue } from '@mantine/hooks'
+import { Button, Text, ColorInput, Group, Modal, ModalProps, Radio, Stack, InputBase, useMantineTheme } from '@mantine/core'
 import { FC, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ColorPreview } from '@Components/ColorPreview'
 import { ColorProvider, CustomColor, useCustomColor } from '@Utils/ThemeOverride'
+import { resolveThemePalette } from '@Utils/ThemePalette'
+import { useConfig } from '@Hooks/useConfig'
 import misc from '@Styles/Misc.module.css'
 
 const colorRegex = /^#[0-9A-F]{6}$/i
 
 export const CustomColorModal: FC<ModalProps> = (props) => {
   const { customColor, setCustomColor } = useCustomColor()
-  const [color, setColor] = useState<CustomColor>(customColor || '')
-  const [debouncedColor] = useDebouncedValue(color, 200)
+  const [color, setColor] = useState<CustomColor>(customColor)
   const theme = useMantineTheme()
+  const { config } = useConfig()
 
   const { t } = useTranslation()
 
-  const valid = colorRegex.test(color.color)
-
-  const colors = color.provider === ColorProvider.Custom && valid ? generateColors(color.color) : theme.colors.brand
+  const customPalette = color.provider === ColorProvider.Custom ? resolveThemePalette(color.color) : null
+  const managedPalette = resolveThemePalette(config.customTheme)
+  const valid = color.provider !== ColorProvider.Custom || customPalette !== null
+  const colors = color.provider === ColorProvider.Custom
+    ? customPalette?.colors ?? theme.colors.brand
+    : color.provider === ColorProvider.Managed ? managedPalette?.colors ?? theme.colors.brand : theme.colors.brand
 
   useEffect(() => {
     setColor(customColor)
   }, [customColor])
 
-  useEffect(() => {
-    setCustomColor(debouncedColor)
-  }, [debouncedColor])
+  const cancel = () => {
+    setColor(customColor)
+    props.onClose()
+  }
+
+  const apply = () => {
+    if (!valid) return
+    setCustomColor(color)
+    props.onClose()
+  }
 
   return (
-    <Modal title={t('common.content.color.title')} {...props}>
+    <Modal title={t('common.content.color.title')} {...props} onClose={cancel}>
       <Stack>
         <Radio.Group
           label={t('common.content.color.provider.label')}
@@ -71,10 +81,16 @@ export const CustomColorModal: FC<ModalProps> = (props) => {
           description={t('common.content.color.custom.description')}
           placeholder={t('common.content.color.custom.placeholder')}
           disabled={color.provider !== ColorProvider.Custom}
-          error={color.provider === ColorProvider.Custom && !valid}
+          error={color.provider === ColorProvider.Custom && !valid
+            ? t(colorRegex.test(color.color) ? 'common.content.color.custom.contrast_error' : 'common.error.param_invalid')
+            : undefined}
           value={color.provider === ColorProvider.Custom ? color.color : ''}
           onChange={(value) => setColor({ ...color, color: value })}
         />
+        <Group justify="flex-end">
+          <Button variant="default" onClick={cancel}>{t('common.modal.cancel')}</Button>
+          <Button onClick={apply} disabled={!valid}>{t('common.content.color.apply')}</Button>
+        </Group>
       </Stack>
     </Modal>
   )

@@ -1,8 +1,8 @@
-import { AppShell, Box, LoadingOverlay, Stack, useMantineColorScheme, useMantineTheme } from '@mantine/core'
-import React, { FC, useState } from 'react'
+import { AppShell, Box, LoadingOverlay, Stack, useComputedColorScheme, useMantineTheme } from '@mantine/core'
+import React, { FC, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AppFooter } from '@Components/AppFooter'
 import { AppHeader } from '@Components/AppHeader'
-import { AppNavbar } from '@Components/AppNavbar'
 import { CustomColorModal } from '@Components/CustomColorModal'
 import { IconHeader } from '@Components/IconHeader'
 import { Watermark } from '@Components/Watermark'
@@ -10,7 +10,8 @@ import { WithWiderScreen } from '@Components/WithWiderScreen'
 import { DEFAULT_LOADING_OVERLAY } from '@Utils/Shared'
 import { useIsMobile } from '@Utils/ThemeOverride'
 import { useUser } from '@Hooks/useUser'
-import classes from '@Styles/AppNavbar.module.css'
+import { Role } from '@Api'
+import classes from './WithNavbar.module.css'
 
 interface WithNavBarProps extends React.PropsWithChildren {
   width?: string
@@ -23,27 +24,36 @@ interface WithNavBarProps extends React.PropsWithChildren {
 
 export interface AppControlProps {
   openColorModal: () => void
+  mobile?: boolean
+  navOpened?: boolean
+  onNavToggle?: () => void
+  onNavigate?: () => void
 }
 
-export const WithNavBar: FC<WithNavBarProps> = ({
-  children,
-  width,
-  isLoading,
-  minWidth,
-  withFooter = false,
-  withHeader,
-  stickyHeader = false,
-}) => {
+export const WithNavBar: FC<WithNavBarProps> = ({ children, width, isLoading, minWidth, withFooter = false, withHeader, stickyHeader = false }) => {
   const theme = useMantineTheme()
-  const { colorScheme } = useMantineColorScheme()
+  const colorScheme = useComputedColorScheme('light', { getInitialValueInEffect: false })
   const { user } = useUser()
-  const isMobile = useIsMobile()
+  const mobile = useIsMobile(user?.role === Role.Admin ? 1450 : 1100)
   const [colorModalOpened, setColorModalOpened] = useState(false)
+  const [navOpened, setNavOpened] = useState(false)
+  const { t } = useTranslation()
 
-  const openColorModal = () => setColorModalOpened(true)
+  useEffect(() => {
+    if (!navOpened) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setNavOpened(false)
+        document.getElementById('mobile-nav-toggle')?.focus()
+      }
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [navOpened])
 
   return (
-    <WithWiderScreen minWidth={minWidth}>
+    <WithWiderScreen minWidth={minWidth ?? 0}>
+      <a className={classes.skipLink} href="#main-content">{t('common.accessibility.skip_to_content')}</a>
       <Watermark
         text={user?.userId ?? ''}
         textColor={colorScheme === 'dark' ? theme.colors.gray[3] : theme.colors.gray[7]}
@@ -52,31 +62,14 @@ export const WithNavBar: FC<WithNavBarProps> = ({
         gutter={22}
         opacity={colorScheme === 'dark' ? 0.018 : 0.025}
       >
-        <AppShell
-          p={0}
-          header={{ height: 60, collapsed: !isMobile }}
-          navbar={{
-            width: 65,
-            breakpoint: 'sm',
-            collapsed: {
-              mobile: true,
-            },
-          }}
-        >
-          <AppHeader openColorModal={openColorModal} />
-          <AppNavbar openColorModal={openColorModal} />
-          <AppShell.Main w="100%">
-            <Stack data-mobile={isMobile || undefined} data-pb={withFooter || undefined} className={classes.main}>
+        <AppShell p={0} header={{ height: 56 }}>
+          <AppHeader openColorModal={() => setColorModalOpened(true)} mobile={mobile} navOpened={navOpened} onNavToggle={() => setNavOpened(open => !open)} onNavigate={() => setNavOpened(false)} />
+          {mobile && navOpened && <button type="button" className={classes.scrim} aria-label={t('common.accessibility.close_navigation')} onClick={() => setNavOpened(false)} />}
+          <AppShell.Main id="main-content" tabIndex={-1} inert={Boolean(mobile && navOpened)} aria-hidden={mobile && navOpened || undefined}>
+            <Stack className={classes.main} data-pb={withFooter || undefined}>
               <LoadingOverlay visible={isLoading ?? false} overlayProps={DEFAULT_LOADING_OVERLAY} />
-              {withHeader && <IconHeader px={isMobile ? '2%' : '10%'} sticky={stickyHeader} />}
-              <Box
-                w={width ?? (isMobile ? '96%' : '80%')}
-                style={{
-                  zIndex: 20,
-                }}
-              >
-                {children}
-              </Box>
+              {withHeader && <IconHeader px={mobile ? '2%' : '10%'} sticky={stickyHeader} />}
+              <Box w={width ?? '100%'} className={classes.content}>{children}</Box>
               <CustomColorModal opened={colorModalOpened} onClose={() => setColorModalOpened(false)} />
             </Stack>
             {withFooter && <AppFooter />}

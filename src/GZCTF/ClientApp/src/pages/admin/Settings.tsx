@@ -1,4 +1,3 @@
-import { generateColors } from '@mantine/colors-generator'
 import {
   Alert,
   Button,
@@ -31,10 +30,13 @@ import { SwitchLabel } from '@Components/admin/SwitchLabel'
 import { webCryptoAvailable } from '@Utils/Crypto'
 import { getInputNumber, showErrorMsg } from '@Utils/Shared'
 import { IMAGE_MIME_TYPES } from '@Utils/Shared'
+import { getLaboratoryBlogUrl } from '@Utils/LaboratoryBlog'
+import { resolveThemePalette } from '@Utils/ThemePalette'
 import { OnceSWRConfig, useCaptchaConfig, useConfig } from '@Hooks/useConfig'
 import { useSyncOnChange } from '@Hooks/useSyncOnChange'
 import api, { AccountPolicy, ConfigEditModel, ContainerPolicy, GlobalConfig } from '@Api'
 import misc from '@Styles/Misc.module.css'
+import classes from './Settings.module.css'
 
 const Configs: FC = () => {
   const { data: configs, error: configError, mutate } = api.admin.useAdminGetConfigs(OnceSWRConfig)
@@ -97,10 +99,13 @@ const Configs: FC = () => {
     }
   }
 
-  const colors = color && /^#[0-9A-F]{6}$/i.test(color) ? generateColors(color) : theme.colors.brand
+  const blogUrl = globalConfig?.laboratoryBlogUrl?.trim() ?? ''
+  const invalidBlogUrl = Boolean(blogUrl && !getLaboratoryBlogUrl(blogUrl))
+  const platformPalette = resolveThemePalette(color)
+  const colors = platformPalette?.colors ?? theme.colors.brand
 
   if (configError && !configs) {
-    return <AdminPage minWidth={390}>
+    return <AdminPage>
       <Stack w="100%" maw={600} gap="md">
         <Alert color="red">{t('admin.content.settings.loadFailed')}</Alert>
         <Button variant="light" onClick={() => void mutate()} w="fit-content">
@@ -113,10 +118,7 @@ const Configs: FC = () => {
   return (
     <AdminPage isLoading={!configs}>
       <Button
-        className={misc.fixedButton}
-        __vars={{
-          '--fixed-right': 'calc(0.05 * (100vw - 70px - 2rem) + 1rem)',
-        }}
+        className={classes.saveButton}
         variant="filled"
         size="md"
         leftSection={<Icon path={saved ? mdiContentSaveOutline : mdiCheck} size={1} />}
@@ -124,7 +126,8 @@ const Configs: FC = () => {
           updateConfig({
             globalConfig: {
               ...globalConfig,
-              customTheme: color && /^#[0-9A-F]{6}$/i.test(color) ? color : '',
+              laboratoryBlogUrl: blogUrl,
+              customTheme: color && platformPalette ? color : '',
             },
             accountPolicy,
             containerPolicy,
@@ -134,7 +137,7 @@ const Configs: FC = () => {
             setSaved(true)
           }, 500)
         }}
-        disabled={!saved || disabled}
+        disabled={!saved || disabled || invalidBlogUrl || Boolean(color && !platformPalette)}
       >
         {t('admin.button.save')}
       </Button>
@@ -143,7 +146,7 @@ const Configs: FC = () => {
           <Title order={2}>{t('admin.content.settings.platform.title')}</Title>
           <Divider />
           <Grid columns={4} align="center">
-            <Grid.Col span={1}>
+            <Grid.Col span={{ base: 4, sm: 2, lg: 1 }}>
               <TextInput
                 label={t('admin.content.settings.platform.name.label')}
                 description={t('admin.content.settings.platform.name.description')}
@@ -155,7 +158,7 @@ const Configs: FC = () => {
                 }}
               />
             </Grid.Col>
-            <Grid.Col span={1}>
+            <Grid.Col span={{ base: 4, sm: 2, lg: 1 }}>
               <TextInput
                 label={t('admin.content.settings.platform.slogan.label')}
                 description={t('admin.content.settings.platform.slogan.description')}
@@ -167,7 +170,7 @@ const Configs: FC = () => {
                 }}
               />
             </Grid.Col>
-            <Grid.Col span={1}>
+            <Grid.Col span={{ base: 4, sm: 2, lg: 1 }}>
               <FileInput
                 size="sm"
                 label={t('admin.content.settings.platform.logo.label')}
@@ -190,7 +193,7 @@ const Configs: FC = () => {
                 }
               />
             </Grid.Col>
-            <Grid.Col p={0} span={1}>
+            <Grid.Col p={0} span={{ base: 4, sm: 2, lg: 1 }}>
               <Group gap="sm" align="flex-end" justify="center">
                 {[20, 40, 60, 80].map((size) => (
                   <Stack align="center" justify="space-between" gap={0} key={size}>
@@ -202,11 +205,24 @@ const Configs: FC = () => {
                 ))}
               </Group>
             </Grid.Col>
-            <Grid.Col span={2}>
+            <Grid.Col span={{ base: 4, sm: 2 }}>
+              <TextInput
+                label={t('admin.content.settings.platform.laboratory_blog.label')}
+                description={t('admin.content.settings.platform.laboratory_blog.description')}
+                placeholder="https://blog.example.com"
+                disabled={disabled}
+                value={globalConfig?.laboratoryBlogUrl ?? ''}
+                error={invalidBlogUrl ? t('admin.content.settings.platform.laboratory_blog.error') : undefined}
+                onChange={(e) => {
+                  setGlobalConfig({ ...globalConfig, laboratoryBlogUrl: e.currentTarget.value })
+                }}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 4, lg: 2 }}>
               <TextInput
                 label={t('admin.content.settings.platform.description.label')}
                 description={t('admin.content.settings.platform.description.description')}
-                placeholder="GZ::CTF is an open source CTF platform"
+                placeholder={t('admin.content.settings.platform.description.label')}
                 disabled={disabled}
                 value={globalConfig?.description ?? ''}
                 onChange={(e) => {
@@ -214,18 +230,21 @@ const Configs: FC = () => {
                 }}
               />
             </Grid.Col>
-            <Grid.Col span={1}>
+            <Grid.Col span={{ base: 4, sm: 2, lg: 1 }}>
               <ColorInput
                 size="sm"
                 label={t('admin.content.settings.platform.color.label')}
                 description={t('admin.content.settings.platform.color.description')}
                 placeholder={t('common.content.color.custom.placeholder')}
                 disabled={disabled}
+                error={color && !platformPalette
+                  ? t(/^#[0-9A-F]{6}$/i.test(color) ? 'common.content.color.custom.contrast_error' : 'common.error.param_invalid')
+                  : undefined}
                 value={color ?? ''}
                 onChange={setColor}
               />
             </Grid.Col>
-            <Grid.Col span={1}>
+            <Grid.Col span={{ base: 4, sm: 2, lg: 1 }}>
               <InputBase
                 label={t('admin.content.settings.platform.color_palette.label')}
                 description={t('admin.content.settings.platform.color_palette.description')}
@@ -239,7 +258,7 @@ const Configs: FC = () => {
                 }}
               />
             </Grid.Col>
-            <Grid.Col span={3}>
+            <Grid.Col span={{ base: 4, lg: 3 }}>
               <TextInput
                 label={t('admin.content.settings.platform.footer.label')}
                 description={t('admin.content.settings.platform.footer.description')}
@@ -251,7 +270,7 @@ const Configs: FC = () => {
                 }}
               />
             </Grid.Col>
-            <Grid.Col span={1} className={misc.alignCenter}>
+            <Grid.Col span={{ base: 4, sm: 2, lg: 1 }} className={misc.alignCenter}>
               <Switch
                 checked={globalConfig?.apiEncryption ?? false}
                 disabled={disabled || !webCryptoAvailable}
@@ -274,7 +293,7 @@ const Configs: FC = () => {
         <Stack gap="sm">
           <Title order={2}>{t('admin.content.settings.account.title')}</Title>
           <Divider />
-          <SimpleGrid cols={4}>
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
             <Switch
               checked={accountPolicy?.allowRegister ?? true}
               disabled={disabled}
@@ -359,7 +378,7 @@ const Configs: FC = () => {
         <Stack gap="sm">
           <Title order={2}>{t('admin.content.settings.container.title')}</Title>
           <Divider />
-          <SimpleGrid cols={4} className={misc.alignCenter}>
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} className={misc.alignCenter}>
             <NumberInput
               label={t('admin.content.settings.container.default_lifetime.label')}
               description={t('admin.content.settings.container.default_lifetime.description')}

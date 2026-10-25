@@ -9,7 +9,7 @@ import {
   Textarea,
   TextInput,
   Title,
-  useMantineColorScheme,
+  useComputedColorScheme,
   useMantineTheme,
 } from '@mantine/core'
 import { useModals } from '@mantine/modals'
@@ -64,7 +64,7 @@ const PostEdit: FC = () => {
   const modals = useModals()
 
   const isMobile = useIsMobile()
-  const { colorScheme } = useMantineColorScheme()
+  const colorScheme = useComputedColorScheme('light', { getInitialValueInEffect: false })
 
   const onUpdate = async () => {
     if (postId === 'new') {

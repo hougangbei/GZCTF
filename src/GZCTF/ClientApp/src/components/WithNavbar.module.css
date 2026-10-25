@@ -1,0 +1,43 @@
+.main {
+  position: relative;
+  min-height: calc(100dvh - 56px);
+  align-items: stretch;
+  gap: 0;
+  background: var(--hbc-bg);
+  color: var(--hbc-ink);
+}
+
+.content {
+  width: 100%;
+  max-width: 1200px;
+  min-width: 0;
+  overflow-x: auto;
+  margin: 0 auto;
+  padding: clamp(1rem, 2.5vw, 2rem);
+}
+
+.main[data-pb] { min-height: calc(100dvh - 56px - 5rem); }
+
+.skipLink {
+  position: fixed;
+  top: -4rem;
+  left: 1rem;
+  z-index: 300;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--hbc-primary);
+  color: white;
+}
+.skipLink:focus { top: 0.75rem; }
+
+.scrim {
+  position: fixed;
+  inset: 56px 0 0;
+  z-index: 190;
+  width: 100%;
+  border: 0;
+  background: rgb(30 41 59 / 35%);
+  cursor: pointer;
+}
+
+@media (max-width: 48em) { .content { padding: 1rem; } }

@@ -393,6 +393,11 @@
         "title": "Container Policy"
       },
       "platform": {
+        "laboratory_blog": {
+          "label": "Laboratory blog URL",
+          "description": "Opens from the navigation in a new tab. Leave blank to hide.",
+          "error": "Enter an absolute URL starting with http:// or https://."
+        },
         "api_encryption": {
           "description": "Encrypt sensitive data in some APIs",
           "label": "Enable API Encryption",
@@ -419,7 +424,7 @@
           "label": "Platform Logo"
         },
         "name": {
-          "description": "Platform name will be displayed with ::CTF",
+          "description": "Platform name is displayed exactly as entered",
           "label": "Platform Name"
         },
         "slogan": {
@@ -587,7 +592,7 @@
       "footer": "`Test` <mbr/> Something...",
       "logo": {
         "custom": "Custom Logo",
-        "default": "Use GZCTF Icon"
+        "default": "Use default icon"
       }
     },
     "teams": {
@@ -628,16 +633,80 @@
     "failed": "Could not load or update registration reviews.", "previous": "Previous", "next": "Next"
   },
   "updates": {
-    "title": "Update management", "description": "Review successfully built GitHub versions and update this deployment manually.",
-    "current": "Current commit", "latest": "Latest available commit", "unknown": "Unknown", "publishedAt": "Build completed",
-    "workflow": "View GitHub build", "available": "Update available", "noUpdate": "No update available",
-    "refresh": "Check again", "task": "Update task", "target": "Target commit", "backup": "Backup directory",
-    "changedAt": "Status updated", "apply": "Update now", "cancel": "Cancel",
-    "loadFailed": "Could not load update status. Try again later.", "applyFailed": "Could not start the update. Refresh and retry.",
-    "notConfigured": "This deployment has no host updater. Follow deploy/self-update/README.md to configure Docker Compose.",
-    "warning": "The app will briefly stop. The updater backs up the database and uploads first. Startup migrations may require a manual restore if the new version fails.",
-    "confirmTitle": "Confirm platform update", "confirmBody": "Update to {{sha}}? The app will briefly stop after data is backed up. A migrated database may not support an image-only rollback.",
-    "phases": { "idle": "No update started", "disabled": "Not configured", "accepted": "Accepted", "pulling": "Pulling image", "backingUp": "Backing up data", "starting": "Starting new version", "succeeded": "Update succeeded", "failed": "Update failed", "interrupted": "Update interrupted" }
+    "title": "Update management",
+    "description": "Choose an update source, validate its contents, then apply the verified version manually.",
+    "sourceTitle": "Update source",
+    "sourceKind": "Source type",
+    "sources": {
+      "github": "GitHub repository",
+      "package": "Package URL",
+      "directory": "Server directory"
+    },
+    "locations": {
+      "github": "GitHub repository",
+      "package": "Package URL",
+      "directory": "Server directory"
+    },
+    "githubHelp": "Enter a GitHub repository URL. The updater retrieves and builds the selected revision.",
+    "packageHelp": "Enter the URL of a release archive compatible with this deployment.",
+    "directoryHelp": "This path is on the deployment server, not the computer running your browser.",
+    "ref": "Branch or tag",
+    "sha256": "SHA256 (optional)",
+    "save": "Save source",
+    "saved": "Update source saved",
+    "saving": "Saving source…",
+    "unsaved": "Save these changes before validating. A changed source requires a new validation.",
+    "validate": "Validate source",
+    "saveFailed": "Could not save the update source. Check the source and try again.",
+    "validateFailed": "Could not start validation. Check the update service and try again.",
+    "report": "Validation report",
+    "version": "Target version",
+    "artifactHash": "Artifact SHA256",
+    "checks": {
+      "passed": "Passed",
+      "failed": "Failed",
+      "running": "Running"
+    },
+    "expires": "Valid until {{time}}",
+    "expired": "Validation expired. Validate the source again before applying.",
+    "needsValidation": "Save the source and validate it before applying an update.",
+    "current": "Current version / commit",
+    "unknown": "Unknown",
+    "task": "Update status",
+    "target": "Target commit",
+    "backup": "Backup directory",
+    "changedAt": "Status changed",
+    "apply": "Apply update",
+    "cancel": "Cancel",
+    "loadFailed": "Could not load update status. Please try again later.",
+    "applyFailed": "Could not start the update. Refresh the status and validate again.",
+    "notConfigured": "Install and start the update service on the deployment server, then configure the agent URL and shared token for the app. See deploy/self-update/README.md. You can save a source now; validation becomes available once the service is connected.",
+    "warning": "Applying an update briefly stops the app. The updater first backs up the database and uploads. Database migrations may require restoring that backup if the update fails.",
+    "confirmTitle": "Confirm platform update",
+    "confirmBody": "Apply the validated version {{version}}? The app will briefly stop after data is backed up. Database migrations may require restoring the backup to roll back.",
+    "phases": {
+      "idle": "Awaiting validation",
+      "disabled": "Not configured",
+      "validating": "Validating source",
+      "ready": "Ready to apply",
+      "invalid": "Validation failed",
+      "accepted": "Update accepted",
+      "pulling": "Pulling image",
+      "backingUp": "Backing up data",
+      "starting": "Starting new version",
+      "succeeded": "Update succeeded",
+      "failed": "Update failed",
+      "interrupted": "Update interrupted",
+      "recoveryRequired": "Manual recovery required"
+    },
+    "legacyAgent": "This update service supports the original image updater only. Saved sources take effect after upgrading the host update service to support multiple sources; source validation is unavailable until then.",
+    "legacyConfirmBody": "Update the platform image to {{sha}}? The app will briefly stop after backups. Database migrations may require restoring the backup to roll back.",
+    "latest": "Latest available commit",
+    "publishedAt": "Build completed",
+    "workflow": "View GitHub build",
+    "available": "Update available",
+    "noUpdate": "No update available",
+    "refresh": "Check again"
   },
   "tab": {
     "games": {

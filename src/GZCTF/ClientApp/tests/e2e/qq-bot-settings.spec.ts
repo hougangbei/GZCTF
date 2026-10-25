@@ -26,7 +26,7 @@ test('admin can edit QQ solve broadcasts and send a test message', async ({ page
   })
 
   await page.goto('/admin/settings')
-  await expect(page.getByRole('heading', { name: 'QQ 解题播报' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'QQ 机器人播报' })).toBeVisible()
   await page.getByRole('textbox', { name: 'NapCat HTTP 地址' }).fill('http://napcat:3000')
   await page.getByRole('textbox', { name: '目标 QQ 群号' }).fill('123456')
   await page.getByRole('textbox', { name: '解题消息模板' }).fill('{member} 攻克了 {challenge}')

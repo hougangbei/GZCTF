@@ -4,6 +4,7 @@ import { Icon } from '@mdi/react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { useSWRConfig } from 'swr'
+import { clearPrivateCache } from '@Utils/Cache'
 import api from '@Api'
 
 export const useUser = () => {
@@ -20,6 +21,7 @@ export const useUser = () => {
     revalidateOnFocus: false,
     onErrorRetry: async (err, _key, _config, revalidate, { retryCount }) => {
       if (err?.status === 403) {
+        clearPrivateCache()
         await api.account.accountLogOut()
         navigate('/')
         showNotification({
@@ -31,6 +33,7 @@ export const useUser = () => {
       }
 
       if (err?.status === 401 || retryCount >= 5) {
+        clearPrivateCache()
         mutate(undefined, false)
         return
       }
@@ -61,6 +64,7 @@ export const useLogOut = () => {
         revalidate: false,
       })
       mutateProfile(undefined, { revalidate: false })
+      clearPrivateCache()
       showNotification({
         color: 'teal',
         message: t('account.notification.logout'),
@@ -69,6 +73,7 @@ export const useLogOut = () => {
     } catch {
       navigate('/')
       mutateProfile(undefined, { revalidate: false })
+      clearPrivateCache()
     }
   }
 }

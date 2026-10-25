@@ -7,7 +7,7 @@ import {
   Stack,
   Text,
   Title,
-  useMantineColorScheme,
+  useComputedColorScheme,
   useMantineTheme,
 } from '@mantine/core'
 import { useScrollIntoView } from '@mantine/hooks'
@@ -54,7 +54,7 @@ const Post: FC = () => {
   useEffect(() => scrollIntoView({ alignment: 'center' }), [scrollIntoView])
 
   const { role } = useUserRole()
-  const { colorScheme } = useMantineColorScheme()
+  const colorScheme = useComputedColorScheme('light', { getInitialValueInEffect: false })
   const { locale } = useLanguage()
 
   usePageTitle(post?.title ?? 'Post')

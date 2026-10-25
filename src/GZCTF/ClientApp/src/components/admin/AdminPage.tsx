@@ -4,13 +4,9 @@ import { WithRole } from '@Components/WithRole'
 import { AdminTabProps, WithAdminTab } from '@Components/admin/WithAdminTab'
 import { Role } from '@Api'
 
-interface AdminPageProps extends AdminTabProps {
-  minWidth?: number
-}
-
-export const AdminPage: FC<AdminPageProps> = ({ minWidth = 1080, ...props }) => {
+export const AdminPage: FC<AdminTabProps> = (props) => {
   return (
-    <WithNavBar width="90%" minWidth={minWidth}>
+    <WithNavBar width="100%" minWidth={0}>
       <WithRole requiredRole={Role.Admin}>
         <WithAdminTab {...props} />
       </WithRole>

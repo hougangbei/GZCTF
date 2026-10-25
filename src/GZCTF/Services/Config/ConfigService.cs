@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using GZCTF.Models.Internal;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
+using GZCTF.Services.Cache;
 using Microsoft.Extensions.Options;
 using ConfigModel = GZCTF.Models.Data.Config;
 
@@ -11,7 +11,7 @@ namespace GZCTF.Services.Config;
 
 public class ConfigService(
     AppDbContext context,
-    IDistributedCache cache,
+    CacheHelper cache,
     ILogger<ConfigService> logger,
     IOptionsSnapshot<GlobalConfig> globalConfig,
     IOptionsSnapshot<ManagedConfig> managedConfig,

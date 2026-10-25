@@ -393,6 +393,11 @@
         "title": "容器策略"
       },
       "platform": {
+        "laboratory_blog": {
+          "label": "实验室博客链接",
+          "description": "从顶部菜单在新标签页打开，留空则隐藏入口。",
+          "error": "请输入以 http:// 或 https:// 开头的完整链接。"
+        },
         "api_encryption": {
           "description": "加密部分敏感数据，如用户密码、flag",
           "label": "启用 API 数据加密",
@@ -419,7 +424,7 @@
           "label": "平台 Logo"
         },
         "name": {
-          "description": "后跟 ::CTF 字段进行展示",
+          "description": "按填写内容原样显示",
           "label": "平台名称"
         },
         "slogan": {
@@ -587,7 +592,7 @@
       "footer": "`Test` <mbr/> [某 IPC 备 XXXXXXXX 号-X](http://beian.miit.gov.cn/)",
       "logo": {
         "custom": "自定义 Logo",
-        "default": "使用 GZCTF 图标"
+        "default": "使用默认图标"
       }
     },
     "teams": {
@@ -628,16 +633,80 @@
     "failed": "注册审核加载或操作失败，请重试。", "previous": "上一页", "next": "下一页"
   },
   "updates": {
-    "title": "更新管理", "description": "查看 GitHub 已成功构建的版本，并手动更新当前平台。",
-    "current": "当前提交", "latest": "最新可用提交", "unknown": "未知", "publishedAt": "构建完成时间",
-    "workflow": "查看 GitHub 构建", "available": "发现更新", "noUpdate": "暂无可用更新",
-    "refresh": "重新检查", "task": "更新任务", "target": "目标提交", "backup": "备份目录",
-    "changedAt": "状态更新时间", "apply": "立即更新", "cancel": "取消",
-    "loadFailed": "无法读取更新状态，请稍后重试。", "applyFailed": "无法发起更新，请刷新状态后重试。",
-    "notConfigured": "当前部署尚未配置宿主机更新程序。请按 deploy/self-update/README.md 完成 Docker Compose 部署。",
-    "warning": "更新会短暂停机。部署程序会先备份数据库和上传文件；新版本启动时可能执行数据库迁移，失败后需按备份人工恢复。",
-    "confirmTitle": "确认更新平台", "confirmBody": "将平台更新到 {{sha}}？应用会短暂停机，数据库和上传文件会先备份。迁移后的数据库可能无法直接回退。",
-    "phases": { "idle": "尚未执行更新", "disabled": "未配置", "accepted": "已接受任务", "pulling": "拉取镜像", "backingUp": "备份数据", "starting": "启动新版本", "succeeded": "更新成功", "failed": "更新失败", "interrupted": "更新中断" }
+    "title": "更新管理",
+    "description": "选择更新来源，先验证内容，再手动应用已验证的版本。",
+    "sourceTitle": "更新来源配置",
+    "sourceKind": "更新来源",
+    "sources": {
+      "github": "GitHub 仓库",
+      "package": "更新包链接",
+      "directory": "本机目录"
+    },
+    "locations": {
+      "github": "GitHub 仓库",
+      "package": "更新包 URL",
+      "directory": "服务器目录"
+    },
+    "githubHelp": "填写 GitHub 仓库地址。更新服务会获取并构建指定版本。",
+    "packageHelp": "填写与当前部署兼容的发布归档包 URL。",
+    "directoryHelp": "目录位于部署服务器上，不是浏览器所在的电脑。",
+    "ref": "分支或标签",
+    "sha256": "SHA256（可选）",
+    "save": "保存来源",
+    "saved": "更新来源已保存",
+    "saving": "正在保存来源…",
+    "unsaved": "来源有未保存的修改。请保存后重新验证，才能应用更新。",
+    "validate": "验证来源",
+    "saveFailed": "无法保存更新来源，请检查来源后重试。",
+    "validateFailed": "无法发起验证，请检查更新服务后重试。",
+    "report": "验证报告",
+    "version": "目标版本",
+    "artifactHash": "更新包 SHA256",
+    "checks": {
+      "passed": "通过",
+      "failed": "失败",
+      "running": "进行中"
+    },
+    "expires": "验证有效期至 {{time}}",
+    "expired": "验证已过期，请重新验证来源后再应用更新。",
+    "needsValidation": "请先保存并验证来源，再应用更新。",
+    "current": "当前版本 / 提交",
+    "unknown": "未知",
+    "task": "更新状态",
+    "target": "目标提交",
+    "backup": "备份目录",
+    "changedAt": "状态更新时间",
+    "apply": "应用更新",
+    "cancel": "取消",
+    "loadFailed": "无法加载更新状态，请稍后重试。",
+    "applyFailed": "无法发起更新，请刷新状态并重新验证。",
+    "notConfigured": "请在部署服务器上安装并启动更新服务，然后为应用配置更新服务地址和共享令牌，详见 deploy/self-update/README.md。现在可以保存来源，连接服务后即可验证。",
+    "warning": "应用更新会短暂停机。更新服务会先备份数据库和上传文件；新版本可能执行数据库迁移，失败时可能需要使用备份恢复。",
+    "confirmTitle": "确认更新平台",
+    "confirmBody": "将平台更新到已验证的版本 {{version}}？备份数据后应用会短暂停机；数据库迁移后可能需要通过备份回退。",
+    "phases": {
+      "idle": "等待验证",
+      "disabled": "未配置",
+      "validating": "正在验证来源",
+      "ready": "验证通过，可应用更新",
+      "invalid": "验证失败",
+      "accepted": "已接受更新任务",
+      "pulling": "拉取镜像",
+      "backingUp": "备份数据",
+      "starting": "启动新版本",
+      "succeeded": "更新成功",
+      "failed": "更新失败",
+      "interrupted": "更新中断",
+      "recoveryRequired": "需要人工恢复"
+    },
+    "legacyAgent": "当前更新服务仅支持原有镜像更新。保存的来源将在升级宿主机更新服务、启用多来源更新后生效；升级前无法验证来源。",
+    "legacyConfirmBody": "将平台镜像更新到 {{sha}}？备份数据后应用会短暂停机；数据库迁移后可能需要通过备份回退。",
+    "latest": "最新可用提交",
+    "publishedAt": "构建完成时间",
+    "workflow": "查看 GitHub 构建",
+    "available": "发现更新",
+    "noUpdate": "暂无可用更新",
+    "refresh": "重新检查"
   },
   "tab": {
     "games": {

@@ -5,7 +5,7 @@ import {
   darken,
   lighten,
   useMantineTheme,
-  useMantineColorScheme,
+  useComputedColorScheme,
   SelectProps,
   ComboboxItem,
   MantineColorsTuple,
@@ -111,7 +111,7 @@ export const ChallengeCategoryList = Object.values(ChallengeCategory)
 export const useChallengeCategoryLabelMap = () => {
   const { t } = useTranslation()
   const theme = useMantineTheme()
-  const { colorScheme } = useMantineColorScheme()
+  const colorScheme = useComputedColorScheme('light', { getInitialValueInEffect: false })
   const invert = colorScheme === 'dark' ? 'light' : 'dark'
   const map = useMemo(
     () =>

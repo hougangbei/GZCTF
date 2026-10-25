@@ -88,8 +88,8 @@ test.describe('skill tree administration', () => {
     const challengeResponse = await page.request.post('/api/admin/challenges', {
       data: {
         type: 'StaticAttachment',
-        localizations: [{ locale: 'en', title: challengeTitle, summary: '', body: '' }],
-        flags: [],
+        localizations: [{ locale: 'en', title: challengeTitle, summary: 'E2E challenge summary', body: 'E2E challenge body' }],
+        flags: [{ kind: 'Static', value: `flag{e2e-${id}}` }],
       },
     })
     expect(challengeResponse.ok()).toBeTruthy()
