@@ -72,11 +72,11 @@ docker run --rm \
     apk add --no-cache nodejs npm >/dev/null 2>&1
     npm i -g pnpm >/dev/null 2>&1
     dotnet publish GZCTF.csproj -c Release -o publish/linux/amd64 \
-      -r linux-x64 --no-self-contained /p:PublishReadyToRun=true' ||
+      -r linux-musl-x64 --no-self-contained /p:PublishReadyToRun=true' ||
   fail "Release publish failed"
 
 log "Building the production image"
-# The published assembly targets linux-x64, so the image must be built for the same
+# The published assembly targets linux-musl-x64, so the image must be built for the same
 # architecture even when the build host is arm64.
 docker build --platform linux/amd64 --build-arg TARGETPLATFORM=linux/amd64 \
   -t "$image" -f src/GZCTF/Dockerfile src/GZCTF >/dev/null ||

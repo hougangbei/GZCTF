@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Mime;
 using GZCTF.Extensions;
+using GZCTF.Features.Shared;
 using GZCTF.Middlewares;
 using GZCTF.Models.Internal;
 using GZCTF.Models.Request.Account;
@@ -38,6 +39,9 @@ public class AdminController(
     IServiceProvider serviceProvider,
     IStringLocalizer<Program> localizer) : ControllerBase
 {
+    private IActionResult AdminGrantDenied() => StatusCode(StatusCodes.Status403Forbidden,
+        new ApiError("admin.owner_required", "Only the built-in Admin account can manage administrator privileges or other administrator accounts.", HttpContext.TraceIdentifier));
+
     /// <summary>
     /// Get configuration
     /// </summary>
@@ -236,6 +240,19 @@ public class AdminController(
             var users = new List<UserInfo>(model.Length);
             foreach (var user in model)
             {
+                // Both duplicate paths can reset credentials. Check before any mutation;
+                // returning within the transaction rolls back earlier items in this batch.
+                var byName = await userManager.FindByNameAsync(user.UserName);
+                var byEmail = await userManager.FindByEmailAsync(user.Email);
+                if (!AdminAccountPolicy.IsOwner(currentUser) &&
+                    (AdminAccountPolicy.IsReservedName(user.UserName) ||
+                     byName is not null && !AdminAccountPolicy.CanManage(currentUser, byName) ||
+                     byEmail is not null && !AdminAccountPolicy.CanManage(currentUser, byEmail)))
+                    return AdminGrantDenied();
+                if (byName is not null && AdminAccountPolicy.IsOwner(byName) &&
+                    !AdminAccountPolicy.IsReservedName(user.UserName)) return AdminGrantDenied();
+                if (byEmail is not null && AdminAccountPolicy.IsOwner(byEmail) &&
+                    !AdminAccountPolicy.IsReservedName(user.UserName)) return AdminGrantDenied();
                 var userInfo = user.ToUserInfo();
                 var result = await userManager.CreateAsync(userInfo, user.Password);
 
@@ -328,6 +345,9 @@ public class AdminController(
             return NotFound(new RequestResponse(localizer[nameof(Resources.Program.Admin_UserNotFound)],
                 StatusCodes.Status404NotFound));
 
+        var actor = await userManager.GetUserAsync(User);
+        if (!AdminAccountPolicy.CanEdit(actor, user, model)) return AdminGrantDenied();
+
         if (model.UserName is not null && model.UserName != user.UserName)
         {
             var result = await userManager.SetUserNameAsync(user, model.UserName);
@@ -372,6 +392,9 @@ public class AdminController(
             return NotFound(new RequestResponse(localizer[nameof(Resources.Program.Admin_UserNotFound)],
                 StatusCodes.Status404NotFound));
 
+        if (!AdminAccountPolicy.CanManage(await userManager.GetUserAsync(User), user))
+            return AdminGrantDenied();
+
         var pwd = Codec.RandomPassword(16);
         var code = await userManager.GeneratePasswordResetTokenAsync(user);
         await userManager.ResetPasswordAsync(user, code, pwd);
@@ -405,6 +428,9 @@ public class AdminController(
         if (user is null)
             return NotFound(new RequestResponse(localizer[nameof(Resources.Program.Admin_UserNotFound)],
                 StatusCodes.Status404NotFound));
+
+        if (!AdminAccountPolicy.CanManage(await userManager.GetUserAsync(User), user))
+            return AdminGrantDenied();
 
         // A captain is still referenced by retained legacy competition evidence.
         // Reject deletion so the database cannot cascade into those read-only rows.

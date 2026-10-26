@@ -57,6 +57,11 @@ public class DockerManager : IContainerManager
                 return;
             }
         }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+        catch (Exception e) when (e is HttpRequestException or IOException or System.Net.Sockets.SocketException)
+        {
+            throw;
+        }
         catch (Exception e)
         {
             _logger.LogErrorMessage(e,
@@ -164,6 +169,11 @@ public class DockerManager : IContainerManager
             _logger.LogCreationFailedWithHttpContext(containerName, e.StatusCode, e.ResponseBody ?? string.Empty);
             return null;
         }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+        catch (Exception e) when (e is HttpRequestException or IOException or System.Net.Sockets.SocketException)
+        {
+            throw;
+        }
         catch (Exception e)
         {
             _logger.LogErrorMessage(e,
@@ -174,16 +184,84 @@ public class DockerManager : IContainerManager
 
         var container = new Models.Data.Container { ContainerId = containerRes.ID, Image = config.Image };
 
-        retry = 0;
-
-        while (true)
+        try
         {
-            if (retry++ >= 3)
+            retry = 0;
+
+            while (true)
+            {
+                if (retry++ >= 3)
+                {
+                    _logger.SystemLog(
+                        StaticLocalizer[
+                            nameof(Resources.Program.ContainerManager_ContainerInstanceStartFailed),
+                            container.LogId,
+                            config.Image.Split("/").LastOrDefault() ?? ""],
+                        TaskStatus.Failed, LogLevel.Warning);
+
+                    await DestroyContainerAsync(container, token);
+                    return null;
+                }
+
+                var started = await _client.Containers.StartContainerAsync(container.ContainerId,
+                    new(), token);
+
+                if (started)
+                    break;
+
+                await Task.Delay(500, token);
+            }
+
+            var info = await _client.Containers.InspectContainerAsync(container.ContainerId, token);
+            var state = info.State;
+
+            if (state is null)
             {
                 _logger.SystemLog(
                     StaticLocalizer[
-                        nameof(Resources.Program.ContainerManager_ContainerInstanceStartFailed),
-                        container.LogId,
+                        nameof(Resources.Program.ContainerManager_ContainerInstanceCreationFailedWithError),
+                        config.Image.Split("/").LastOrDefault() ?? "", string.Empty],
+                    TaskStatus.Failed, LogLevel.Warning);
+
+                await DestroyContainerAsync(container, token);
+                return null;
+            }
+
+            container.Status = state.Dead || state.OOMKilled || state.Restarting
+                ? ContainerStatus.Destroyed
+                : state.Running
+                    ? ContainerStatus.Running
+                    : ContainerStatus.Pending;
+
+            if (container.Status != ContainerStatus.Running)
+            {
+                _logger.SystemLog(
+                    StaticLocalizer[
+                        nameof(Resources.Program.ContainerManager_ContainerInstanceCreationFailedWithError),
+                        config.Image.Split("/").LastOrDefault() ?? "", state.Error],
+                    TaskStatus.Failed, LogLevel.Warning);
+
+                await DestroyContainerAsync(container, token);
+                return null;
+            }
+
+            container.StartedAt = DateTimeOffset.Parse(state.StartedAt);
+            container.ExpectStopAt = container.StartedAt + TimeSpan.FromHours(2);
+            var networkSettings = info.NetworkSettings;
+            container.IP = networkSettings?.Networks?.FirstOrDefault().Value?.IPAddress ?? string.Empty;
+            container.Port = config.ExposedPort;
+            container.IsProxy = !_meta.ExposePort;
+
+            if (!_meta.ExposePort)
+                return container;
+
+            var bindings = GetPublishedPortBindings(networkSettings?.Ports, config.ExposedPort);
+
+            if (bindings is [])
+            {
+                _logger.SystemLog(
+                    StaticLocalizer[
+                        nameof(Resources.Program.ContainerManager_ContainerCreationFailed),
                         config.Image.Split("/").LastOrDefault() ?? ""],
                     TaskStatus.Failed, LogLevel.Warning);
 
@@ -191,86 +269,28 @@ public class DockerManager : IContainerManager
                 return null;
             }
 
-            var started = await _client.Containers.StartContainerAsync(container.ContainerId,
-                new(), token);
+            var port = bindings.First().HostPort;
 
-            if (started)
-                break;
+            if (int.TryParse(port, out var numPort))
+                container.PublicPort = numPort;
+            else
+                _logger.SystemLog(
+                    StaticLocalizer[nameof(Resources.Program.ContainerManager_PortParsingFailed), port],
+                    TaskStatus.Failed,
+                    LogLevel.Warning);
 
-            await Task.Delay(500, token);
-        }
+            if (!string.IsNullOrEmpty(_meta.PublicEntry))
+                container.PublicIP = _meta.PublicEntry;
 
-        var info = await _client.Containers.InspectContainerAsync(container.ContainerId, token);
-        var state = info.State;
-
-        if (state is null)
-        {
-            _logger.SystemLog(
-                StaticLocalizer[
-                    nameof(Resources.Program.ContainerManager_ContainerInstanceCreationFailedWithError),
-                    config.Image.Split("/").LastOrDefault() ?? "", string.Empty],
-                TaskStatus.Failed, LogLevel.Warning);
-
-            await DestroyContainerAsync(container, token);
-            return null;
-        }
-
-        container.Status = state.Dead || state.OOMKilled || state.Restarting
-            ? ContainerStatus.Destroyed
-            : state.Running
-                ? ContainerStatus.Running
-                : ContainerStatus.Pending;
-
-        if (container.Status != ContainerStatus.Running)
-        {
-            _logger.SystemLog(
-                StaticLocalizer[
-                    nameof(Resources.Program.ContainerManager_ContainerInstanceCreationFailedWithError),
-                    config.Image.Split("/").LastOrDefault() ?? "", state.Error],
-                TaskStatus.Failed, LogLevel.Warning);
-
-            await DestroyContainerAsync(container, token);
-            return null;
-        }
-
-        container.StartedAt = DateTimeOffset.Parse(state.StartedAt);
-        container.ExpectStopAt = container.StartedAt + TimeSpan.FromHours(2);
-        var networkSettings = info.NetworkSettings;
-        container.IP = networkSettings?.Networks?.FirstOrDefault().Value?.IPAddress ?? string.Empty;
-        container.Port = config.ExposedPort;
-        container.IsProxy = !_meta.ExposePort;
-
-        if (!_meta.ExposePort)
             return container;
-
-        var bindings = GetPublishedPortBindings(networkSettings?.Ports, config.ExposedPort);
-
-        if (bindings is [])
-        {
-            _logger.SystemLog(
-                StaticLocalizer[
-                    nameof(Resources.Program.ContainerManager_ContainerCreationFailed),
-                    config.Image.Split("/").LastOrDefault() ?? ""],
-                TaskStatus.Failed, LogLevel.Warning);
-
-            await DestroyContainerAsync(container, token);
-            return null;
         }
-
-        var port = bindings.First().HostPort;
-
-        if (int.TryParse(port, out var numPort))
-            container.PublicPort = numPort;
-        else
-            _logger.SystemLog(
-                StaticLocalizer[nameof(Resources.Program.ContainerManager_PortParsingFailed), port],
-                TaskStatus.Failed,
-                LogLevel.Warning);
-
-        if (!string.IsNullOrEmpty(_meta.PublicEntry))
-            container.PublicIP = _meta.PublicEntry;
-
-        return container;
+        catch
+        {
+            // Once Docker allocated an ID, any failed start/inspection must remove it.
+            // A cancelled request must not cancel cleanup and leave an untracked container.
+            await DestroyContainerAsync(container, CancellationToken.None);
+            throw;
+        }
     }
 
     internal static IList<PortBinding> GetPublishedPortBindings(
@@ -325,7 +345,7 @@ public class DockerManager : IContainerManager
             HostConfig = new()
             {
                 Memory = config.MemoryLimit * 1024 * 1024,
-                CPUPercent = config.CPUCount * 10,
+                NanoCPUs = config.CPUCount * 100_000_000L,
                 NetworkMode = _meta.NetworkNames[config.NetworkMode]
             }
         };

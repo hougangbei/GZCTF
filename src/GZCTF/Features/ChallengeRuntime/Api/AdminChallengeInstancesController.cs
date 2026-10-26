@@ -1,4 +1,5 @@
 using System.Net.Mime;
+using GZCTF.Features.Shared;
 using GZCTF.Features.ChallengeRuntime.Application;
 using GZCTF.Features.ChallengeRuntime.Domain;
 using GZCTF.Middlewares;
@@ -80,6 +81,11 @@ public sealed class AdminChallengeInstancesController(
         {
             await runtime.StopAsync(instance.UserId, instance.ChallengeId, token);
             return NoContent();
+        }
+        catch (ChallengeRuntimeException error)
+        {
+            return StatusCode(error.StatusCode,
+                new ApiError(error.Code, error.UserMessage, HttpContext.TraceIdentifier));
         }
         catch (InvalidOperationException)
         {

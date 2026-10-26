@@ -59,5 +59,6 @@ public class AdminUserInfoModel
     /// <summary>
     /// User role
     /// </summary>
+    [EnumDataType(typeof(Role))]
     public Role? Role { get; set; }
 }

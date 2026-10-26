@@ -1,4 +1,5 @@
 using System.Net.Mime;
+using GZCTF.Features.Shared;
 using GZCTF.Features.ChallengeRuntime.Application;
 using GZCTF.Features.ChallengeRuntime.Domain;
 using GZCTF.Middlewares;
@@ -46,6 +47,11 @@ public sealed class ChallengeInstancesController(
             await runtime.StopAsync(GetUserId(), challengeId, token);
             return NoContent();
         }
+        catch (ChallengeRuntimeException error)
+        {
+            return StatusCode(error.StatusCode,
+                new ApiError(error.Code, error.UserMessage, HttpContext.TraceIdentifier));
+        }
         catch (InvalidOperationException)
         {
             return NotFound();
@@ -65,6 +71,11 @@ public sealed class ChallengeInstancesController(
         catch (ChallengeInstanceLimitException)
         {
             return Conflict(new { code = "challenge.instance_limit_reached" });
+        }
+        catch (ChallengeRuntimeException error)
+        {
+            return StatusCode(error.StatusCode,
+                new ApiError(error.Code, error.UserMessage, HttpContext.TraceIdentifier));
         }
         catch (InvalidOperationException)
         {

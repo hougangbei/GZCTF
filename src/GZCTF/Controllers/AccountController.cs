@@ -1,5 +1,6 @@
 ﻿using System.Net.Mime;
 using GZCTF.Middlewares;
+using GZCTF.Features.Shared;
 using GZCTF.Models;
 using GZCTF.Models.Internal;
 using GZCTF.Models.Request.Account;
@@ -410,6 +411,12 @@ public class AccountController(
     public async Task<IActionResult> Update([FromBody] ProfileUpdateModel model)
     {
         var user = await userManager.GetUserAsync(User);
+
+        if (model.UserName is { } name &&
+            (AdminAccountPolicy.IsOwner(user) && !AdminAccountPolicy.IsReservedName(name) ||
+             !AdminAccountPolicy.IsOwner(user) && AdminAccountPolicy.IsReservedName(name)))
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new ApiError("admin.owner_required", "The built-in Admin account cannot be renamed.", HttpContext.TraceIdentifier));
 
         if (model.UserName is not null && model.UserName != user!.UserName)
         {
