@@ -34,7 +34,6 @@ public class AdminController(
     IBlobRepository blobService,
     ILogRepository logRepository,
     IConfigService configService,
-    IContainerRepository containerRepository,
     AppDbContext db,
     IServiceProvider serviceProvider,
     IStringLocalizer<Program> localizer) : ControllerBase
@@ -471,7 +470,8 @@ public class AdminController(
     /// <response code="403">Forbidden</response>
     [HttpGet("Instances")]
     [ProducesResponseType(typeof(ArrayResponse<ContainerInstanceModel>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Instances(CancellationToken token = default) =>
+    public async Task<IActionResult> Instances([FromServices] IContainerRepository containerRepository,
+        CancellationToken token = default) =>
         Ok(new ArrayResponse<ContainerInstanceModel>(await containerRepository.GetContainerInstances(token)));
 
     /// <summary>
@@ -491,7 +491,8 @@ public class AdminController(
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
     [SuppressMessage("ReSharper", "RouteTemplates.ParameterTypeCanBeMadeStricter")]
-    public async Task<IActionResult> DestroyInstance(Guid id, CancellationToken token = default)
+    public async Task<IActionResult> DestroyInstance(Guid id, [FromServices] IContainerRepository containerRepository,
+        CancellationToken token = default)
     {
         var container = await containerRepository.GetContainerById(id, token);
 

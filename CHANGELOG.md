@@ -18,6 +18,7 @@ All notable changes to [**GZCTF**](https://github.com/GZTimeWalker/GZCTF) will b
 
 ### Fixed
 
+- Keep basic administration endpoints available when the challenge Docker connection is unavailable.
 - Refresh both configuration cache layers immediately after administrators save platform settings.
 - Keep account and administration responses out of persistent browser caches, and verify administrator permissions before loading protected screens.
 
