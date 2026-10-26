@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline GZCTF deployment. Python 3.8+, Docker Engine and Compose v2.20+."""
+"""Offline GZCTF deployment. Python 3.8+, Docker Engine and Compose v2.18.1+."""
 import argparse
 import contextlib
 import datetime
@@ -177,8 +177,8 @@ class Deployment:
         if not self.test_host and (platform.system() != 'Linux' or platform.machine() not in ('x86_64', 'amd64')):
             raise OfflineError('Production installation requires Linux x86_64')
         version = docker('compose', 'version', '--short').decode().strip().lstrip('v').split('.')
-        if tuple(map(int, version[:2])) < (2, 20):
-            raise OfflineError('Docker Compose v2.20+ is required')
+        if tuple(map(int, version[:3])) < (2, 18, 1):
+            raise OfflineError('Docker Compose v2.18.1+ is required')
         self.root.mkdir(parents=True, exist_ok=True)
         if shutil.disk_usage(str(self.root)).free < 2 * 1024 ** 3:
             raise OfflineError('At least 2 GiB free space is required, plus backup space')

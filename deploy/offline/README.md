@@ -1,6 +1,6 @@
 # GZCTF 内网 amd64 部署包
 
-目标：Linux x86_64（Intel/AMD 64 位），Python 3.8+、Docker Engine、Docker Compose 插件 v2.20+。包含应用、PostgreSQL 15、Redis 7 三个镜像，安装和更新不在线拉取镜像，不需要 Git、Node 或 .NET SDK。Docker/Compose/Python 本身不包含在包内，需要运维提前安装并维护。
+目标：Linux x86_64（Intel/AMD 64 位），Python 3.8+、Docker Engine、Docker Compose 插件 v2.18.1+。包含应用、PostgreSQL 15、Redis 7 三个镜像，安装和更新不在线拉取镜像，不需要 Git、Node 或 .NET SDK。Docker/Compose/Python 本身不包含在包内，需要运维提前安装并维护。
 
 这是单业务机部署工具，不会迁移 CTFd 数据，也不会修改现有 CTFd、FRP、Harbor 或题目机。动态题目 Docker 控制通道及学生访问入口仍需配置和验收。应用镜像来自提交 a6876b0 的本地构建，其 NuGet 依赖检查存在包含高危级别的漏洞告警；镜像包不是“无漏洞”或“绝对安全”的认证。Ubuntu 20.04 已结束标准安全维护，使用它时必须安排 ESM/离线安全补丁或升级到受支持系统。
 
@@ -139,4 +139,10 @@ sudo python3 /opt/gzctf/manage.py --root /opt/gzctf restore \
 
 ## 本包已完成的验证
 
-9 项安全单元测试通过。Docker 隔离环境完成首次安装、备份、正常 app 替换并核对数据/密钥/现场配置、当前 Compose 损坏后的人工恢复、无效候选配置停机前拒绝，以及候选镜像启动失败后的完整自动回滚。失败回滚测试同时验证备份之后新增的表被移除、数据库值和附件被还原、Redis 值恢复、旧应用健康。测试使用独立卷、目录和网络，不连接生产数据库。
+11 项安全单元测试通过。Docker 隔离环境完成首次安装、备份、正常 app 替换并核对数据/密钥/现场配置、当前 Compose 损坏后的人工恢复、无效候选配置停机前拒绝，以及候选镜像启动失败后的完整自动回滚。失败回滚测试同时验证备份之后新增的表被移除、数据库值和附件被还原、Redis 值恢复、旧应用健康。测试使用独立卷、目录和网络，不连接生产数据库。
+
+## Compose 2.18.1 兼容补丁
+
+原始 20261026 完整包的部署脚本保守要求 Compose 2.20+。兼容补丁将门槛调整为实际验证的 2.18.1，不更换三个镜像，不升级宿主机 Docker/Compose/Python，也不修改已运行的项目。下载兼容工具包及校验文件后，校验并解压到已经解压的原始完整包目录（必须含原 images.tar.gz），同时更新 manage.py、README.md、compose.yml 和 manifest.json，随后执行首次安装。不要只手改版本数字，否则会触发文件完整性校验。
+
+兼容性验证使用官方 Compose v2.18.1 的独立二进制及 Docker Desktop 的较新 Engine；没有替换本机的默认 Compose 插件。它验证 Compose 命令/配置和容器生命周期，不等同于已在现场 Docker 24.0.2/Ubuntu 20.04 完成验收。先在独立项目验证，不改动现有 CTFd 服务。

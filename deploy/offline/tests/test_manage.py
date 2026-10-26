@@ -97,3 +97,19 @@ class RestoreRetryTests(unittest.TestCase):
             m.restore_files(root,source)
             self.assertEqual((current/'restored').read_text(),'backup')
             self.assertTrue(any((p/'newer').exists() for p in root.glob('files-before-restore-*')))
+
+class ComposeCompatibilityTests(unittest.TestCase):
+    def test_existing_compose_2181_passes_preflight(self):
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            deployment=m.Deployment(Path(tmp)/'install',test_host=True)
+            with mock.patch.object(m,'docker',return_value=b'2.18.1\n'):
+                deployment.preflight()
+            self.assertTrue(deployment.root.is_dir())
+
+    def test_versions_older_than_verified_baseline_are_rejected(self):
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            deployment=m.Deployment(Path(tmp)/'install',test_host=True)
+            with mock.patch.object(m,'docker',return_value=b'2.17.3\n'):
+                with self.assertRaises(m.OfflineError):deployment.preflight()
