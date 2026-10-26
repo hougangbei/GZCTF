@@ -1,5 +1,7 @@
 import { AppShell, Box, LoadingOverlay, Stack, useComputedColorScheme, useMantineTheme } from '@mantine/core'
 import React, { FC, useEffect, useState } from 'react'
+import { useLocation } from 'react-router'
+import { AdminShell } from '@Components/admin/AdminShell'
 import { useTranslation } from 'react-i18next'
 import { AppFooter } from '@Components/AppFooter'
 import { AppHeader } from '@Components/AppHeader'
@@ -32,10 +34,11 @@ export interface AppControlProps {
 }
 
 export const WithNavBar: FC<WithNavBarProps> = ({ children, className, width, isLoading, minWidth, withFooter = false, withHeader, stickyHeader = false }) => {
+  const admin = useLocation().pathname.startsWith('/admin')
   const theme = useMantineTheme()
   const colorScheme = useComputedColorScheme('light', { getInitialValueInEffect: false })
-  const { user } = useUser()
-  const mobile = useIsMobile(user?.role === Role.Admin ? 1450 : 1100)
+  const { user, error: userError } = useUser()
+  const mobile = useIsMobile(1100)
   const [colorModalOpened, setColorModalOpened] = useState(false)
   const [navOpened, setNavOpened] = useState(false)
   const { t } = useTranslation()
@@ -70,7 +73,7 @@ export const WithNavBar: FC<WithNavBarProps> = ({ children, className, width, is
             <Stack className={classes.main} data-pb={withFooter || undefined}>
               <LoadingOverlay visible={isLoading ?? false} overlayProps={DEFAULT_LOADING_OVERLAY} />
               {withHeader && <IconHeader px={mobile ? '2%' : '10%'} sticky={stickyHeader} />}
-              <Box w={width ?? '100%'} className={classes.content}>{children}</Box>
+              {admin && user?.role === Role.Admin && !userError ? <AdminShell>{children}</AdminShell> : <Box w={width ?? '100%'} className={classes.content}>{children}</Box>}
               <CustomColorModal opened={colorModalOpened} onClose={() => setColorModalOpened(false)} />
             </Stack>
             {withFooter && <AppFooter />}

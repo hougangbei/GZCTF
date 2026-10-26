@@ -1,22 +1,30 @@
 import { Badge, Button, Card, Group, Modal, Select, SimpleGrid, Stack, Switch, Text, TextInput } from '@mantine/core'
 import { showNotification } from '@mantine/notifications'
+import { Icon } from '@mdi/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
-import api, { ChallengeCategory, ChallengeType, type ChallengeSummaryResponse } from '@Api'
-import { useAdminChallenges } from '@Hooks/useChallengeLibraryAdmin'
-import { showErrorMsg } from '@Utils/Shared'
-import { getApiErrorCode } from '@Utils/skillTreeAdmin'
 import classes from '@Components/admin/workspace/AdminWorkspace.module.css'
 import type { CreatePanelProps } from '@Components/admin/workspace/types'
+import { useChallengeCategoryLabelMap, showErrorMsg } from '@Utils/Shared'
+import { getApiErrorCode } from '@Utils/skillTreeAdmin'
+import { useAdminChallenges } from '@Hooks/useChallengeLibraryAdmin'
+import api, { ChallengeCategory, ChallengeType, type ChallengeSummaryResponse } from '@Api'
 
-export const ChallengesPanel = ({ createOpen, onClose, onOpen }: CreatePanelProps) => {
+export const ChallengesPanel = ({ createOpen, onClose }: CreatePanelProps) => {
   // The learning namespace must be requested explicitly; `learning:`-prefixed
   // keys passed to a default-namespace t never trigger its load.
   const { t } = useTranslation('learning')
   const { t: tDefault } = useTranslation()
   const { t: tSkillTrees } = useTranslation('skillTrees')
   const { t: tChallenge } = useTranslation('challenge')
+  const categoryIcons = useChallengeCategoryLabelMap()
+  const renderCategory = ({ option }: { option: { value: string; label: string } }) => (
+    <Group gap="xs">
+      <Icon path={categoryIcons.get(option.value as ChallengeCategory)!.icon} size={0.8} aria-hidden="true" />
+      <span>{option.label}</span>
+    </Group>
+  )
   const navigate = useNavigate()
   const { data: challenges, error, isLoading, mutate } = useAdminChallenges()
   const [title, setTitle] = useState('')
@@ -26,8 +34,9 @@ export const ChallengesPanel = ({ createOpen, onClose, onOpen }: CreatePanelProp
   const [creating, setCreating] = useState(false)
   const [toggleTarget, setToggleTarget] = useState<ChallengeSummaryResponse>()
   const [toggling, setToggling] = useState(false)
-  const visibleChallenges = challenges?.filter((challenge) =>
-    !filterCategory || challenge.ctfCategory === filterCategory)
+  const visibleChallenges = challenges?.filter(
+    (challenge) => !filterCategory || challenge.ctfCategory === filterCategory
+  )
 
   const toggleAvailability = async () => {
     if (!toggleTarget?.id) return
@@ -83,13 +92,15 @@ export const ChallengesPanel = ({ createOpen, onClose, onOpen }: CreatePanelProp
         <Select
           label={t('editorFilterCategory')}
           placeholder={t('editorAllCategories')}
+          renderOption={renderCategory}
           data={Object.values(ChallengeCategory).map((value) => ({
             value,
             label: `${value} · ${tChallenge(`category.${value.toLowerCase()}`)}`,
           }))}
           value={filterCategory}
           onChange={setFilterCategory}
-          clearable searchable
+          clearable
+          searchable
           maw={320}
         />
       )}
@@ -110,17 +121,28 @@ export const ChallengesPanel = ({ createOpen, onClose, onOpen }: CreatePanelProp
                 <Text fw={600} lineClamp={1} component={Link} to={`/admin/library/challenges/${challenge.id}`}>
                   {challenge.title}
                 </Text>
-                <Badge
-                  color={challenge.publicationState === 'Published' ? 'green' : 'gray'}
-                  variant="light"
-                >
+                <Badge color={challenge.publicationState === 'Published' ? 'green' : 'gray'} variant="light">
                   {tSkillTrees(`state.${(challenge.publicationState ?? 'Draft').toLowerCase()}`)}
                 </Badge>
               </Group>
               <Group justify="space-between" align="flex-end" mt="xs" wrap="wrap">
                 <Group gap="xs">
-                  <Badge variant="outline">{challenge.ctfCategory ?? ChallengeCategory.Misc}</Badge>
-                  <Text size="sm" c="dimmed">{challenge.type}</Text>
+                  <Badge
+                    variant="outline"
+                    color="gray"
+                    leftSection={
+                      <Icon
+                        path={categoryIcons.get(challenge.ctfCategory ?? ChallengeCategory.Misc)!.icon}
+                        size={0.65}
+                        aria-hidden="true"
+                      />
+                    }
+                  >
+                    {challenge.ctfCategory ?? ChallengeCategory.Misc}
+                  </Badge>
+                  <Text size="sm" c="dimmed">
+                    {challenge.type}
+                  </Text>
                 </Group>
                 <Switch
                   size="sm"
@@ -138,21 +160,15 @@ export const ChallengesPanel = ({ createOpen, onClose, onOpen }: CreatePanelProp
       ) : (
         <div className={classes.emptyState}>
           <Text c="dimmed">{tSkillTrees('workspace.emptyChallenges')}</Text>
-          <Button variant="light" onClick={onOpen}>
-            {tSkillTrees('workspace.createChallenge')}
-          </Button>
         </div>
       )}
 
       <Modal opened={createOpen} onClose={onClose} title={tSkillTrees('workspace.createChallenge')}>
         <Stack>
-          <TextInput
-            label={t('adminTitle')}
-            value={title}
-            onChange={(event) => setTitle(event.currentTarget.value)}
-          />
+          <TextInput label={t('adminTitle')} value={title} onChange={(event) => setTitle(event.currentTarget.value)} />
           <Select
             label={t('adminCtfCategory')}
+            renderOption={renderCategory}
             data={Object.values(ChallengeCategory).map((value) => ({
               value,
               label: `${value} · ${tChallenge(`category.${value.toLowerCase()}`)}`,
@@ -188,7 +204,9 @@ export const ChallengesPanel = ({ createOpen, onClose, onOpen }: CreatePanelProp
         <Stack>
           <Text size="sm">{t('editorToggleHint', { title: toggleTarget?.title })}</Text>
           <Group justify="flex-end">
-            <Button variant="default" onClick={() => setToggleTarget(undefined)}>{t('editorCancel')}</Button>
+            <Button variant="default" onClick={() => setToggleTarget(undefined)}>
+              {t('editorCancel')}
+            </Button>
             <Button loading={toggling} onClick={toggleAvailability}>
               {toggleTarget?.isEnabled ? t('editorDisableChallenge') : t('editorEnableChallenge')}
             </Button>

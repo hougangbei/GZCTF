@@ -1,7 +1,11 @@
+import { Group } from '@mantine/core'
 import { NumberInput, Select, SimpleGrid, Stack, Switch, Text, Textarea, TextInput } from '@mantine/core'
+import { mdiPencilOutline } from '@mdi/js'
+import { Icon } from '@mdi/react'
 import { useTranslation } from 'react-i18next'
-import { ChallengeCategory, Difficulty } from '@Api'
+import { useChallengeCategoryLabelMap } from '@Utils/Shared'
 import type { ChallengeDraft } from '@Utils/challengeEditor'
+import { ChallengeCategory, Difficulty } from '@Api'
 
 type Props = {
   value: ChallengeDraft
@@ -10,17 +14,22 @@ type Props = {
 }
 
 export const ChallengeBasicsForm = ({ value, onChange, disabled }: Props) => {
+  const categoryIcons = useChallengeCategoryLabelMap()
   const { t } = useTranslation('learning')
   const { t: tChallenge } = useTranslation('challenge')
   const { t: tSkillTrees } = useTranslation('skillTrees')
   const set = (patch: Partial<ChallengeDraft>) => onChange({ ...value, ...patch })
   const standardDifficulties = [Difficulty.Baby, Difficulty.Easy, Difficulty.Normal, Difficulty.Hard]
   const difficulties = standardDifficulties.includes(value.difficulty)
-    ? standardDifficulties : [...standardDifficulties, value.difficulty]
+    ? standardDifficulties
+    : [...standardDifficulties, value.difficulty]
 
   return (
     <Stack gap="md">
-      <Text fw={600}>{t('editorBasics')}</Text>
+      <Group gap="xs">
+        <Icon path={mdiPencilOutline} size={0.85} aria-hidden="true" />
+        <Text fw={600}>{t('editorBasics')}</Text>
+      </Group>
       <TextInput
         label={t('adminTitle')}
         required
@@ -35,6 +44,13 @@ export const ChallengeBasicsForm = ({ value, onChange, disabled }: Props) => {
             value: category,
             label: `${category} · ${tChallenge(`category.${category.toLowerCase()}`)}`,
           }))}
+          leftSection={<Icon path={categoryIcons.get(value.ctfCategory)!.icon} size={0.8} aria-hidden="true" />}
+          renderOption={({ option }) => (
+            <Group gap="xs">
+              <Icon path={categoryIcons.get(option.value as ChallengeCategory)!.icon} size={0.8} aria-hidden="true" />
+              <span>{option.label}</span>
+            </Group>
+          )}
           value={value.ctfCategory}
           onChange={(category) => category && set({ ctfCategory: category as ChallengeCategory })}
           searchable

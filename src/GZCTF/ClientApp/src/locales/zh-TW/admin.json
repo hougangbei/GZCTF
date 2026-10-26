@@ -689,5 +689,15 @@
     "available": "Update available",
     "noUpdate": "No update available",
     "refresh": "Check again"
-  }
+  },
+  "navigation": {
+    "title": "管理導覽",
+    "menu": "管理選單",
+    "content": "學習內容",
+    "people": "成員與年級",
+    "operations": "審核與執行",
+    "system": "系統",
+    "gameInstances": "比賽實例（舊版）"
+  },
+  "ownerOnlyGrant": "Only the built-in Admin account can grant or revoke administrator privileges and manage other administrator accounts."
 }

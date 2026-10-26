@@ -9,7 +9,7 @@ import { showSkillTreeError } from '@Utils/skillTreeAdminFeedback'
 import classes from '@Components/admin/workspace/AdminWorkspace.module.css'
 import type { CreatePanelProps } from '@Components/admin/workspace/types'
 
-export const CategoriesPanel = ({ createOpen, onClose, onOpen }: CreatePanelProps) => {
+export const CategoriesPanel = ({ createOpen, onClose }: CreatePanelProps) => {
   const { t } = useTranslation('skillTrees')
   const { data: categories, isLoading: categoriesLoading } = useAdminSkillCategories()
   const { createCategory } = useSkillTreeAdminMutations()
@@ -85,9 +85,6 @@ export const CategoriesPanel = ({ createOpen, onClose, onOpen }: CreatePanelProp
       ) : (
         <div className={classes.emptyState}>
           <Text c="dimmed">{t('category.empty')}</Text>
-          <Button variant="light" onClick={onOpen}>
-            {t('category.createTitle')}
-          </Button>
         </div>
       )}
 

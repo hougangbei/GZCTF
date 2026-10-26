@@ -1,3 +1,5 @@
+import { Icon } from '@mdi/react'
+import { mdiPlayOutline, mdiStop } from '@mdi/js'
 import { Alert, Badge, Button, Card, Group, Modal, Stack, Text, Title } from '@mantine/core'
 import { showNotification } from '@mantine/notifications'
 import { useEffect, useRef, useState } from 'react'
@@ -12,7 +14,7 @@ import { ContentPublishModal } from '@Components/admin/library/ContentPublishMod
 import { WithNavBar } from '@Components/WithNavbar'
 import { WithRole } from '@Components/WithRole'
 import { Markdown } from '@Components/MarkdownRenderer'
-import { showErrorMsg } from '@Utils/Shared'
+import { useChallengeCategoryLabelMap, showErrorMsg } from '@Utils/Shared'
 import { getApiErrorCode } from '@Utils/skillTreeAdmin'
 import {
   challengeCommandFromDraft,
@@ -22,6 +24,7 @@ import {
 } from '@Utils/challengeEditor'
 
 const AdminChallengeEdit = () => {
+  const categoryIcons = useChallengeCategoryLabelMap()
   const { id } = useParams()
   const navigate = useNavigate()
   const { t } = useTranslation('learning')
@@ -182,7 +185,7 @@ const AdminChallengeEdit = () => {
                 <Badge variant="light" color={data?.challenge?.publicationState === 'Published' ? 'green' : 'gray'}>
                   {tSkillTrees(`state.${(data?.challenge?.publicationState ?? 'Draft').toLowerCase()}`)}
                 </Badge>
-                {draft && <Badge variant="outline">{draft.ctfCategory}</Badge>}
+                {draft && <Badge variant="outline" color="gray" leftSection={<Icon path={categoryIcons.get(draft.ctfCategory)!.icon} size={0.65} aria-hidden="true" />}>{draft.ctfCategory}</Badge>}
                 {draft && <Badge variant="outline">{draft.type}</Badge>}
               </Group>
             </Stack>
@@ -210,7 +213,7 @@ const AdminChallengeEdit = () => {
                 />
                 {isContainerType(draft.type) && (
                   <Stack mt="md" gap="xs" align="flex-start">
-                    <Button variant="light" loading={testing} disabled={saving || uploading || retired} onClick={toggleTestContainer}>
+                    <Button leftSection={<Icon path={testInstance?.status === ChallengeInstanceStatus.Running ? mdiStop : mdiPlayOutline} size={0.8} aria-hidden="true" />} variant="light" loading={testing} disabled={saving || uploading || retired} onClick={toggleTestContainer}>
                       {testInstance?.status === ChallengeInstanceStatus.Running
                         ? t('editorTestStop') : t('editorTestStart')}
                     </Button>

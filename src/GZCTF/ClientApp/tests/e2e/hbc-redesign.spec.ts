@@ -77,7 +77,15 @@ test('administrator navigation fits without covering account controls', async ({
     json: { userId: '30000000-0000-0000-0000-000000000001', userName: 'admin', role: 'Admin' },
   }))
   await page.goto('/')
-  await expect(page.getByRole('button', { name: 'Open navigation' })).toBeVisible()
+  const navigation = page.getByRole('navigation', { name: 'Main navigation' })
+  await expect(navigation.getByRole('link', { name: 'Admin', exact: true })).toBeVisible()
+  const navBounds = await navigation.boundingBox()
+  const controlsBounds = await page.getByRole('button', { name: 'Language', exact: true }).boundingBox()
+  expect(navBounds).not.toBeNull()
+  expect(controlsBounds).not.toBeNull()
+  expect(navBounds!.x + navBounds!.width).toBeLessThanOrEqual(controlsBounds!.x)
+  await page.getByRole('button', { name: 'admin', exact: true }).click()
+  await expect(page.getByRole('menuitem', { name: 'Profile' })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1280)
 })
 

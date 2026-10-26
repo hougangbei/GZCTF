@@ -18,6 +18,7 @@ test('admin content stays unmounted until the viewer role is known', async ({ pa
   await page.goto('/admin/skill-trees')
   await page.waitForTimeout(350)
   expect(adminRequests).toBe(0)
+  await expect(page.getByRole('navigation', { name: 'Administration navigation' })).toHaveCount(0)
   await expect(page.getByText('Private admin content')).toHaveCount(0)
 
   releaseProfile?.()
@@ -39,6 +40,7 @@ test('ordinary users cannot view admin workspace or its navigation links', async
   await expect(page.getByText('Private admin content')).toHaveCount(0)
   await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Admin' })).toHaveCount(0)
   expect(adminRequests).toBe(0)
+  await expect(page.getByRole('navigation', { name: 'Administration navigation' })).toHaveCount(0)
 })
 
 test('profile request errors show a retry without mounting admin data', async ({ page }) => {
@@ -58,8 +60,10 @@ test('profile request errors show a retry without mounting admin data', async ({
   await page.goto('/admin/skill-trees')
   await expect(page.getByRole('alert')).toContainText('An error has occurred')
   expect(adminRequests).toBe(0)
+  await expect(page.getByRole('navigation', { name: 'Administration navigation' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Try Again' }).click()
-  await expect(page.getByRole('heading', { name: 'Admin workspace' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Skill trees', exact: true })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Administration navigation' }).getByRole('link', { name: 'Skill trees', exact: true })).toHaveAttribute('aria-current', 'page')
 })
 
 test('disk cache excludes profile and admin API responses', async ({ page }) => {
@@ -69,7 +73,8 @@ test('disk cache excludes profile and admin API responses', async ({ page }) => 
   }))
   await page.route('**/api/admin/**', route => route.fulfill({ json: [] }))
   await page.goto('/admin/skill-trees')
-  await expect(page.getByRole('heading', { name: 'Admin workspace' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Skill trees', exact: true })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Administration navigation' }).getByRole('link', { name: 'Skill trees', exact: true })).toHaveAttribute('aria-current', 'page')
   await page.waitForTimeout(3500)
 
   const stored = await page.evaluate(async () => {
@@ -87,4 +92,20 @@ test('disk cache excludes profile and admin API responses', async ({ page }) => 
   const entries = JSON.parse(new TextDecoder().decode(ungzip(new Uint8Array(stored)))) as [string, unknown][]
   expect(entries.some(([key]) => key === '/api/config')).toBe(true)
   expect(entries.some(([key]) => key.includes('/api/account/') || key.includes('/api/admin/'))).toBe(false)
+})
+
+
+test('legacy admin layout hides navigation while profile is pending or failed', async ({ page }) => {
+  let release: (() => void) | undefined
+  const gate = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/api/account/profile', async route => {
+    await gate
+    await route.fulfill({ status: 503, json: { message: 'Unavailable' } })
+  })
+  await page.goto('/admin/settings')
+  await page.waitForTimeout(250)
+  await expect(page.getByRole('navigation', { name: 'Administration navigation' })).toHaveCount(0)
+  release?.()
+  await expect(page.getByRole('alert')).toContainText('An error has occurred')
+  await expect(page.getByRole('navigation', { name: 'Administration navigation' })).toHaveCount(0)
 })

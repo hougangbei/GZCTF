@@ -689,5 +689,15 @@
     "available": "Update available",
     "noUpdate": "No update available",
     "refresh": "Check again"
-  }
+  },
+  "navigation": {
+    "title": "Administration navigation",
+    "menu": "Admin menu",
+    "content": "Learning content",
+    "people": "People and cohorts",
+    "operations": "Review and runtime",
+    "system": "System",
+    "gameInstances": "Game instances (legacy)"
+  },
+  "ownerOnlyGrant": "Only the built-in Admin account can grant or revoke administrator privileges and manage other administrator accounts."
 }

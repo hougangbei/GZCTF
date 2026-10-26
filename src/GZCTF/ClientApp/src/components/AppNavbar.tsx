@@ -1,4 +1,4 @@
-import { mdiBookOpenPageVariantOutline, mdiChartLine, mdiFileCheckOutline, mdiFileTreeOutline, mdiHomeVariantOutline, mdiInformationOutline, mdiNoteTextOutline, mdiPackageVariantClosed, mdiWrenchOutline } from '@mdi/js'
+import { mdiBookOpenPageVariantOutline, mdiChartLine, mdiFileTreeOutline, mdiHomeVariantOutline, mdiInformationOutline, mdiNoteTextOutline, mdiWrenchOutline } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router'
@@ -30,10 +30,7 @@ export function AppNavbar({ mobile, mobileHidden, onNavigate }: AppNavbarProps) 
     { icon: mdiInformationOutline, label: 'common.tab.about', link: '/about' },
     ...(blogUrl ? [{ icon: mdiBookOpenPageVariantOutline, label: 'common.tab.laboratory_blog', link: blogUrl, external: true }] : []),
     { icon: mdiWrenchOutline, label: 'common.tab.admin', link: '/admin/skill-trees', admin: true },
-    { icon: mdiFileCheckOutline, label: 'skillTrees:writeups.reviewMenu', link: '/admin/skill-trees?tab=writeups', admin: true },
-    { icon: mdiPackageVariantClosed, label: 'skillTrees:instances.menu', link: '/admin/skill-trees?tab=instances', admin: true },
   ]
-  const active = location.pathname.startsWith('/admin') ? new URLSearchParams(location.search).get('tab') : null
 
   return (
     <nav className={classes.navbar} data-mobile={mobile || undefined} data-open={mobile && !mobileHidden || undefined} aria-label={t('common.accessibility.navigation')} aria-hidden={mobileHidden || undefined} inert={mobileHidden}>
@@ -47,7 +44,7 @@ export function AppNavbar({ mobile, mobileHidden, onNavigate }: AppNavbarProps) 
           )
         }
         const selected = item.admin
-          ? location.pathname.startsWith('/admin') && (item.link.includes('tab=') ? item.link.includes(`tab=${active}`) : !active)
+          ? location.pathname.startsWith('/admin')
           : item.link === '/' ? location.pathname === '/' : location.pathname.startsWith(item.link)
         return (
           <Link key={item.link} to={item.link} className={classes.link} aria-current={selected ? 'page' : undefined} onClick={onNavigate}>

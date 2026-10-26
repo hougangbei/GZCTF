@@ -1,3 +1,4 @@
+import { runtimeErrorKey } from '@Utils/runtimeErrors'
 import { Alert, Badge, Button, Group, Stack, Text, TextInput, Title } from '@mantine/core'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -60,7 +61,7 @@ export const ChallengeWorkspace = ({
       setMessage(
         (error as { response?: { status?: number } })?.response?.status === 409
           ? tSkillTrees('instances.limitReached')
-          : t('actionFailed')
+          : t(runtimeErrorKey(error) ?? 'actionFailed')
       )
     }
   }

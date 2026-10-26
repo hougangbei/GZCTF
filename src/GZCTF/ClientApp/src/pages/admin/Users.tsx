@@ -37,6 +37,7 @@ import { RegistrationReviewPanel } from '@Components/admin/RegistrationReviewPan
 import { UserEditModal, RoleColorMap } from '@Components/admin/UserEditModal'
 import { DEFAULT_LOADING_OVERLAY, showErrorMsg } from '@Utils/Shared'
 import { useArrayResponse } from '@Hooks/useArrayResponse'
+import { isBuiltinAdmin } from '@Utils/adminAccountPolicy'
 import { useUser } from '@Hooks/useUser'
 import api, { Role, UserInfoModel } from '@Api'
 import tableClasses from '@Styles/Table.module.css'
@@ -64,6 +65,9 @@ const Users: FC<{ embedded?: boolean }> = ({ embedded = false }) => {
 
   const modals = useModals()
   const { user: currentUser } = useUser()
+  const canManageAdmin = isBuiltinAdmin(currentUser)
+  const protectedAdmin = (user: UserInfoModel) => user.role === Role.Admin && !canManageAdmin
+  const readOnlyAdmin = (user: UserInfoModel) => protectedAdmin(user) && user.id !== currentUser?.userId
   const clipboard = useClipboard()
   const { t } = useTranslation()
   const viewport = useRef<HTMLDivElement>(null)
@@ -265,7 +269,7 @@ const Users: FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                   <Table.Tr key={user.id}>
                     <Table.Td>
                       <Switch
-                        disabled={disabled || (user.approvalStatus != null && user.approvalStatus !== 'Approved')}
+                        disabled={disabled || readOnlyAdmin(user) || (user.approvalStatus != null && user.approvalStatus !== 'Approved')}
                         checked={(user.emailConfirmed ?? false) &&
                           (user.approvalStatus == null || user.approvalStatus === 'Approved')}
                         onChange={() => onToggleActive(user)}
@@ -311,6 +315,8 @@ const Users: FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                       <Group wrap="nowrap" gap="sm" justify="right">
                         <ActionIcon
                           color="blue"
+                          aria-label={t('admin.button.users.edit')}
+                          disabled={disabled || readOnlyAdmin(user)}
                           onClick={() => {
                             setActiveUser(user)
                             setEditModalOpened(true)
@@ -324,7 +330,7 @@ const Users: FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                           message={t('admin.content.users.reset.message', {
                             name: user.userName,
                           })}
-                          disabled={disabled}
+                          disabled={disabled || protectedAdmin(user)}
                           onClick={() => onResetPassword(user)}
                         />
                         <ActionIconWithConfirm
@@ -333,7 +339,7 @@ const Users: FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                           message={t('admin.content.users.delete', {
                             name: user.userName,
                           })}
-                          disabled={disabled || user.id === currentUser?.userId}
+                          disabled={disabled || protectedAdmin(user) || user.id === currentUser?.userId}
                           onClick={() => onDelete(user)}
                         />
                       </Group>

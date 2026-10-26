@@ -168,7 +168,7 @@ test.describe('skill tree administration', () => {
     // 10. Switch to Chinese and repeat workspace assertions.
     await page.evaluate(() => localStorage.setItem('language', JSON.stringify('zh-CN')))
     await page.goto('/admin/skill-trees')
-    await expect(page.getByRole('heading', { name: '管理工作台' })).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('heading', { name: '技能树', exact: true })).toBeVisible({ timeout: 10_000 })
 
     // Forbidden UI must never appear.
     await expect(page.getByLabel(/json|modules json/i)).toHaveCount(0)

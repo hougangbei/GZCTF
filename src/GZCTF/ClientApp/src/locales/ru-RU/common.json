@@ -113,7 +113,10 @@
     "param_unknown": "Неизвестный параметр",
     "request_too_frequent": "Слишком много запросов",
     "try_later": "Пожалуйста, попробуйте позже",
-    "unknown": "Неизвестная ошибка"
+    "unknown": "Неизвестная ошибка",
+    "challenge_runtime_unavailable": "Challenge runtime is unavailable. Ask an administrator to configure or check the challenge host Docker connection. Harbor only stores images.",
+    "challenge_container_start_failed": "The challenge instance could not start. Ask an administrator to check the image, resources and challenge host logs.",
+    "challenge_container_stop_failed": "The challenge instance could not stop. Retry or ask an administrator to check the challenge host."
   },
   "label": {
     "challenge": "Задание",

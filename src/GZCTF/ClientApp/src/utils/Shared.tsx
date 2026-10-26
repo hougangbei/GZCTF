@@ -1,3 +1,4 @@
+import { runtimeErrorKey } from './runtimeErrors'
 import {
   Group,
   Stack,
@@ -355,16 +356,20 @@ export const randomInviteCode = () => {
 }
 
 export const tryGetErrorMsg = (err: any, t: (key: string) => string): string => {
+  if ((err?.response?.data?.code ?? err?.code) === 'admin.owner_required')
+    return t('translation:admin.ownerOnlyGrant')
+  const runtimeKey = runtimeErrorKey(err)
+  if (runtimeKey) return t(runtimeKey)
   const tryGetErrorString = (err: any): string | null => {
     return typeof err === 'string' ? err : null
   }
 
   return (
     tryGetErrorString(err) ||
-    tryGetErrorString(err.title) ||
-    tryGetErrorString(err.response?.data?.title) ||
-    tryGetErrorString(err.message) ||
-    tryGetErrorString(err.cause) ||
+    tryGetErrorString(err?.title) ||
+    tryGetErrorString(err?.response?.data?.title) ||
+    tryGetErrorString(err?.message) ||
+    tryGetErrorString(err?.cause) ||
     t('common.error.unknown')
   )
 }

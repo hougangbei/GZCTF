@@ -15,21 +15,29 @@ const mockAdmin = async (page: Page) => {
 }
 
 test.describe('admin workspace', () => {
-  test('all eight tabs remain accessible on a narrow screen', async ({ page }) => {
+  test('grouped navigation collapses at 320px and returns focus on Escape', async ({ page }) => {
     await mockAdmin(page)
-    await page.setViewportSize({ width: 390, height: 844 })
+    await page.setViewportSize({ width: 320, height: 740 })
     await page.goto('/admin/skill-trees')
-
-    const tabs = page.getByRole('tab')
-    await expect(tabs).toHaveCount(8)
-    const positions = await tabs.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().top))
-    expect(new Set(positions.map(Math.round)).size).toBe(1)
-    await page.getByRole('tab', { name: '成员管理' }).click()
+    const toggle = page.getByRole('button', { name: '管理菜单' })
+    const navigation = page.getByRole('navigation', { name: '管理导航' })
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(navigation).toBeHidden()
+    await toggle.click()
+    await expect(navigation).toBeVisible()
+    await navigation.getByRole('link', { name: '成员管理', exact: true }).focus()
+    await page.keyboard.press('Escape')
+    await expect(navigation).toBeHidden()
+    await expect(toggle).toBeFocused()
+    await toggle.click()
+    await navigation.getByRole('link', { name: '成员管理', exact: true }).click()
     await expect(page).toHaveURL(/\?tab=members$/)
+    await expect(navigation).toBeHidden()
     await expect(page.getByRole('button', { name: '创建年级' }).first()).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 
-  test('eight tabs switch in place and legacy addresses land on their tabs', async ({ page }) => {
+  test('sidebar links preserve query and legacy deep links', async ({ page }) => {
     test.setTimeout(120_000)
     await mockAdmin(page)
 
@@ -52,36 +60,56 @@ test.describe('admin workspace', () => {
     await page.goto('/admin/skill-trees')
     const labels = ['技能树', '全局类别', '题目管理', '成员管理', '用户管理', 'WP 审核', 'WP 管理', '实例管理']
     for (const label of labels) {
-      await expect(page.getByRole('tab', { name: label })).toBeVisible()
+      await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: label })).toBeVisible()
     }
-    await expect(page.getByRole('tab')).toHaveText(labels)
+    await expect(page.getByRole('tab')).toHaveCount(0)
+    await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link')).toHaveCount(16)
 
     // 2. Selecting the challenges tab updates the URL and survives a reload.
-    await page.getByRole('tab', { name: '题目管理' }).click()
+    await page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: '题目管理' }).click()
     await expect(page).toHaveURL(/\/admin\/skill-trees\?tab=challenges$/)
     await page.reload()
-    await expect(page.getByRole('tab', { name: '题目管理' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: '题目管理' })).toHaveAttribute('aria-current', 'page')
 
     // 3. The members tab behaves the same way.
-    await page.getByRole('tab', { name: '成员管理' }).click()
+    await page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: '成员管理' }).click()
     await expect(page).toHaveURL(/\/admin\/skill-trees\?tab=members$/)
-    await expect(page.getByRole('tab', { name: '成员管理' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: '成员管理' })).toHaveAttribute('aria-current', 'page')
 
     // 4. The retired challenge library address opens the challenges tab.
     await page.goto('/admin/library/challenges')
     await expect(page).toHaveURL(/\/admin\/skill-trees\?tab=challenges$/)
-    await expect(page.getByRole('tab', { name: '题目管理' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: '题目管理' })).toHaveAttribute('aria-current', 'page')
 
     // 5. The retired cohort address opens the members tab.
     await page.goto('/admin/cohorts')
     await expect(page).toHaveURL(/\/admin\/skill-trees\?tab=members$/)
-    await expect(page.getByRole('tab', { name: '成员管理' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: '成员管理' })).toHaveAttribute('aria-current', 'page')
 
     // 6. An unknown tab value falls back to the skill trees panel.
     await page.goto('/admin/skill-trees?tab=not-a-tab')
-    await expect(page.getByRole('tab', { name: '技能树' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: '技能树' })).toHaveAttribute('aria-current', 'page')
 
     expect(failures, failures.join('\n')).toEqual([])
+  })
+
+  test('one global admin entry remains active on system and editor pages', async ({ page }) => {
+    await mockAdmin(page)
+    await page.route('**/api/admin/qq-bot/settings', route => route.fulfill({ json: { enabled: false, baseUrl: '', groupId: '', messageTemplate: '{member} {challenge}', accessTokenConfigured: false } }))
+    await page.setViewportSize({ width: 1600, height: 1000 })
+    await page.goto('/admin/settings')
+    // Keep the global entry independent of the current sidebar section.
+    const adminEntry = page.locator('header nav a[href="/admin/skill-trees"]')
+    await expect(adminEntry).toHaveCount(1)
+    await expect(adminEntry).toHaveAttribute('aria-current', 'page')
+    await expect(page.locator('header nav a[href*="tab="]')).toHaveCount(0)
+    const nav = page.getByRole('navigation', { name: '管理导航' })
+    await expect(nav.locator('[aria-current="page"]')).toHaveCount(1)
+    await expect(nav.getByRole('link', { name: '系统设置', exact: true })).toHaveAttribute('aria-current', 'page')
+    await page.goto('/admin/library/lessons/10000000-0000-0000-0000-000000000002')
+    await expect(nav.getByRole('link', { name: '课节库', exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(nav.locator('[aria-current="page"]')).toHaveCount(1)
+    await expect(adminEntry).toHaveAttribute('aria-current', 'page')
   })
 
   test('review and instance tabs expose the new management flows', async ({ page }) => {
@@ -119,14 +147,14 @@ test.describe('admin workspace', () => {
     }))
 
     await page.goto('/admin/skill-trees?tab=writeups')
-    await expect(page.getByRole('tab', { name: 'WP 审核' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: 'WP 审核' })).toHaveAttribute('aria-current', 'page')
     await expect(page.getByText('Sample WP')).toBeVisible()
     await page.getByRole('button', { name: '通过' }).click()
     await expect(page.getByText('Sample WP')).toHaveCount(0)
-    await page.getByRole('tab', { name: '实例管理' }).click()
+    await page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: '实例管理' }).click()
     await expect(page.getByText('Container challenge')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'learner' })).toBeVisible()
-    await expect(page.getByText('比赛实例')).toHaveCount(0)
+    await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: '比赛实例（旧版）' })).toHaveAttribute('href', '/admin/instances')
     await expect(page.getByRole('textbox', { name: '每位成员最多同时开启' })).toHaveValue('2')
     await page.getByRole('textbox', { name: '每位成员最多同时开启' }).fill('4')
     await page.getByRole('textbox', { name: '靶机运行时长（分钟）' }).fill('90')
@@ -216,8 +244,9 @@ test.describe('admin workspace', () => {
 
     // 1. Direct access shows the challenges tab with its empty state.
     await page.goto('/admin/skill-trees?tab=challenges')
-    await expect(page.getByRole('tab', { name: '题目管理' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: '题目管理' })).toHaveAttribute('aria-current', 'page')
     await expect(page.getByText('暂无题目')).toBeVisible()
+    await expect(page.getByRole('button', { name: '创建题目', exact: true })).toHaveCount(1)
 
     // 2. The header action opens the create modal and the list refreshes.
     await page.getByRole('button', { name: '创建题目' }).first().click()
@@ -233,16 +262,16 @@ test.describe('admin workspace', () => {
     await expect(page.getByRole('heading', { name: title })).toBeVisible()
 
     // 3. The card opens the original detail page.
-    await page.getByRole('link', { name: '题目管理' }).click()
+    await page.getByRole('link', { name: '题目管理', exact: true }).last().click()
     await expect(page.getByText(title).first()).toBeVisible()
     await page.getByText(title).first().click()
     await expect(page).toHaveURL(new RegExp(`/admin/library/challenges/${challengeId}/?$`))
     await expect(page.getByRole('heading', { name: title })).toBeVisible()
 
     // 4. The back entry lands on the challenges tab with the list still rendered.
-    await page.getByRole('link', { name: '题目管理' }).click()
+    await page.getByRole('link', { name: '题目管理', exact: true }).last().click()
     await expect(page).toHaveURL(/\/admin\/skill-trees\?tab=challenges$/)
-    await expect(page.getByRole('tab', { name: '题目管理' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: '题目管理' })).toHaveAttribute('aria-current', 'page')
     await expect(page.getByText(title).first()).toBeVisible()
 
   })
@@ -312,7 +341,7 @@ test.describe('admin workspace', () => {
 
     // 1. Direct access shows the cohort list, its member count and the members table.
     await page.goto('/admin/skill-trees?tab=members')
-    await expect(page.getByRole('tab', { name: '成员管理' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: '成员管理' })).toHaveAttribute('aria-current', 'page')
     await expect(page.getByText('24级').first()).toBeVisible()
     await expect(page.getByText('成员 · 1')).toBeVisible()
     await expect(page.getByText('workspace-alice')).toBeVisible()

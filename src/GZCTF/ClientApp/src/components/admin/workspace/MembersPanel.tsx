@@ -21,7 +21,7 @@ type Registrant = {
 type RegistrantPage = { total: number; items: Registrant[] }
 const registrantPageSize = 20
 
-export const MembersPanel = ({ createOpen, onClose, onOpen }: CreatePanelProps) => {
+export const MembersPanel = ({ createOpen, onClose }: CreatePanelProps) => {
   // The learning namespace must be requested explicitly; `learning:`-prefixed
   // keys passed to a default-namespace t never trigger its load.
   const { t } = useTranslation('learning')
@@ -240,9 +240,6 @@ export const MembersPanel = ({ createOpen, onClose, onOpen }: CreatePanelProps) 
       ) : !hasCohorts ? (
         <div className={classes.emptyState}>
           <Text c="dimmed">{tSkillTrees('workspace.emptyCohorts')}</Text>
-          <Button variant="light" onClick={onOpen}>
-            {tSkillTrees('workspace.createCohort')}
-          </Button>
         </div>
       ) : (
         <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
