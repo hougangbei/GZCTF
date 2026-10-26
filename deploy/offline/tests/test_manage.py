@@ -113,3 +113,15 @@ class ComposeCompatibilityTests(unittest.TestCase):
             deployment=m.Deployment(Path(tmp)/'install',test_host=True)
             with mock.patch.object(m,'docker',return_value=b'2.17.3\n'):
                 with self.assertRaises(m.OfflineError):deployment.preflight()
+
+class Docker24FingerprintTests(unittest.TestCase):
+    def image(self, user):
+        return {'Os':'linux','Architecture':'amd64','RootFS':{'Layers':['sha256:layer']},
+                'Config':{'Entrypoint':['dotnet','GZCTF.dll'],'User':user}}
+
+    def test_unset_user_null_and_empty_string_are_equivalent(self):
+        self.assertEqual(m.fingerprint(self.image(None)),m.fingerprint(self.image('')))
+
+    def test_explicit_user_change_is_still_rejected(self):
+        self.assertNotEqual(m.fingerprint(self.image('')),m.fingerprint(self.image('1000')))
+        self.assertNotEqual(m.fingerprint(self.image('root')),m.fingerprint(self.image('1000')))

@@ -126,6 +126,10 @@ def fingerprint(info):
     value = {'os': info['Os'], 'arch': info['Architecture'], 'layers': info['RootFS']['Layers']}
     for key in ('Entrypoint', 'Cmd', 'Env', 'WorkingDir', 'User', 'Labels', 'ExposedPorts', 'Volumes', 'Healthcheck'):
         value[key] = config.get(key)
+    # Docker 24 reports an unspecified user as ""; newer Engine versions may
+    # report null. Preserve the existing manifest format for this one default.
+    if value['User'] == '':
+        value['User'] = None
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 def command(args, **kwargs):
