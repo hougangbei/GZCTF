@@ -3,21 +3,28 @@
 All notable changes to [**GZCTF**](https://github.com/GZTimeWalker/GZCTF) will be documented in this file.
 
 ---
-## [Unreleased] - 2026-10-25
+## [Unreleased] - 2026-10-26
 
 ### Added
 
+- Package the application, PostgreSQL, and Redis for offline linux/amd64 deployments, with persistent data volumes, backups, recovery, and Docker Compose 2.18.1 support.
 - Add an administrator-configurable laboratory blog link to desktop and mobile navigation.
 - Support managed updates from source code or release packages, with isolated validation, backups, and rollback.
 
 ### Changed
 
+- Unify administration under a grouped sidebar with responsive navigation and local challenge icons while preserving existing deep links.
+- Reserve administrator grants and revocations for the built-in Admin account; protect administrator credentials and reject undefined role values.
 - Redesign the learning leaderboard with a neutral charcoal palette, clearer striped rows, current-user emphasis, and responsive score trends.
 - Refresh the public pages and administration screens with a responsive shared navigation, accessible page states, configurable branding, and theme controls.
 - Improve community writeup actions, skill tree navigation, and leaderboard presentation.
 
 ### Fixed
 
+- Restore Logo and avatar uploads by retaining image stream ownership and publishing musl native dependencies for Alpine runtime images.
+- Resolve the challenge runtime only for container operations, and display clear localized failures when the host is unavailable or an instance cannot start or stop.
+- Remove allocated containers after failed starts, isolate identical static Flags by user and challenge, and enforce Linux CPU limits.
+- Keep basic administration endpoints available when the challenge Docker connection is unavailable.
 - Refresh both configuration cache layers immediately after administrators save platform settings.
 - Keep account and administration responses out of persistent browser caches, and verify administrator permissions before loading protected screens.
 

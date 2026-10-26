@@ -5,10 +5,19 @@ import unittest
 from unittest.mock import patch
 from collections import namedtuple
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from update_deployment import NativeDeployment, Database, validate_database_identity, free_port
+from update_deployment import Deployment, NativeDeployment, Database, validate_database_identity, free_port
 from update_sources import SourceError
 
 class DeploymentTests(unittest.TestCase):
+    def test_compose_alpine_runtime_uses_musl_and_native_runtime_is_preserved(self):
+        base={'work_dir':'/tmp/work','files_dir':'/tmp/files',
+              'database':{'container':'db','name':'gzctf','user':'gzctf'}}
+        for configured,expected in [(None,'linux-musl-x64'),('linux-x64','linux-musl-x64'),
+                                    ('linux-arm64','linux-musl-arm64'),('linux-musl-arm64','linux-musl-arm64')]:
+            config={**base,'deployment_mode':'compose','runtime':configured}
+            self.assertEqual(Deployment(config).runtime,expected)
+        self.assertEqual(Deployment({**base,'deployment_mode':'native','runtime':'linux-x64'}).runtime,'linux-x64')
+
     def test_database_names_cannot_target_postgres_or_inject_sql(self):
         for name in ['postgres','template1','template0','x; DROP DATABASE prod','']:
             with self.subTest(name=name),self.assertRaises(ValueError): validate_database_identity(name,'gzctf')

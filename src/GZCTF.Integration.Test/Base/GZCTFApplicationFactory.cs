@@ -42,6 +42,8 @@ public class GZCTFApplicationFactory : WebApplicationFactory<Program>, IAsyncLif
     private readonly bool _useK3sMode;
     private readonly bool _useMinioStorage;
 
+    private Docker.DotNet.DockerClient? _networkClient;
+    private IsolatedDockerNetworks? _networks;
     private string? _connectionString;
     private string? _storageConnectionString;
     private string? _kubeConfigPath;
@@ -142,6 +144,9 @@ public class GZCTFApplicationFactory : WebApplicationFactory<Program>, IAsyncLif
                 Console.WriteLine(
                     $@"[ConfigureWebHost] Setting ContainerProvider to Docker (K3s mode: {_useK3sMode}, path: {_kubeConfigPath ?? "null"})");
                 configDict["ContainerProvider:Type"] = "Docker";
+                configDict["ContainerProvider:DockerConfig:Uri"] =
+                    Environment.GetEnvironmentVariable("DOCKER_HOST") ?? string.Empty;
+                configDict["ContainerProvider:DockerConfig:ChallengeNetwork"] = $"gzctf-test-{_testId}";
                 configDict["ContainerProvider:PublicEntry"] = "localhost";
                 configDict["ContainerProvider:PortMappingType"] = "PlatformProxy";
                 configDict["ContainerProvider:EnableTrafficCapture"] = "true";
@@ -254,6 +259,13 @@ public class GZCTFApplicationFactory : WebApplicationFactory<Program>, IAsyncLif
         if (_useMinioStorage && _minioContainer is not null)
             tasks.Add(InitializeMinioAsync());
 
+        if (!_useK3sMode)
+        {
+            _networkClient = new Docker.DotNet.DockerClientBuilder().Build();
+            _networks = new IsolatedDockerNetworks(_networkClient, $"gzctf-test-{_testId}");
+            tasks.Add(_networks.CreateAsync());
+        }
+
         // Start PostgresSQL container
         tasks.Add(InitializePostgresAsync());
 
@@ -283,6 +295,8 @@ public class GZCTFApplicationFactory : WebApplicationFactory<Program>, IAsyncLif
             await _k3sContainer.DisposeAsync();
 
         await base.DisposeAsync();
+        if (_networks is not null) await _networks.DisposeAsync();
+        _networkClient?.Dispose();
 
         // Clean up test directory
         var testProjectDir = Path.Combine(Directory.GetCurrentDirectory(), $"test-{_testId}");

@@ -1,4 +1,6 @@
 import { Button, Group, Stack, Text, Textarea } from '@mantine/core'
+import { mdiHelpCircleOutline, mdiPlus } from '@mdi/js'
+import { Icon } from '@mdi/react'
 import { useTranslation } from 'react-i18next'
 import type { ChallengeDraft } from '@Utils/challengeEditor'
 
@@ -12,29 +14,43 @@ export const ChallengeHelpEditor = ({ value, onChange, disabled }: Props) => {
   const { t } = useTranslation('learning')
   return (
     <Stack gap="md">
-      <Text fw={600}>{t('editorHelp')}</Text>
+      <Group gap="xs">
+        <Icon path={mdiHelpCircleOutline} size={0.85} aria-hidden="true" />
+        <Text fw={600}>{t('editorHelp')}</Text>
+      </Group>
       {value.hints.map((hint, index) => (
         <Group key={index} align="flex-end" wrap="nowrap">
           <Textarea
             label={t('editorHintNumber', { number: index + 1 })}
             value={hint}
-            onChange={(event) => onChange({
-              ...value,
-              hints: value.hints.map((item, itemIndex) =>
-                itemIndex === index ? event.currentTarget.value : item),
-            })}
+            onChange={(event) =>
+              onChange({
+                ...value,
+                hints: value.hints.map((item, itemIndex) => (itemIndex === index ? event.currentTarget.value : item)),
+              })
+            }
             disabled={disabled}
-            autosize minRows={2}
+            autosize
+            minRows={2}
             style={{ flex: 1 }}
           />
-          <Button color="red" variant="subtle" disabled={disabled}
-            onClick={() => onChange({ ...value, hints: value.hints.filter((_, itemIndex) => itemIndex !== index) })}>
+          <Button
+            color="red"
+            variant="subtle"
+            disabled={disabled}
+            onClick={() => onChange({ ...value, hints: value.hints.filter((_, itemIndex) => itemIndex !== index) })}
+          >
             {t('editorRemove')}
           </Button>
         </Group>
       ))}
-      <Button variant="light" w="fit-content" disabled={disabled}
-        onClick={() => onChange({ ...value, hints: [...value.hints, ''] })}>
+      <Button
+        leftSection={<Icon path={mdiPlus} size={0.75} aria-hidden="true" />}
+        variant="light"
+        w="fit-content"
+        disabled={disabled}
+        onClick={() => onChange({ ...value, hints: [...value.hints, ''] })}
+      >
         {t('editorAddHint')}
       </Button>
       <Textarea
@@ -43,7 +59,8 @@ export const ChallengeHelpEditor = ({ value, onChange, disabled }: Props) => {
         value={value.writeup}
         onChange={(event) => onChange({ ...value, writeup: event.currentTarget.value })}
         disabled={disabled}
-        autosize minRows={6}
+        autosize
+        minRows={6}
       />
     </Stack>
   )

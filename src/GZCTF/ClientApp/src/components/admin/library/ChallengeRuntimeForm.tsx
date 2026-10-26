@@ -1,7 +1,9 @@
 import { Button, FileButton, Group, NumberInput, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core'
+import { mdiPackageVariantClosed, mdiPaperclip } from '@mdi/js'
+import { Icon } from '@mdi/react'
 import { useTranslation } from 'react-i18next'
-import { ChallengeType } from '@Api'
 import { isAttachmentType, isContainerType, type ChallengeDraft } from '@Utils/challengeEditor'
+import { ChallengeType } from '@Api'
 
 type Props = {
   value: ChallengeDraft
@@ -18,7 +20,10 @@ export const ChallengeRuntimeForm = ({ value, onChange, onUpload, uploading, dis
 
   return (
     <Stack gap="md">
-      <Text fw={600}>{t('editorRuntime')}</Text>
+      <Group gap="xs">
+        <Icon path={mdiPackageVariantClosed} size={0.85} aria-hidden="true" />
+        <Text fw={600}>{t('editorRuntime')}</Text>
+      </Group>
       {isContainerType(value.type) && (
         <>
           <TextInput
@@ -31,7 +36,8 @@ export const ChallengeRuntimeForm = ({ value, onChange, onUpload, uploading, dis
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
             <NumberInput
               label={t('editorServicePort')}
-              min={1} max={65535}
+              min={1}
+              max={65535}
               value={value.container.ExposedPort}
               onChange={(port) => setContainer({ ExposedPort: Number(port) || 1 })}
               disabled={disabled}
@@ -70,24 +76,44 @@ export const ChallengeRuntimeForm = ({ value, onChange, onUpload, uploading, dis
       {isAttachmentType(value.type) && (
         <Stack gap="sm">
           <Group justify="space-between">
-            <Text size="sm" fw={500}>{t('editorAttachments')}</Text>
+            <Text size="sm" fw={500}>
+              {t('editorAttachments')}
+            </Text>
             <FileButton onChange={onUpload} disabled={disabled || uploading}>
-              {(props) => <Button {...props} variant="light" loading={uploading}>{t('editorUploadAttachment')}</Button>}
+              {(props) => (
+                <Button
+                  {...props}
+                  leftSection={<Icon path={mdiPaperclip} size={0.75} aria-hidden="true" />}
+                  variant="light"
+                  loading={uploading}
+                >
+                  {t('editorUploadAttachment')}
+                </Button>
+              )}
             </FileButton>
           </Group>
-          {value.attachments.length === 0 && <Text size="sm" c="dimmed">{t('editorNoAttachments')}</Text>}
+          {value.attachments.length === 0 && (
+            <Text size="sm" c="dimmed">
+              {t('editorNoAttachments')}
+            </Text>
+          )}
           {value.attachments.map((attachment, index) => (
             <Group key={`${attachment.Sha256}-${index}`} align="flex-end" wrap="wrap">
-              <Text style={{ flex: 1 }} size="sm">{attachment.FileName}</Text>
+              <Text style={{ flex: 1 }} size="sm">
+                {attachment.FileName}
+              </Text>
               {value.type === ChallengeType.DynamicAttachment && (
                 <TextInput
                   label={t('editorAttachmentFlag')}
                   value={attachment.Flag}
-                  onChange={(event) => onChange({
-                    ...value,
-                    attachments: value.attachments.map((item, itemIndex) =>
-                      itemIndex === index ? { ...item, Flag: event.currentTarget.value } : item),
-                  })}
+                  onChange={(event) =>
+                    onChange({
+                      ...value,
+                      attachments: value.attachments.map((item, itemIndex) =>
+                        itemIndex === index ? { ...item, Flag: event.currentTarget.value } : item
+                      ),
+                    })
+                  }
                   disabled={disabled}
                 />
               )}
@@ -95,7 +121,9 @@ export const ChallengeRuntimeForm = ({ value, onChange, onUpload, uploading, dis
                 color="red"
                 variant="subtle"
                 disabled={disabled}
-                onClick={() => onChange({ ...value, attachments: value.attachments.filter((_, itemIndex) => itemIndex !== index) })}
+                onClick={() =>
+                  onChange({ ...value, attachments: value.attachments.filter((_, itemIndex) => itemIndex !== index) })
+                }
               >
                 {t('editorRemove')}
               </Button>

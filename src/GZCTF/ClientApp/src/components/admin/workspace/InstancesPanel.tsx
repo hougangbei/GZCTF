@@ -1,3 +1,4 @@
+import { runtimeErrorKey } from '@Utils/runtimeErrors'
 import { Alert, Button, Group, NumberInput, Paper, ScrollArea, Select, Stack, Table, Text, Title } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { useEffect, useState } from 'react'
@@ -31,7 +32,7 @@ export const InstancesPanel = () => {
   const [lifetimeMinutes, setLifetimeMinutes] = useState<number | string>(120)
   const [busyId, setBusyId] = useState<string>()
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<'saved' | 'failed'>()
+  const [message, setMessage] = useState<string>()
   const [selectedMemberId, setSelectedMemberId] = useState('all')
   const [selectedMemberName, setSelectedMemberName] = useState('')
 
@@ -71,8 +72,8 @@ export const InstancesPanel = () => {
         try {
           await api.request({ path: `/api/admin/challenge-instances/${id}`, method: 'DELETE' })
           await mutateInstances()
-        } catch {
-          setMessage('failed')
+        } catch (error) {
+          setMessage(runtimeErrorKey(error) ?? 'failed')
         } finally {
           setBusyId(undefined)
         }
@@ -103,6 +104,7 @@ export const InstancesPanel = () => {
     <Stack gap="lg">
       {(loadError || settingsError || message === 'failed') &&
         <Alert color="red">{t('instances.saveFailed')}</Alert>}
+      {message && message !== 'saved' && message !== 'failed' && <Alert color="red">{t(message)}</Alert>}
       {message === 'saved' && <Alert color="teal">{t('instances.saved')}</Alert>}
       <Paper withBorder p="md">
         <Stack gap="md">

@@ -130,7 +130,10 @@ class Deployment:
     def __init__(self, config):
         self.config=config
         self.mode=config['deployment_mode']
-        self.runtime=config.get('runtime') or (runtime_id() if self.mode=='native' else 'linux-x64')
+        self.runtime=config.get('runtime') or (runtime_id() if self.mode=='native' else 'linux-musl-x64')
+        if self.mode != 'native':
+            # Docker runtime images use Alpine, whose native dependencies require musl.
+            self.runtime={'linux-x64':'linux-musl-x64','linux-arm64':'linux-musl-arm64'}.get(self.runtime,self.runtime)
         self.work_dir=Path(config['work_dir']).resolve()
         self.files_dir=Path(config['files_dir']).resolve()
         self.database=Database(config['database'])

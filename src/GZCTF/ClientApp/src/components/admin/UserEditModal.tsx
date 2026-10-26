@@ -19,6 +19,7 @@ import { Icon } from '@mdi/react'
 import dayjs from 'dayjs'
 import { FC, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isBuiltinAdmin } from '@Utils/adminAccountPolicy'
 import { showErrorMsg } from '@Utils/Shared'
 import { useSyncOnChange } from '@Hooks/useSyncOnChange'
 import { useUser } from '@Hooks/useUser'
@@ -45,6 +46,9 @@ export const UserEditModal: FC<UserEditModalProps> = (props) => {
 
   const { t } = useTranslation()
   const isSelf = self?.userId === user.id
+  const canGrantAdmin = isBuiltinAdmin(self)
+  const protectedOwner = isBuiltinAdmin(user)
+  const readOnly = user.role === Role.Admin && !canGrantAdmin && !isSelf
 
   useSyncOnChange([user], () => setProfile({ ...user }))
 
@@ -80,7 +84,7 @@ export const UserEditModal: FC<UserEditModalProps> = (props) => {
               type="text"
               w="100%"
               value={profile.userName ?? 'ctfer'}
-              disabled={disabled}
+              disabled={disabled || readOnly || protectedOwner}
               onChange={(event) => setProfile({ ...profile, userName: event.target.value })}
             />
           </Grid.Col>
@@ -92,6 +96,7 @@ export const UserEditModal: FC<UserEditModalProps> = (props) => {
             </Center>
           </Grid.Col>
         </Grid>
+        {!canGrantAdmin && <Text size="sm" c="dimmed">{t('admin.ownerOnlyGrant')}</Text>}
         <Radio.Group
           label={t('admin.label.users.role')}
           value={profile.role as Role | undefined}
@@ -110,7 +115,7 @@ export const UserEditModal: FC<UserEditModalProps> = (props) => {
                   </Text>
                 }
                 color={RoleColorMap.get(role as Role)}
-                disabled={disabled || isSelf}
+                disabled={disabled || readOnly || isSelf || protectedOwner || (role === Role.Admin && !canGrantAdmin)}
               />
             ))}
           </Group>
@@ -121,7 +126,7 @@ export const UserEditModal: FC<UserEditModalProps> = (props) => {
             type="email"
             w="100%"
             value={profile.email ?? 'ctfer@gzti.me'}
-            disabled={disabled}
+            disabled={disabled || readOnly}
             onChange={(event) => setProfile({ ...profile, email: event.target.value })}
           />
           <TextInput
@@ -129,7 +134,7 @@ export const UserEditModal: FC<UserEditModalProps> = (props) => {
             type="tel"
             w="100%"
             value={profile.phone ?? ''}
-            disabled={disabled}
+            disabled={disabled || readOnly}
             onChange={(event) => setProfile({ ...profile, phone: event.target.value })}
           />
           <TextInput
@@ -137,7 +142,7 @@ export const UserEditModal: FC<UserEditModalProps> = (props) => {
             type="text"
             w="100%"
             value={profile.stdNumber ?? ''}
-            disabled={disabled}
+            disabled={disabled || readOnly}
             onChange={(event) => setProfile({ ...profile, stdNumber: event.target.value })}
           />
           <TextInput
@@ -145,7 +150,7 @@ export const UserEditModal: FC<UserEditModalProps> = (props) => {
             type="text"
             w="100%"
             value={profile.realName ?? ''}
-            disabled={disabled}
+            disabled={disabled || readOnly}
             onChange={(event) => setProfile({ ...profile, realName: event.target.value })}
           />
         </SimpleGrid>
@@ -153,7 +158,7 @@ export const UserEditModal: FC<UserEditModalProps> = (props) => {
           label={t('account.label.bio')}
           value={profile.bio ?? t('account.placeholder.bio')}
           w="100%"
-          disabled={disabled}
+          disabled={disabled || readOnly}
           autosize
           minRows={2}
           maxRows={4}
@@ -180,7 +185,7 @@ export const UserEditModal: FC<UserEditModalProps> = (props) => {
         </Stack>
 
         <Group grow m="auto" w="100%">
-          <Button fullWidth disabled={disabled} onClick={onChangeProfile}>
+          <Button fullWidth disabled={disabled || readOnly} onClick={onChangeProfile}>
             {t('admin.button.save')}
           </Button>
         </Group>

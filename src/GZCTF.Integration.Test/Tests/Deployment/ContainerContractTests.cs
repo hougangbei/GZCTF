@@ -1,3 +1,4 @@
+using System.Reflection;
 using Xunit;
 
 namespace GZCTF.Integration.Test.Tests.Deployment;
@@ -20,10 +21,33 @@ public class ContainerContractTests
         var server = File.ReadAllText(FindRepoFile("src/GZCTF/Server.cs"));
         var appBuilder = File.ReadAllText(FindRepoFile("src/GZCTF/Extensions/Startup/AppBuilderExtensions.cs"));
 
-        Assert.Contains("MetricPort = 3000", server);
-        Assert.Contains("ServerPort = 8080", server);
+        Assert.Contains("Environment.GetEnvironmentVariable(\"GZCTF_METRIC_PORT\")", server);
+        Assert.Contains("Environment.GetEnvironmentVariable(\"GZCTF_SERVER_PORT\")", server);
+        AssertConfiguredPort("MetricPort", "GZCTF_METRIC_PORT", 3000);
+        AssertConfiguredPort("ServerPort", "GZCTF_SERVER_PORT", 8080);
         Assert.Contains("AddEnvironmentVariables(\"GZCTF_\")", appBuilder);
     }
+
+    [Theory]
+    [InlineData(null, 3000, 3000)]
+    [InlineData("", 8080, 8080)]
+    [InlineData("42001", 3000, 42001)]
+    [InlineData("65535", 8080, 65535)]
+    [InlineData("0", 3000, 3000)]
+    [InlineData("65536", 8080, 8080)]
+    [InlineData("invalid", 3000, 3000)]
+    public void Port_environment_values_use_valid_overrides_and_otherwise_keep_the_default(
+        string? value, int fallback, int expected) => Assert.Equal(expected, ParsePort(value, fallback));
+
+    private static void AssertConfiguredPort(string field, string environmentVariable, int fallback)
+    {
+        var value = typeof(Server).GetField(field, BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null);
+        Assert.Equal(ParsePort(Environment.GetEnvironmentVariable(environmentVariable), fallback), value);
+    }
+
+    private static int ParsePort(string? value, int fallback) =>
+        (int)typeof(Server).GetMethod("ParsePort", BindingFlags.Static | BindingFlags.NonPublic)!
+            .Invoke(null, [value, fallback])!;
 
     private static string FindRepoFile(string relativePath)
     {

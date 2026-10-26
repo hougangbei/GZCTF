@@ -1,7 +1,9 @@
 import { Button, Group, PasswordInput, Stack, Text, TextInput } from '@mantine/core'
+import { mdiFlagOutline, mdiPlus } from '@mdi/js'
+import { Icon } from '@mdi/react'
 import { useTranslation } from 'react-i18next'
-import { ChallengeType } from '@Api'
 import type { ChallengeDraft } from '@Utils/challengeEditor'
+import { ChallengeType } from '@Api'
 
 type Props = {
   value: ChallengeDraft
@@ -15,31 +17,50 @@ export const ChallengeFlagEditor = ({ value, onChange, disabled }: Props) => {
 
   return (
     <Stack gap="md">
-      <Text fw={600}>{t('editorFlags')}</Text>
+      <Group gap="xs">
+        <Icon path={mdiFlagOutline} size={0.85} aria-hidden="true" />
+        <Text fw={600}>{t('editorFlags')}</Text>
+      </Group>
       {isStatic && (
         <>
-          <Text size="sm" c="dimmed">{t('editorStaticFlagHint')}</Text>
+          <Text size="sm" c="dimmed">
+            {t('editorStaticFlagHint')}
+          </Text>
           {value.staticFlags.map((flag, index) => (
             <Group key={index} align="flex-end" wrap="nowrap">
               <PasswordInput
                 label={t('editorFlagNumber', { number: index + 1 })}
                 value={flag}
-                onChange={(event) => onChange({
-                  ...value,
-                  staticFlags: value.staticFlags.map((item, itemIndex) =>
-                    itemIndex === index ? event.currentTarget.value : item),
-                })}
+                onChange={(event) =>
+                  onChange({
+                    ...value,
+                    staticFlags: value.staticFlags.map((item, itemIndex) =>
+                      itemIndex === index ? event.currentTarget.value : item
+                    ),
+                  })
+                }
                 disabled={disabled}
                 style={{ flex: 1 }}
               />
               <Button
-                color="red" variant="subtle" disabled={disabled}
-                onClick={() => onChange({ ...value, staticFlags: value.staticFlags.filter((_, itemIndex) => itemIndex !== index) })}
-              >{t('editorRemove')}</Button>
+                color="red"
+                variant="subtle"
+                disabled={disabled}
+                onClick={() =>
+                  onChange({ ...value, staticFlags: value.staticFlags.filter((_, itemIndex) => itemIndex !== index) })
+                }
+              >
+                {t('editorRemove')}
+              </Button>
             </Group>
           ))}
-          <Button variant="light" w="fit-content" disabled={disabled}
-            onClick={() => onChange({ ...value, staticFlags: [...value.staticFlags, ''] })}>
+          <Button
+            leftSection={<Icon path={mdiPlus} size={0.75} aria-hidden="true" />}
+            variant="light"
+            w="fit-content"
+            disabled={disabled}
+            onClick={() => onChange({ ...value, staticFlags: [...value.staticFlags, ''] })}
+          >
             {t('editorAddFlag')}
           </Button>
         </>
@@ -49,15 +70,19 @@ export const ChallengeFlagEditor = ({ value, onChange, disabled }: Props) => {
           label={t('editorFlagTemplate')}
           description={t('editorFlagTemplateHint')}
           value={value.container.FlagTemplate}
-          onChange={(event) => onChange({
-            ...value,
-            container: { ...value.container, FlagTemplate: event.currentTarget.value },
-          })}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              container: { ...value.container, FlagTemplate: event.currentTarget.value },
+            })
+          }
           disabled={disabled}
         />
       )}
       {value.type === ChallengeType.DynamicAttachment && (
-        <Text size="sm" c="dimmed">{t('editorDynamicFlagHint')}</Text>
+        <Text size="sm" c="dimmed">
+          {t('editorDynamicFlagHint')}
+        </Text>
       )}
     </Stack>
   )

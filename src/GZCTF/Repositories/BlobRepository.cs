@@ -9,6 +9,13 @@ namespace GZCTF.Repositories;
 public class BlobRepository(AppDbContext context, ILogger<BlobRepository> logger, IBlobStorage storage)
     : RepositoryBase(context), IBlobRepository
 {
+    internal static SKBitmap? DecodeImage(Stream stream)
+    {
+        // Header detection and GIF storage reuse the caller-owned stream.
+        using var managed = new SKManagedStream(stream, disposeManagedStream: false);
+        return SKBitmap.Decode(managed);
+    }
+
     public override Task<int> CountAsync(CancellationToken token = default) =>
         Context.Files.CountAsync(token);
 
@@ -66,7 +73,7 @@ public class BlobRepository(AppDbContext context, ILogger<BlobRepository> logger
             {
                 await file.CopyToAsync(tmp, token);
                 tmp.Position = 0;
-                using var image = SKBitmap.Decode(tmp);
+                using var image = DecodeImage(tmp);
                 if (image is null) throw new InvalidDataException("Invalid image data.");
 
                 tmp.Position = 0;
@@ -94,8 +101,9 @@ public class BlobRepository(AppDbContext context, ILogger<BlobRepository> logger
 
             return await StoreBlob($"{fileName}.webp", webpStream, token);
         }
-        catch
+        catch (Exception exception)
         {
+            logger.LogWarning(exception, "Image conversion or storage failed for {ImageName}", fileName);
             logger.SystemLog(
                 StaticLocalizer[nameof(Resources.Program.FileRepository_ImageSaveFailed),
                     file.Name],

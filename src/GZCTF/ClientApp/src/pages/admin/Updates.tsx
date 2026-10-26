@@ -1,4 +1,4 @@
-import { Alert, Anchor, Badge, Button, Group, Paper, Select, Stack, Text, TextInput, Title } from '@mantine/core'
+import { Alert, Anchor, Badge, Button, Group, Paper, Select, Stack, Text, TextInput } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -221,7 +221,6 @@ const Updates = () => {
   return (
     <AdminPage isLoading={isLoading}>
       <Stack w="100%" maw={900} gap="md" style={{ minWidth: 0 }}>
-        <Title order={2}>{t('updates.title')}</Title>
         <Text c="dimmed">{t('updates.description')}</Text>
         {(error || sourceError) && <Alert color="red">{t('updates.loadFailed')}</Alert>}
         {operationError && <Alert color="red">{operationError}</Alert>}

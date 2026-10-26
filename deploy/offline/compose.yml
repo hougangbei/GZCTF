@@ -1,0 +1,72 @@
+services:
+  db:
+    image: ${DB_IMAGE:?}
+    platform: linux/amd64
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gzctf
+      POSTGRES_DB: gzctf
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks: [data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U gzctf -d gzctf']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  redis:
+    image: ${REDIS_IMAGE:?}
+    platform: linux/amd64
+    pull_policy: never
+    restart: unless-stopped
+    command: [redis-server, --appendonly, 'yes']
+    volumes:
+      - redis_data:/data
+    networks: [data]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  app:
+    image: ${APP_IMAGE:?}
+    platform: linux/amd64
+    pull_policy: never
+    restart: unless-stopped
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    ports:
+      - '${BIND_ADDRESS:?}:${HTTP_PORT:?}:8080'
+    environment:
+      GZCTF_ConnectionStrings__Database: Host=db;Port=5432;Database=gzctf;Username=gzctf;Password=${POSTGRES_PASSWORD}
+      GZCTF_ConnectionStrings__RedisCache: redis:6379
+      GZCTF_xorKey: ${GZCTF_XOR_KEY:?}
+      GZCTF_ADMIN_PASSWORD: ${ADMIN_PASSWORD:?}
+    volumes:
+      - ./files:/app/files
+      - ./appsettings.json:/app/appsettings.json:ro
+      - ./challenge-control:/run/gzctf-challenges:ro
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    networks: [data, frontend]
+    healthcheck:
+      test: [CMD, wget, -q, --spider, 'http://127.0.0.1:3000/healthz']
+      interval: 5s
+      timeout: 5s
+      start_period: 60s
+      retries: 40
+volumes:
+  db_data:
+    external: true
+    name: ${DB_VOLUME:?}
+  redis_data:
+    external: true
+    name: ${REDIS_VOLUME:?}
+networks:
+  data: {internal: true}
+  frontend: {}

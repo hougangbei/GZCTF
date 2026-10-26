@@ -172,13 +172,15 @@ public sealed class ChallengeRuntimeService(
             await db.Containers.AnyAsync(container => container.Id == id &&
                 container.Status == ContainerStatus.Running && container.ExpectStopAt > now, token);
         if (running) return instance;
-        await RetireExpiredAsync(instance, token);
+        await RetireExpiredAsync(instance, token, stopContainer: false);
         throw new InvalidOperationException("challenge.instance_expired");
     }
 
-    private async Task RetireExpiredAsync(UserChallengeInstance instance, CancellationToken token)
+    private async Task RetireExpiredAsync(UserChallengeInstance instance, CancellationToken token,
+        bool stopContainer = true)
     {
-        if (instance.ContainerId is { } id)
+        // Reads reconcile database state only. The container expiry cron handles remote cleanup.
+        if (stopContainer && instance.ContainerId is { } id)
         {
             var container = await db.Containers.SingleOrDefaultAsync(item => item.Id == id, token);
             if (container?.Status == ContainerStatus.Running)
