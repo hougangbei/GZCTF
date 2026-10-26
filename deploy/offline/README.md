@@ -146,3 +146,15 @@ sudo python3 /opt/gzctf/manage.py --root /opt/gzctf restore \
 原始 20261026 完整包的部署脚本保守要求 Compose 2.20+。兼容补丁将门槛调整为实际验证的 2.18.1，不更换三个镜像，不升级宿主机 Docker/Compose/Python，也不修改已运行的项目。下载兼容工具包及校验文件后，校验并解压到已经解压的原始完整包目录（必须含原 images.tar.gz），同时更新 manage.py、README.md、compose.yml 和 manifest.json，随后执行首次安装。不要只手改版本数字，否则会触发文件完整性校验。
 
 兼容性验证使用官方 Compose v2.18.1 的独立二进制及 Docker Desktop 的较新 Engine；没有替换本机的默认 Compose 插件。它验证 Compose 命令/配置和容器生命周期，不等同于已在现场 Docker 24.0.2/Ubuntu 20.04 完成验收。先在独立项目验证，不改动现有 CTFd 服务。
+
+## 管理员授权
+
+只有初始化创建的内置 `Admin` 账号可以授予或撤销管理员权限。其他管理员仍能管理普通用户，但不能修改其他管理员、重置管理员密码或通过批量导入覆盖管理员账号。内置 `Admin` 的名称和管理员身份不能修改；已有管理员不会自动降级。本规则无需数据库表结构迁移。
+
+## 运行环境与验证范围
+
+Harbor 是镜像仓库，不提供题目容器运行能力。独立题目机仍须配置 Docker 控制连接；业务机不应为了消除错误而直接挂载本机 Docker socket。未配置时，平台会返回运行环境不可用的提示，基本后台和实例状态查询仍可用。
+
+Docker 题目实例的 CPU 和内存限制已在真实容器中验证；当前 Docker 实现尚未强制执行可写层磁盘配额，不能把 `StorageMb` 当作已生效的磁盘上限。学校内网、Harbor 登录和远程题目机需要现场联调。
+
+本次代码通过 .NET 单元与 PostgreSQL 集成测试、前端类型检查/单元测试/构建、浏览器权限与后台操作回归，以及离线部署和源码更新 Python 测试。当前编译范围之外的旧比赛测试、Kubernetes/MinIO 模式不在此次通过结论内。构建仍报告既有 MessagePack 与 System.Security.Cryptography.Pkcs 依赖漏洞，需要另行评估升级；测试通过不能证明绝对安全。
