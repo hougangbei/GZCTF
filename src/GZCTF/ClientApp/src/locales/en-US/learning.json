@@ -149,5 +149,13 @@
   "dashboardConnecting": "Connecting…",
   "dashboardRank": "Rank",
   "dashboardUsername": "Username",
-  "dashboardSolved": "Solved"
+  "dashboardSolved": "Solved",
+  "timeRemaining": "Time remaining",
+  "timeUnknown": "Time unavailable",
+  "instanceExpired": "Instance expired. Refreshing status…",
+  "copyAddress": "Copy address",
+  "addressCopied": "Copied",
+  "openChallenge": "Open challenge",
+  "copyFailed": "Copy failed. Select the address above and copy it manually.",
+  "tcpConnectionHint": "Connect to this address with a TCP client."
 }

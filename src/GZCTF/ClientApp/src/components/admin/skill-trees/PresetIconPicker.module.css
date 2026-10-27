@@ -1,0 +1,7 @@
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; max-height: 248px; overflow-y: auto; padding: 3px; }
+.option { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 76px; padding: 8px 4px; border: 1px solid var(--mantine-color-default-border); border-radius: 8px; font-size: 11px; text-align: center; line-height: 1.4; overflow-wrap: anywhere; }
+.symbol { font-size: 23px; line-height: 1.2; }
+.option:hover { background: var(--mantine-color-default-hover); }
+.option[aria-pressed='true'] { border-color: var(--mantine-color-teal-6); background: var(--mantine-color-teal-light); box-shadow: inset 0 0 0 1px var(--mantine-color-teal-6); }
+.option:focus-visible { outline: 2px solid var(--mantine-color-teal-6); outline-offset: 1px; }
+.option:disabled { opacity: .5; cursor: not-allowed; }

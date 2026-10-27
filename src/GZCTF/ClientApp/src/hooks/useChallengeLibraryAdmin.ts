@@ -1,12 +1,12 @@
 import useSWR, { useSWRConfig } from 'swr'
-import api, { ChallengeInstanceStatus, ChallengeSolveMode, fetcher, type ChallengeInstanceResponse, type ChallengeSummaryResponse } from '@Api'
+import api, { ChallengeSolveMode, fetcher, type ChallengeInstanceResponse, type ChallengeSummaryResponse } from '@Api'
 
 const localeQuery = (locale: string) => encodeURIComponent(locale || 'en')
 
 export const useLesson = (id: string | undefined, locale: string, enabled: boolean) =>
   useSWR<{ lessonId: string; locale: string; title: string; body: string }>(
     id && enabled ? `/api/learning-lessons/${id}?locale=${localeQuery(locale)}` : null,
-    fetcher,
+    fetcher
   )
 
 export const useChallenge = (id: string | undefined, locale: string, enabled: boolean) =>
@@ -28,12 +28,13 @@ export const useChallengeInstance = (id: string | undefined, enabled: boolean) =
     id && enabled ? `/api/challenges/${id}/instances` : null,
     async (path: string) => {
       try {
-        return await fetcher(path) as ChallengeInstanceResponse
+        return (await fetcher(path)) as ChallengeInstanceResponse
       } catch (error) {
         if ((error as { response?: { status?: number } })?.response?.status === 404) return null
         throw error
       }
     },
+    { refreshInterval: 15000 }
   )
 
 export const useLearningMutations = () => {
@@ -49,31 +50,14 @@ export const useLearningMutations = () => {
   }
 
   const startInstance = async (challengeId: string) => {
-    const result = (await api.challengeInstances.challengeInstancesStart(challengeId)).data as {
-      id: string
-      status: ChallengeInstanceStatus
-      startedAtUtc?: string
-      expiresAtUtc?: string
-      publicIp?: string
-      publicPort?: string
-      attachmentFileName?: string
-      attachmentSha256?: string
-    }
+    const result = (await api.challengeInstances.challengeInstancesStart(challengeId)).data as ChallengeInstanceResponse
     await mutate(`/api/challenges/${challengeId}/instances`)
     return result
   }
 
   const extendInstance = async (challengeId: string) => {
-    const result = (await api.challengeInstances.challengeInstancesExtend(challengeId)).data as {
-      id: string
-      status: ChallengeInstanceStatus
-      startedAtUtc?: string
-      expiresAtUtc?: string
-      publicIp?: string
-      publicPort?: string
-      attachmentFileName?: string
-      attachmentSha256?: string
-    }
+    const result = (await api.challengeInstances.challengeInstancesExtend(challengeId))
+      .data as ChallengeInstanceResponse
     await mutate(`/api/challenges/${challengeId}/instances`, result, false)
     return result
   }
@@ -93,30 +77,46 @@ export const useLearningMutations = () => {
     }
 
   const nextHint = async (challengeId: string, locale: string) =>
-    (await api.challenges.challengesNextHint(challengeId, { locale })).data as { hintId: string; sortOrder: number; locale: string; content: string } | null
+    (await api.challenges.challengesNextHint(challengeId, { locale })).data as {
+      hintId: string
+      sortOrder: number
+      locale: string
+      content: string
+    } | null
 
   const revealWriteup = async (challengeId: string, locale: string) =>
-    (await api.challenges.challengesWriteup(challengeId, { locale })).data as { locale: string; content: string; firstViewedAtUtc: number } | null
+    (await api.challenges.challengesWriteup(challengeId, { locale })).data as {
+      locale: string
+      content: string
+      firstViewedAtUtc: number
+    } | null
 
   return { completeLesson, startInstance, extendInstance, stopInstance, submitChallenge, nextHint, revealWriteup }
 }
 
-export const useAdminChallenges = () =>
-  useSWR<ChallengeSummaryResponse[]>(
-    '/api/admin/challenges?locale=en',
-    fetcher,
-  )
+export const useAdminChallenges = () => useSWR<ChallengeSummaryResponse[]>('/api/admin/challenges?locale=en', fetcher)
 
 export const useAdminLessons = () =>
   useSWR<{ id: string; locale: string; title: string; body: string }[]>('/api/admin/lessons?locale=en', fetcher)
 
 export const useImportBatches = () =>
   useSWR<
-    { id: string; sourceType: string; state: string; challengeCount: number; pathCount: number; warningCount: number; errorCount: number; parityReportJson?: string; startedAtUtc: string; completedAtUtc?: string }[]
+    {
+      id: string
+      sourceType: string
+      state: string
+      challengeCount: number
+      pathCount: number
+      warningCount: number
+      errorCount: number
+      parityReportJson?: string
+      startedAtUtc: string
+      completedAtUtc?: string
+    }[]
   >('/api/admin/imports', fetcher)
 
 export async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { credentials: 'include', ...init })
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
-  return response.status === 204 ? (undefined as T) : await response.json() as T
+  return response.status === 204 ? (undefined as T) : ((await response.json()) as T)
 }

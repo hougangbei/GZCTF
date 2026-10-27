@@ -3,7 +3,10 @@ import { moveItem, normalizeOrder, skillTreeIcons, resolveSkillTreeErrorMessageK
 
 describe('skill tree admin utilities', () => {
   it('exposes only backend supported icon keys', () => {
-    expect(Object.keys(skillTreeIcons)).toEqual(['flag', 'web', 'crypto', 'pwn', 'brain', 'ai'])
+    expect(Object.keys(skillTreeIcons)).toHaveLength(40)
+    expect(Object.keys(skillTreeIcons)).toEqual(
+      expect.arrayContaining(['flag', 'web', 'crypto', 'pwn', 'brain', 'ai', 'terminal', 'network'])
+    )
   })
 
   it('normalizes order after movement or removal', () => {
@@ -22,9 +25,11 @@ describe('skill tree admin utilities', () => {
   })
 
   it('maps stable backend error codes to translation keys', () => {
-    expect(resolveSkillTreeErrorMessageKey({
-      response: { data: { code: 'skill_tree_revision_conflict' } },
-    })).toBe('skillTrees:errors.revisionConflict')
+    expect(
+      resolveSkillTreeErrorMessageKey({
+        response: { data: { code: 'skill_tree_revision_conflict' } },
+      })
+    ).toBe('skillTrees:errors.revisionConflict')
     expect(resolveSkillTreeErrorMessageKey(new Error('unknown'))).toBeUndefined()
   })
 })

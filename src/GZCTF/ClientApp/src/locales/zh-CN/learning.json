@@ -149,5 +149,13 @@
   "dashboardConnecting": "正在连接…",
   "dashboardRank": "排名",
   "dashboardUsername": "用户名",
-  "dashboardSolved": "攻破靶场数"
+  "dashboardSolved": "攻破靶场数",
+  "timeRemaining": "剩余时间",
+  "timeUnknown": "时间暂不可用",
+  "instanceExpired": "实例已到期，正在同步状态…",
+  "copyAddress": "复制地址",
+  "addressCopied": "已复制",
+  "openChallenge": "打开题目",
+  "copyFailed": "复制失败，请选中上方地址手动复制。",
+  "tcpConnectionHint": "此地址用于 TCP 客户端连接。"
 }

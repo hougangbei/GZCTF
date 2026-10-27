@@ -5,6 +5,9 @@ using GZCTF.Integration.Test.Base;
 using GZCTF.Models;
 using GZCTF.Utils;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -119,6 +122,73 @@ public class SkillTreeSchemaTests(GZCTFApplicationFactory factory)
             db.SkillTrees.Add(new SkillTree { Name = "Web", IconKey = "arbitrary" });
             await db.SaveChangesAsync();
         });
+    }
+
+    [Fact]
+    public async Task Migrated_database_accepts_every_preset_for_both_trees_and_categories()
+    {
+        using var scope = factory.Services.CreateScope();
+        await using var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        foreach (var key in SkillTreeIconCatalog.Values.Keys)
+        {
+            db.SkillTrees.Add(new SkillTree { Name = key, IconKey = key });
+            db.SkillCategories.Add(new SkillCategory { Name = key, IconKey = key });
+        }
+        await db.SaveChangesAsync();
+        Assert.Equal(40, SkillTreeIconCatalog.Values.Count);
+        await transaction.RollbackAsync();
+    }
+
+    [Fact]
+    public async Task Icon_upgrade_and_rollback_preserve_existing_records()
+    {
+        using var scope = factory.Services.CreateScope();
+        var existing = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var databaseName = "icon_upgrade_" + Guid.NewGuid().ToString("N");
+        await using var admin = new NpgsqlConnection(existing.Database.GetConnectionString());
+        await admin.OpenAsync();
+        await using (var create = new NpgsqlCommand($"CREATE DATABASE {databaseName}", admin))
+            await create.ExecuteNonQueryAsync();
+        try
+        {
+            var connection = new NpgsqlConnectionStringBuilder(existing.Database.GetConnectionString())
+            {
+                Database = databaseName,
+                Pooling = false
+            };
+            await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+                .UseNpgsql(connection.ConnectionString).Options);
+            var migrator = db.GetService<IMigrator>();
+            await migrator.MigrateAsync("20261006200000_AddChallengeScore");
+            var oldTree = new SkillTree { Name = "Existing tree", IconKey = "web" };
+            var oldCategory = new SkillCategory { Name = "Existing category", IconKey = "crypto" };
+            db.AddRange(oldTree, oldCategory);
+            await db.SaveChangesAsync();
+
+            await migrator.MigrateAsync();
+            var newTree = new SkillTree { Name = "New tree", IconKey = "terminal" };
+            var newCategory = new SkillCategory { Name = "New category", IconKey = "network" };
+            db.AddRange(newTree, newCategory);
+            await db.SaveChangesAsync();
+            db.ChangeTracker.Clear();
+            Assert.Equal("web", (await db.SkillTrees.FindAsync(oldTree.Id))!.IconKey);
+            Assert.Equal("crypto", (await db.SkillCategories.FindAsync(oldCategory.Id))!.IconKey);
+
+            await migrator.MigrateAsync("20261006200000_AddChallengeScore");
+            db.ChangeTracker.Clear();
+            Assert.Equal("flag", (await db.SkillTrees.FindAsync(newTree.Id))!.IconKey);
+            Assert.Equal("flag", (await db.SkillCategories.FindAsync(newCategory.Id))!.IconKey);
+            Assert.Equal("web", (await db.SkillTrees.FindAsync(oldTree.Id))!.IconKey);
+            await migrator.MigrateAsync();
+            Assert.Equal(2, await db.SkillTrees.CountAsync());
+            Assert.Equal(2, await db.SkillCategories.CountAsync());
+        }
+        finally
+        {
+            await using var drop = new NpgsqlCommand($"DROP DATABASE {databaseName} WITH (FORCE)", admin);
+            await drop.ExecuteNonQueryAsync();
+        }
     }
 
     private async Task AssertConstraintViolationAsync(Func<AppDbContext, Task> arrangeAndSave)

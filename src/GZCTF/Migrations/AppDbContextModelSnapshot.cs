@@ -1232,7 +1232,7 @@ namespace GZCTF.Migrations
 
                     b.ToTable("SkillCategories", t =>
                         {
-                            t.HasCheckConstraint("CK_SkillCategories_IconKey", "\"IconKey\" IN ('flag','web','crypto','pwn','brain','ai')");
+                            t.HasCheckConstraint("CK_SkillCategories_IconKey", "\"IconKey\" IN ('flag','web','crypto','pwn','brain','ai','terminal','network','cloud','shield','bug','code','database','linux','windows','mobile','reverse','forensics','osint','binary','key','lock','file','folder','book','target','trophy','rocket','lab','tools','chip','wifi','globe','server','container','chain','puzzle','lightning','star','compass')");
                         });
                 });
 
@@ -1282,7 +1282,7 @@ namespace GZCTF.Migrations
 
                     b.ToTable("SkillTrees", t =>
                         {
-                            t.HasCheckConstraint("CK_SkillTrees_IconKey", "\"IconKey\" IN ('flag','web','crypto','pwn','brain','ai')");
+                            t.HasCheckConstraint("CK_SkillTrees_IconKey", "\"IconKey\" IN ('flag','web','crypto','pwn','brain','ai','terminal','network','cloud','shield','bug','code','database','linux','windows','mobile','reverse','forensics','osint','binary','key','lock','file','folder','book','target','trophy','rocket','lab','tools','chip','wifi','globe','server','container','chain','puzzle','lightning','star','compass')");
                         });
                 });
 

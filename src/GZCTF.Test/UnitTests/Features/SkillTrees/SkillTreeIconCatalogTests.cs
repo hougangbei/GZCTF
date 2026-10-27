@@ -12,6 +12,9 @@ public sealed class SkillTreeIconCatalogTests
     [InlineData("pwn")]
     [InlineData("brain")]
     [InlineData("ai")]
+    [InlineData("terminal")]
+    [InlineData("network")]
+    [InlineData("cloud")]
     public void Preset_icons_are_accepted(string key) =>
         Assert.True(SkillTreeIconCatalog.IsSupported(key));
 

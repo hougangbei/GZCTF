@@ -1,7 +1,7 @@
 .card {
   display: flex;
   min-width: 0;
-  min-height: 250px;
+  min-height: 240px;
   flex-direction: column;
   align-items: flex-start;
   padding: 1.45rem;
@@ -17,7 +17,9 @@
 .card:focus-visible { outline: 2px solid var(--hbc-primary); outline-offset: 3px; }
 .icon { display: grid; width: 3rem; height: 3rem; place-items: center; border-radius: 0.8rem; background: var(--hbc-primary-soft); font-size: 1.4rem; }
 .card h2 { margin: 1.15rem 0 0; font-size: 1.15rem; font-weight: 750; line-height: 1.4; overflow-wrap: anywhere; }
-.summary { display: -webkit-box; max-width: 42ch; margin: 0.45rem 0 0; overflow: hidden; color: var(--hbc-muted); font-size: 0.9rem; line-height: 1.65; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.summary { width: 100%; min-width: 0; overflow-wrap: anywhere; display: -webkit-box; max-width: 42ch; margin: 0.45rem 0 0; overflow: hidden; color: var(--hbc-muted); font-size: 0.9rem; line-height: 1.65; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .meta { display: flex; flex-wrap: wrap; gap: 0.3rem 0.85rem; margin-top: auto; padding-top: 1.25rem; color: var(--hbc-muted); font-size: 0.78rem; }
 .open { display: inline-flex; width: 100%; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.9rem; padding-top: 0.85rem; border-top: 1px solid var(--hbc-border); color: var(--hbc-primary); font-size: 0.87rem; font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+
+@media (max-width: 40em) { .card { min-height: 220px; padding: 15px; } .card h2 { font-size: 1rem; } .meta { font-size: .73rem; gap: 6px; } }

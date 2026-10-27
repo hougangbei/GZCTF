@@ -1,3 +1,4 @@
+import surface from '@Components/skill-trees/TrainingSurface.module.css'
 import { Button, Skeleton } from '@mantine/core'
 import { mdiArrowRight, mdiFileTreeOutline, mdiReload } from '@mdi/js'
 import { Icon } from '@mdi/react'
@@ -15,7 +16,7 @@ const SkillTreeIndex = () => {
   usePageTitle(t('list.title'))
 
   return (
-    <WithNavBar minWidth={0} withFooter>
+    <WithNavBar className={surface.surface} minWidth={0} withFooter>
       <div className={classes.page}>
         <header className={classes.header}>
           <h1>{t('list.title')}</h1>

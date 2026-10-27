@@ -1,3 +1,4 @@
+import surface from '@Components/skill-trees/TrainingSurface.module.css'
 import { Button, Skeleton } from '@mantine/core'
 import { useParams, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +16,7 @@ const SkillTreeDetail = () => {
   usePageTitle(tree?.name ?? t('list.title'))
 
   return (
-    <WithNavBar minWidth={0} withFooter>
+    <WithNavBar className={surface.surface} minWidth={0} withFooter>
       {!tree && !error ? (
         <div className={classes.detailState} role="status" aria-busy="true">
           <span>{t('loading')}</span>
