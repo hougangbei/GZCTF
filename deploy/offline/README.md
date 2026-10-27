@@ -1,8 +1,10 @@
 # GZCTF 内网 amd64 部署包
 
-目标：Linux x86_64（Intel/AMD 64 位），Python 3.8+、Docker Engine、Docker Compose 插件 v2.18.1+。包含应用、PostgreSQL 15、Redis 7 三个镜像，安装和更新不在线拉取镜像，不需要 Git、Node 或 .NET SDK。Docker/Compose/Python 本身不包含在包内，需要运维提前安装并维护。
+目标：Linux x86_64（Intel/AMD 64 位），Python 3.8+、Docker Engine、Docker Compose 插件 v2.18.1+。完整安装包包含应用、PostgreSQL 15、Redis 7 三个镜像；应用更新包可以仅包含新应用镜像，并复用本机已验证的数据库/Redis 镜像。安装和更新不在线拉取镜像，不需要 Git、Node 或 .NET SDK。Docker/Compose/Python 本身不包含在包内，需要运维提前安装并维护。
 
-这是单业务机部署工具，不会迁移 CTFd 数据，也不会修改现有 CTFd、FRP、Harbor 或题目机。动态题目 Docker 控制通道及学生访问入口仍需配置和验收。应用镜像来自提交 a6876b0 的本地构建，其 NuGet 依赖检查存在包含高危级别的漏洞告警；镜像包不是“无漏洞”或“绝对安全”的认证。Ubuntu 20.04 已结束标准安全维护，使用它时必须安排 ESM/离线安全补丁或升级到受支持系统。
+这是单业务机部署工具，不会迁移 CTFd 数据，也不会修改现有 CTFd、FRP、Harbor 或题目机。动态题目 Docker 控制通道及学生访问入口仍需配置和验收。应用镜像的构建提交见对应 Release 说明及包内 source.json（如提供），镜像内容指纹记录于 manifest.json。NuGet 依赖检查存在包含高危级别的漏洞告警；镜像包不是“无漏洞”或“绝对安全”的认证。Ubuntu 20.04 已结束标准安全维护，使用它时必须安排 ESM/离线安全补丁或升级到受支持系统。
+
+已有实例更新到 20261027 技能树/题目弹窗版本，请优先阅读[本版更新命令](TRAINING_UI_UPDATE.zh-CN.md)。[独立公网入口方案](TRAINING_PUBLIC_ACCESS.zh-CN.md)为后续网络实施设计。
 
 ## 传入并核验
 
