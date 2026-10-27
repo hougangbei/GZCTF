@@ -24,7 +24,7 @@ internal static class SkillTreeModelConfiguration
                 .HasForeignKey(x => x.SkillTreeId).OnDelete(DeleteBehavior.Restrict);
             entity.ToTable(table => table.HasCheckConstraint(
                 "CK_SkillTrees_IconKey",
-                "\"IconKey\" IN ('flag','web','crypto','pwn','brain','ai')"));
+                "\"IconKey\" IN ('flag','web','crypto','pwn','brain','ai','terminal','network','cloud','shield','bug','code','database','linux','windows','mobile','reverse','forensics','osint','binary','key','lock','file','folder','book','target','trophy','rocket','lab','tools','chip','wifi','globe','server','container','chain','puzzle','lightning','star','compass')"));
         });
 
         modelBuilder.Entity<SkillTreeRevision>(entity =>
@@ -50,7 +50,7 @@ internal static class SkillTreeModelConfiguration
                 .HasForeignKey(x => x.MergedIntoCategoryId).OnDelete(DeleteBehavior.Restrict);
             entity.ToTable(table => table.HasCheckConstraint(
                 "CK_SkillCategories_IconKey",
-                "\"IconKey\" IN ('flag','web','crypto','pwn','brain','ai')"));
+                "\"IconKey\" IN ('flag','web','crypto','pwn','brain','ai','terminal','network','cloud','shield','bug','code','database','linux','windows','mobile','reverse','forensics','osint','binary','key','lock','file','folder','book','target','trophy','rocket','lab','tools','chip','wifi','globe','server','container','chain','puzzle','lightning','star','compass')"));
         });
 
         modelBuilder.Entity<SkillTreeCategoryRef>(entity =>

@@ -1,3 +1,4 @@
+import surface from '@Components/skill-trees/TrainingSurface.module.css'
 import { Center, Loader, Modal, Stack, Text } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useNavigate, useParams } from 'react-router'
@@ -18,7 +19,7 @@ export const SkillTreeContentWorkspace = () => {
 
   if (!tree && !error) {
     return (
-      <WithNavBar minWidth={0}>
+      <WithNavBar className={surface.surface} minWidth={0}>
         <Center h="60vh">
           <Loader />
         </Center>
@@ -28,7 +29,7 @@ export const SkillTreeContentWorkspace = () => {
 
   if (error || !tree) {
     return (
-      <WithNavBar minWidth={0}>
+      <WithNavBar className={surface.surface} minWidth={0}>
         <Center h="60vh">
           <Text c="red">{t('errors.generic')}</Text>
         </Center>
@@ -42,7 +43,7 @@ export const SkillTreeContentWorkspace = () => {
 
   const closeHref = `/skill-trees/${treeId}?category=${categoryId}`
   return (
-    <WithNavBar minWidth={0}>
+    <WithNavBar className={surface.surface} minWidth={0}>
       <Stack gap="lg">
         <SkillTreeOutline tree={tree} selectedCategoryId={categoryId} />
         <Modal

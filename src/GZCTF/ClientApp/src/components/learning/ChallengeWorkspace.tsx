@@ -1,6 +1,6 @@
 import { runtimeErrorKey } from '@Utils/runtimeErrors'
 import { Alert, Badge, Button, Group, Stack, Text, TextInput, Title } from '@mantine/core'
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useSWRConfig } from 'swr'
@@ -11,7 +11,7 @@ import { useUser } from '@Hooks/useUser'
 import { ChallengeInstanceStatus } from '@Api'
 import classes from './ChallengeWorkspace.module.css'
 import { CommunityWriteups } from './CommunityWriteups'
-import { WriteupActions, type WriteupRequest } from './WriteupActions'
+import { InstanceConnection } from './InstanceConnection'
 
 export type ChallengeWorkspaceProps = {
   challengeId: string
@@ -38,7 +38,6 @@ export const ChallengeWorkspace = ({
   const { mutate } = useSWRConfig()
   const { startInstance, extendInstance, stopInstance, submitChallenge, nextHint, revealWriteup } =
     useLearningMutations()
-  const [wpRequest, setWpRequest] = useState<WriteupRequest>()
   const official = useRef<HTMLDivElement>(null)
   const [flag, setFlag] = useState('')
   const [hints, setHints] = useState<string[]>([])
@@ -48,6 +47,8 @@ export const ChallengeWorkspace = ({
   const [solveMode, setSolveMode] = useState<string>()
   const instanceActionInFlight = useRef(false)
   const [instanceActionPending, setInstanceActionPending] = useState(false)
+
+  const refreshExpiredInstance = useCallback(() => { void mutateInstance().catch(() => undefined) }, [mutateInstance])
 
   if (!challenge && !error) return <Text>{t('loading')}</Text>
   if (error) return <Text c="red">{t('loadFailed')}</Text>
@@ -154,7 +155,7 @@ export const ChallengeWorkspace = ({
         )}
         <Group gap="xs" className={classes.meta}>
           {challenge!.ctfCategory && (
-            <Badge variant="light">
+            <Badge variant="light" color="gray">
               {challenge!.ctfCategory} · {tChallenge(`category.${challenge!.ctfCategory.toLowerCase()}`)}
             </Badge>
           )}
@@ -180,14 +181,10 @@ export const ChallengeWorkspace = ({
             </Title>
             {instance?.status === ChallengeInstanceStatus.Running ? (
               <Stack gap="sm" align="flex-start">
-                <Text className={classes.instanceAddress}>
-                  {instance.publicIp
-                    ? `${instance.publicIp}${instance.publicPort ? `:${instance.publicPort}` : ''}`
-                    : t('instanceRunning')}
-                </Text>
+                <InstanceConnection instance={instance} category={challenge!.ctfCategory} onExpire={refreshExpiredInstance} />
                 <Group gap="xs">
                   <Button
-                    variant="light"
+                    variant="default"
                     disabled={instanceActionPending}
                     onClick={() =>
                       runInstanceAction(async () => {
@@ -256,12 +253,6 @@ export const ChallengeWorkspace = ({
                 {t('submit')}
               </Button>
             </form>
-            <WriteupActions
-              challengeId={challengeId}
-              hasOfficial={challenge!.hasWriteup}
-              onOfficial={() => void revealOfficialWriteup()}
-              onRequest={(tab) => setWpRequest((current) => ({ tab, id: (current?.id ?? 0) + 1 }))}
-            />
             {message && (
               <Alert color={messageType === 'success' ? 'teal' : 'red'} className={classes.feedback}>
                 {message}
@@ -309,7 +300,7 @@ export const ChallengeWorkspace = ({
           </Stack>
         </section>
       )}
-      <CommunityWriteups challengeId={challengeId} request={wpRequest} />
+      <CommunityWriteups challengeId={challengeId} />
     </div>
   )
 }

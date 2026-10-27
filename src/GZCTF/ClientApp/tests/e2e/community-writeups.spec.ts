@@ -207,9 +207,9 @@ test('mobile layout keeps fields and actions inside the dialog', async ({ page }
   await page.screenshot({ path: '../../../.local-run/wp-mobile.png', fullPage: true })
 })
 
-test('opens an available PDF beside Flag submission without solving first', async ({ page }) => {
+test('opens an available PDF from the single writeup section without solving first', async ({ page }) => {
   await setup(page)
-  const view = page.getByRole('link', { name: '查看 WP', exact: true })
+  const view = page.getByRole('link', { name: 'Solution A', exact: true })
   await expect(view).toBeVisible()
   await expect(view).toHaveAttribute('href', /\/community-writeups\/wp-one\/pdf$/)
   await expect(view).toHaveAttribute('target', '_blank')
@@ -226,31 +226,30 @@ test('opens an available PDF beside Flag submission without solving first', asyn
   const preview = await opened
   await requested
   await preview.close()
-  await page.getByRole('group', { name: 'WP 快捷操作' }).getByRole('button', { name: '提交 WP', exact: true }).click()
+  await page.getByRole('tab', { name: '提交 WP', exact: true }).click()
   await expect(page.getByRole('tab', { name: '提交 WP', exact: true })).toHaveAttribute('aria-selected', 'true')
 })
 
 test('offers submission when no approved WP exists', async ({ page }) => {
   await setup(page, { empty: true })
-  await expect(page.getByRole('button', { name: '暂无 WP', exact: true })).toBeDisabled()
-  await page.getByRole('group', { name: 'WP 快捷操作' }).getByRole('button', { name: '提交 WP', exact: true }).click()
+  await expect(page.getByText('暂无通过审核的 WP', { exact: true })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'WP 快捷操作' })).toHaveCount(0)
+  await page.getByRole('tab', { name: '提交 WP', exact: true }).click()
   await expect(page.getByRole('textbox', { name: 'WP 标题' })).toBeVisible()
 })
 
 test('chooses among multiple WPs and can still submit another approach', async ({ page }) => {
   await setup(page, { multiple: true })
-  await page.getByRole('button', { name: '查看 WP', exact: true }).click()
-  await expect(page.getByRole('menuitem', { name: /Solution A/ })).toHaveAttribute('href', /wp-one\/pdf$/)
-  await expect(page.getByRole('menuitem', { name: /Solution B/ })).toHaveAttribute('href', /wp-two\/pdf$/)
-  await page.keyboard.press('Escape')
-  await page.getByRole('group', { name: 'WP 快捷操作' }).getByRole('button', { name: '提交 WP', exact: true }).click()
+  await expect(page.getByRole('link', { name: 'Solution A' })).toHaveAttribute('href', /wp-one\/pdf$/)
+  await expect(page.getByRole('link', { name: 'Solution B' })).toHaveAttribute('href', /wp-two\/pdf$/)
+  await page.getByRole('tab', { name: '提交 WP', exact: true }).click()
   await expect(page.getByRole('textbox', { name: '作者', exact: true })).toBeVisible()
 })
 
 test('can view the official WP before submitting any flag', async ({ page }) => {
   await setup(page, { empty: true, official: true })
   const response = page.waitForResponse((r) => r.url().includes('/writeup?') && r.request().method() === 'GET')
-  await page.getByRole('group', { name: 'WP 快捷操作' }).getByRole('button', { name: '查看 WP', exact: true }).click()
+  await page.getByRole('button', { name: '查看官方题解', exact: true }).click()
   await response
   await expect(page.getByText('官方解题步骤：先分析 HTTP 请求。', { exact: true })).toBeVisible()
   await expect(page.getByRole('textbox', { name: '输入 Flag' })).toHaveValue('')

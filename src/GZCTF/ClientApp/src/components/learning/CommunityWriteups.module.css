@@ -1,8 +1,9 @@
 .section {
   min-width: 0;
-  padding-top: 24px;
+  padding: 20px;
   margin-top: 0;
-  border-top: 1px solid var(--mantine-color-default-border);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 12px;
 }
 .heading {
   margin-bottom: 18px;
@@ -90,7 +91,7 @@
   align-items: center;
   text-align: center;
   gap: 8px;
-  padding: 24px 16px;
+  padding: 14px 8px;
 }
 .empty > svg {
   color: var(--mantine-primary-color-filled);

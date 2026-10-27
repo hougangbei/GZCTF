@@ -3,15 +3,20 @@
 All notable changes to [**GZCTF**](https://github.com/GZTimeWalker/GZCTF) will be documented in this file.
 
 ---
-## [Unreleased] - 2026-10-26
+## [Unreleased] - 2026-10-27
 
 ### Added
+
+- Show challenge instance countdowns and copyable connection addresses, with safe browser entry links for Web instances.
+- Expand skill-tree and category icons to 40 searchable presets, including database constraint migration and rollback support.
 
 - Package the application, PostgreSQL, and Redis for offline linux/amd64 deployments, with persistent data volumes, backups, recovery, and Docker Compose 2.18.1 support.
 - Add an administrator-configurable laboratory blog link to desktop and mobile navigation.
 - Support managed updates from source code or release packages, with isolated validation, backups, and rollback.
 
 ### Changed
+
+- Present skill trees, categories, and challenges/lessons in compact responsive tile grids, and redesign the challenge modal with neutral surfaces and consolidated writeup actions.
 
 - Unify administration under a grouped sidebar with responsive navigation and local challenge icons while preserving existing deep links.
 - Reserve administrator grants and revocations for the built-in Admin account; protect administrator credentials and reject undefined role values.

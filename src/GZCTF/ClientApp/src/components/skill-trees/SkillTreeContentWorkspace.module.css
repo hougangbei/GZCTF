@@ -1,8 +1,21 @@
 .content {
-  max-height: min(88vh, 860px);
+  --hbc-card: light-dark(#ffffff, #242628);
+  --hbc-surface: light-dark(#f4f5f4, #2c2f30);
+  --hbc-ink: light-dark(#202826, #f1f3f2);
+  --hbc-muted: light-dark(#606c67, #b1bcb6);
+  --hbc-border: light-dark(#dce2de, #3b4240);
+  --hbc-primary: light-dark(#17634d, #83d4b8);
+  --hbc-primary-soft: light-dark(#e7f2ec, #293e35);
+
+  background: var(--hbc-card);
+  border: 1px solid var(--hbc-border);
+  border-radius: 16px;
+  color: var(--hbc-ink);
+  max-height: 90dvh;
 }
 
 .header {
+  background: var(--hbc-card);
   padding: 28px 32px 16px;
 }
 

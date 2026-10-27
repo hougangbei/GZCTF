@@ -1,0 +1,15 @@
+/* Scoped to learner skill-tree routes; the portal modal declares the same surfaces locally. */
+.surface {
+  --hbc-bg: light-dark(#f7f8f7, #1b1e1d);
+  --hbc-card: light-dark(#fff, #242628);
+  --hbc-surface: light-dark(#f0f3f1, #2c2f30);
+  --hbc-ink: light-dark(#202826, #f1f3f2);
+  --hbc-muted: light-dark(#606c67, #b1bcb6);
+  --hbc-border: light-dark(#dce2de, #3b4240);
+  --hbc-primary: light-dark(#17634d, #83d4b8);
+  --hbc-primary-soft: light-dark(#e7f2ec, #293e35);
+  --hbc-primary-hover: light-dark(#124e3d, #a1e2ca);
+  --hbc-primary-foreground: light-dark(#fff, #172a21);
+  background: var(--hbc-bg);
+  color: var(--hbc-ink);
+}
