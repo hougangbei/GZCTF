@@ -50,7 +50,7 @@ python3 manage.py --root /root/nynuctf/runtime update --bundle "$PWD" --maintena
 UPDATE
 ```
 
-更新工具会完成停机备份并替换app。数据库/Redis引擎镜像指纹保持不变，题目机Docker控制隧道保留。本包同时装载 `traefik:v3.7.16` 的amd64镜像。
+更新工具会完成停机备份并替换app。数据库/Redis引擎镜像指纹保持不变，题目机Docker控制隧道保留。本包同时装载 `gzctf-offline/traefik:3.7.16-amd64`：由Traefik官方v3.7.16的linux/amd64二进制构建，下载后核对官方SHA256清单，并携带CA证书及原始许可证。
 
 ## 3. 生成完整端口池并合并平台配置
 
@@ -61,6 +61,7 @@ cd /root/nynuctf/updates/traefik-pool-20261027
 read -r -p '校园网可达的业务机入口IP或域名（不带http及端口）：' TRAINING_ENTRY
 python3 configure-traefik.py \
   --worker 192.168.1.160 \
+  --image gzctf-offline/traefik:3.7.16-amd64 \
   --port-start 30000 --port-end 30199 \
   --output /root/nynuctf/traefik \
   --appsettings /root/nynuctf/runtime/appsettings.json \
@@ -95,7 +96,7 @@ python3 configure-traefik.py \
 
 ```sh
 cd /root/nynuctf/traefik
-docker image inspect traefik:v3.7.16 --format '{{.Os}}/{{.Architecture}}'
+docker image inspect gzctf-offline/traefik:3.7.16-amd64 --format '{{.Os}}/{{.Architecture}}'
 docker compose -p nynuctftraefik -f compose.yml config --quiet
 docker compose -p nynuctftraefik -f compose.yml up -d --force-recreate --pull never
 docker compose -p nynuctftraefik -f compose.yml ps

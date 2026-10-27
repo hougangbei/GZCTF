@@ -1,0 +1,9 @@
+FROM scratch
+LABEL org.opencontainers.image.source="https://github.com/traefik/traefik" \
+      org.opencontainers.image.version="v3.7.16" \
+      org.opencontainers.image.description="Offline image from checksum-verified official linux/amd64 Traefik release binary"
+COPY traefik /traefik
+COPY ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY LICENSE.md /usr/share/licenses/traefik/LICENSE.md
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+ENTRYPOINT ["/traefik"]

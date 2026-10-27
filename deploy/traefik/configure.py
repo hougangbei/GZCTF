@@ -28,7 +28,7 @@ def bounds(start, end):
     if not 1024 <= start <= end <= 65535 or end - start + 1 > 1000:
         raise ValueError('Choose an ascending pool within 1024-65535, at most 1000 ports')
 
-def configuration(worker, start, end):
+def configuration(worker, start, end, image=IMAGE):
     worker = host(worker)
     bounds(start, end)
     static = {'entryPoints': {}, 'providers': {'file': {'directory': '/etc/traefik/dynamic-pool', 'watch': True}}, 'log': {'level': 'INFO'}, 'global': {'checkNewVersion': False, 'sendAnonymousUsage': False}}
@@ -38,7 +38,7 @@ def configuration(worker, start, end):
         static['entryPoints'][key] = {'address': ':' + str(port) + '/tcp'}
         dynamic['tcp']['routers'][key] = {'entryPoints': [key], 'rule': 'HostSNI(`*`)', 'service': key}
         dynamic['tcp']['services'][key] = {'loadBalancer': {'servers': [{'address': worker + ':' + str(port)}]}}
-    compose = {'services': {'traefik': {'image': IMAGE, 'restart': 'unless-stopped', 'network_mode': 'host',
+    compose = {'services': {'traefik': {'image': image, 'restart': 'unless-stopped', 'network_mode': 'host',
         'command': ['--configfile=/etc/traefik/traefik.yml'],
         'volumes': ['./traefik.yml:/etc/traefik/traefik.yml:ro', './dynamic-pool:/etc/traefik/dynamic-pool:ro'],
         'read_only': True, 'cap_drop': ['ALL'], 'security_opt': ['no-new-privileges:true'],
@@ -92,6 +92,7 @@ def merge_appsettings(path, entry, start, end):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--worker', default='192.168.1.160')
+    parser.add_argument('--image', default=IMAGE, help='Traefik image already loaded on the gateway')
     parser.add_argument('--port-start', type=int, default=30000)
     parser.add_argument('--port-end', type=int, default=30199)
     parser.add_argument('--output', required=True)
@@ -99,7 +100,7 @@ def main():
     parser.add_argument('--entry', help='Campus-reachable gateway IP/hostname, without scheme or port')
     args = parser.parse_args()
     try:
-        static, dynamic, compose = configuration(args.worker, args.port_start, args.port_end)
+        static, dynamic, compose = configuration(args.worker, args.port_start, args.port_end, args.image)
         if args.appsettings:
             if not args.entry: raise ValueError('--entry is required with --appsettings')
             # Validate before generating files or changing private settings.

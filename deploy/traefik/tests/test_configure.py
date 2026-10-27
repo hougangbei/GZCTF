@@ -10,7 +10,7 @@ spec.loader.exec_module(module)
 
 class PoolConfigurationTests(unittest.TestCase):
     def test_full_pool_has_exact_same_port_tcp_routes(self):
-        static, dynamic, compose = module.configuration('192.168.1.160', 30000, 30199)
+        static, dynamic, compose = module.configuration('192.168.1.160', 30000, 30199, 'gzctf-offline/traefik:3.7.16-amd64')
         self.assertEqual(len(static['entryPoints']), 200)
         self.assertEqual(len(dynamic['tcp']['routers']), 200)
         for port in (30000, 30199):
@@ -18,6 +18,7 @@ class PoolConfigurationTests(unittest.TestCase):
             self.assertEqual(static['entryPoints'][key]['address'], ':' + str(port) + '/tcp')
             self.assertEqual(dynamic['tcp']['services'][key]['loadBalancer']['servers'], [{'address': '192.168.1.160:' + str(port)}])
             self.assertEqual(dynamic['tcp']['routers'][key]['entryPoints'], [key])
+        self.assertEqual(compose['services']['traefik']['image'], 'gzctf-offline/traefik:3.7.16-amd64')
         self.assertEqual(compose['services']['traefik']['network_mode'], 'host')
         self.assertNotIn('ports', compose['services']['traefik'])
 
