@@ -7,6 +7,8 @@ All notable changes to [**GZCTF**](https://github.com/GZTimeWalker/GZCTF) will b
 
 ### Added
 
+- Support an optional Docker host port pool and generate a complete same-port Traefik TCP gateway for campus challenge access, preserving existing mail, registry and worker socket settings.
+
 - Show challenge instance countdowns and copyable connection addresses, with safe browser entry links for Web instances.
 - Expand skill-tree and category icons to 40 searchable presets, including database constraint migration and rollback support.
 
