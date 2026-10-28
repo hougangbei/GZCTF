@@ -457,6 +457,22 @@ public class DockerConfig
     public string? UserName { get; set; }
     public string? Password { get; set; }
     public string? ChallengeNetwork { get; set; }
+    /// <summary>Optional host port pool, e.g. "30000-30199". Empty retains Docker's ephemeral allocation.</summary>
+    public string? HostPortRange { get; set; }
+
+    public string GetHostPortBinding()
+    {
+        if (string.IsNullOrWhiteSpace(HostPortRange)) return "0";
+        var range = HostPortRange.Trim();
+        var parts = range.Split('-');
+        if (parts.Length != 2 ||
+            !int.TryParse(parts[0], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var start) ||
+            !int.TryParse(parts[1], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var end) ||
+            start < 1 || end > 65535 || start > end)
+            throw new ArgumentException("DockerConfig.HostPortRange must be an ascending range within 1-65535, e.g. 30000-30199.");
+        return FormattableString.Invariant($"{start}-{end}");
+    }
+
 }
 
 public class KubernetesConfig

@@ -10,6 +10,7 @@ import { useRoutes } from 'react-router'
 import { SWRConfig } from 'swr'
 import routes from '~react-pages'
 import { ErrorFallback } from '@Components/ErrorFallback'
+import { PlatformFavicon } from '@Components/PlatformFavicon'
 import { WsrxProvider } from '@Components/WsrxProvider'
 import { localCacheProvider } from '@Utils/Cache'
 import { useLanguage } from '@Utils/I18n'
@@ -44,6 +45,7 @@ export const App: FC = () => {
                   fetcher,
                 }}
               >
+                <PlatformFavicon />
                 <WsrxProvider>
                   <Suspense
                     fallback={

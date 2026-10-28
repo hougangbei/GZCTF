@@ -74,8 +74,10 @@ const Configs: FC = () => {
         await api.admin.adminUpdateLogo({ file: logoFile })
       }
 
-      mutate({ ...conf })
-      mutateConfig({ ...conf.globalConfig, ...conf.containerPolicy })
+      // The server generates image hashes/URLs; refresh them after uploading
+      // instead of replacing the public config with the submitted form fields.
+      await Promise.all([mutate(), mutateConfig()])
+      setLogoFile(null)
       mutateCaptchaConfig()
     } catch (e) {
       showErrorMsg(e, t)
@@ -90,8 +92,7 @@ const Configs: FC = () => {
 
     try {
       await api.admin.adminResetLogo()
-      mutate({ ...configs, globalConfig: { ...globalConfig, faviconHash: '' } })
-      mutateConfig({ ...configs, logoUrl: '' })
+      await Promise.all([mutate(), mutateConfig()])
     } catch (e) {
       showErrorMsg(e, t)
     } finally {

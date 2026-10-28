@@ -6,6 +6,8 @@
 
 已有实例更新到 20261027 技能树/题目弹窗版本，请优先阅读[本版更新命令](TRAINING_UI_UPDATE.zh-CN.md)。[独立公网入口方案](TRAINING_PUBLIC_ACCESS.zh-CN.md)为后续网络实施设计。
 
+题目实例通过 Traefik 整段转发的新版部署见[固定端口池与 Traefik 网关](../traefik/README.zh-CN.md)。
+
 ## 传入并核验
 
 从可信 GitHub Release 下载本包与对应 `.sha256`。在 Linux 上执行：
