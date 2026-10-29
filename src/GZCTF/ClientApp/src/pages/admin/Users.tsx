@@ -32,12 +32,12 @@ import React, { FC, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ActionIconWithConfirm } from '@Components/ActionIconWithConfirm'
 import { AdminPage } from '@Components/admin/AdminPage'
-import type { AdminTabProps } from '@Components/admin/WithAdminTab'
 import { RegistrationReviewPanel } from '@Components/admin/RegistrationReviewPanel'
 import { UserEditModal, RoleColorMap } from '@Components/admin/UserEditModal'
+import type { AdminTabProps } from '@Components/admin/WithAdminTab'
 import { DEFAULT_LOADING_OVERLAY, showErrorMsg } from '@Utils/Shared'
-import { useArrayResponse } from '@Hooks/useArrayResponse'
 import { isBuiltinAdmin } from '@Utils/adminAccountPolicy'
+import { useArrayResponse } from '@Hooks/useArrayResponse'
 import { useUser } from '@Hooks/useUser'
 import api, { Role, UserInfoModel } from '@Api'
 import tableClasses from '@Styles/Table.module.css'
@@ -46,7 +46,11 @@ const ITEM_COUNT_PER_PAGE = 30
 
 const InlineUsersLayout: FC<AdminTabProps> = ({ head, isLoading, children }) => (
   <Stack gap="xs" pos="relative" w="100%">
-    {head && <Group justify="space-between" wrap="wrap" gap="sm">{head}</Group>}
+    {head && (
+      <Group justify="space-between" wrap="wrap" gap="sm">
+        {head}
+      </Group>
+    )}
     {children}
     <LoadingOverlay visible={isLoading ?? false} overlayProps={DEFAULT_LOADING_OVERLAY} />
   </Stack>
@@ -269,9 +273,15 @@ const Users: FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                   <Table.Tr key={user.id}>
                     <Table.Td>
                       <Switch
-                        disabled={disabled || readOnlyAdmin(user) || (user.approvalStatus != null && user.approvalStatus !== 'Approved')}
-                        checked={(user.emailConfirmed ?? false) &&
-                          (user.approvalStatus == null || user.approvalStatus === 'Approved')}
+                        disabled={
+                          disabled ||
+                          readOnlyAdmin(user) ||
+                          (user.approvalStatus != null && user.approvalStatus !== 'Approved')
+                        }
+                        checked={
+                          (user.emailConfirmed ?? false) &&
+                          (user.approvalStatus == null || user.approvalStatus === 'Approved')
+                        }
                         onChange={() => onToggleActive(user)}
                       />
                     </Table.Td>
@@ -288,11 +298,15 @@ const Users: FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                         <Badge size="sm" color={RoleColorMap.get(user.role ?? Role.User)}>
                           {user.role}
                         </Badge>
-                        {user.approvalStatus && user.approvalStatus !== 'Approved' &&
+                        {user.approvalStatus && user.approvalStatus !== 'Approved' && (
                           <Badge size="sm" color={user.approvalStatus === 'Rejected' ? 'red' : 'orange'}>
-                            {t(user.approvalStatus === 'Rejected' ?
-                              'admin.registrationReview.rejected' : 'admin.registrationReview.pending')}
-                          </Badge>}
+                            {t(
+                              user.approvalStatus === 'Rejected'
+                                ? 'admin.registrationReview.rejected'
+                                : 'admin.registrationReview.pending'
+                            )}
+                          </Badge>
+                        )}
                       </Group>
                     </Table.Td>
                     <Table.Td>
@@ -314,7 +328,6 @@ const Users: FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                     <Table.Td align="right">
                       <Group wrap="nowrap" gap="sm" justify="right">
                         <ActionIcon
-                          color="blue"
                           aria-label={t('admin.button.users.edit')}
                           disabled={disabled || readOnlyAdmin(user)}
                           onClick={() => {

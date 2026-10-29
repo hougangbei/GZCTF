@@ -21,13 +21,29 @@ describe('competition scoreboard chart', () => {
     expect(Object.values((option.legend as { selected: Record<string, boolean> }).selected).every(Boolean)).toBe(true)
     expect(option.tooltip).toMatchObject({ renderMode: 'richText', confine: true })
     expect(option.animation).toBe(false)
-    expect((Array.isArray(option.series) ? option.series[0] : option.series)).toMatchObject({ step: 'end', data: [['2026-10-25T00:00:00Z', 1]] })
+    expect(Array.isArray(option.series) ? option.series[0] : option.series).toMatchObject({
+      step: 'end',
+      data: [['2026-10-25T00:00:00Z', 1]],
+    })
   })
 })
 
-it('uses a teal line for the signed-in learner and keeps that learner visible on mobile', () => {
+it('uses the default accent line for the signed-in learner and keeps that learner visible on mobile', () => {
   const option = buildLeaderboardChart(series, 'score', true, 'zh-CN', true, 'learner-7')
   const lines = Array.isArray(option.series) ? option.series : [option.series]
-  expect(lines[7]).toMatchObject({ itemStyle: { color: '#4eb7a1' }, lineStyle: { color: '#4eb7a1', width: 2.3 } })
+  expect(lines[7]).toMatchObject({ itemStyle: { color: '#5558E8' }, lineStyle: { color: '#5558E8', width: 2.3 } })
   expect((option.legend as { selected: Record<string, boolean> }).selected['learner-7']).toBe(true)
+})
+
+it('applies the provided theme to highlighted lines and chart labels', () => {
+  const palette = { accent: '#315EAC', surface: '#ffffff', border: '#ddeeff', ink: '#123456', muted: '#456789' }
+  const option = buildLeaderboardChart(series, 'score', true, 'en-US', true, 'learner-7', palette)
+  const lines = Array.isArray(option.series) ? option.series : [option.series]
+  expect(lines[7]).toMatchObject({ itemStyle: { color: palette.accent }, lineStyle: { color: palette.accent } })
+  expect(option.tooltip).toMatchObject({
+    backgroundColor: palette.surface,
+    borderColor: palette.border,
+    textStyle: { color: palette.ink },
+  })
+  expect(option.legend).toMatchObject({ textStyle: { color: palette.muted }, pageIconColor: palette.accent })
 })

@@ -17,8 +17,10 @@ import {
 test.describe('skill tree learner journey', () => {
   test('visitor and learner journeys stay clean and progress stays private', async ({ browser }) => {
     test.skip(
-      !process.env.E2E_ADMIN_USER || !process.env.E2E_ADMIN_PASSWORD ||
-        !process.env.E2E_LEARNER_USER || !process.env.E2E_LEARNER_PASSWORD,
+      !process.env.E2E_ADMIN_USER ||
+        !process.env.E2E_ADMIN_PASSWORD ||
+        !process.env.E2E_LEARNER_USER ||
+        !process.env.E2E_LEARNER_PASSWORD,
       'Set E2E_ADMIN_USER/E2E_ADMIN_PASSWORD and E2E_LEARNER_USER/E2E_LEARNER_PASSWORD to run the journey'
     )
     test.setTimeout(240_000)
@@ -76,9 +78,10 @@ test.describe('skill tree learner journey', () => {
 
     // 3. Open a Markdown lesson and mark complete.
     await page.goto(`/skill-trees/${seed.treeId}/${seed.categoryId}/lesson/${seed.lessonId}`)
-    await expect(page.getByRole('dialog', { name: lessonTitle })).toBeVisible()
+    await expect(page.getByRole('heading', { name: lessonTitle, exact: true })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
     await page.getByRole('button', { name: 'Mark complete' }).click()
-    await expect(page.getByRole('button', { name: 'Mark complete' })).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Completed', exact: true })).toBeDisabled()
 
     // 4. Reveal a hint and the official write-up, then submit the Flag.
     await page.goto(`/skill-trees/${seed.treeId}/${seed.categoryId}/challenge/${seed.challengeId}`)

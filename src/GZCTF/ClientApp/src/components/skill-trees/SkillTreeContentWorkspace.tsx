@@ -1,10 +1,10 @@
-import surface from '@Components/skill-trees/TrainingSurface.module.css'
 import { Center, Loader, Modal, Stack, Text } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { WithNavBar } from '@Components/WithNavbar'
 import { ChallengeWorkspace } from '@Components/learning/ChallengeWorkspace'
-import { LessonWorkspace } from '@Components/learning/LessonWorkspace'
+import { LessonReader } from '@Components/learning/LessonReader'
+import surface from '@Components/skill-trees/TrainingSurface.module.css'
 import { useSkillTree } from '@Hooks/useSkillTrees'
 import classes from './SkillTreeContentWorkspace.module.css'
 import { SkillTreeOutline } from './SkillTreeOutline'
@@ -42,6 +42,12 @@ export const SkillTreeContentWorkspace = () => {
   if (!category || !content) return <Navigate to="/404" replace />
 
   const closeHref = `/skill-trees/${treeId}?category=${categoryId}`
+  if (kind === 'lesson')
+    return (
+      <WithNavBar minWidth={0}>
+        <LessonReader key={`${categoryId}-${contentId}`} tree={tree} categoryId={categoryId!} lessonId={contentId!} />
+      </WithNavBar>
+    )
   return (
     <WithNavBar className={surface.surface} minWidth={0}>
       <Stack gap="lg">
@@ -58,11 +64,7 @@ export const SkillTreeContentWorkspace = () => {
               : { content: classes.content, body: classes.body }
           }
         >
-          {kind === 'challenge' ? (
-            <ChallengeWorkspace challengeId={contentId!} modal />
-          ) : (
-            <LessonWorkspace lessonId={contentId!} modal />
-          )}
+          <ChallengeWorkspace challengeId={contentId!} modal />
         </Modal>
       </Stack>
     </WithNavBar>
