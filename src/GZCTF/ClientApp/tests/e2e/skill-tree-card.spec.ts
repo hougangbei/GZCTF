@@ -1,10 +1,17 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('skill tree discovery', () => {
+  test.beforeEach(async ({ page }) => {
+    // Keep mocked discovery independent of the backend and authenticated profile state.
+    await page.route('**/api/**', (route) => route.fulfill({ json: [] }))
+    await page.route('**/api/account/profile', (route) => route.fulfill({ status: 401, json: {} }))
+    await page.route('**/api/config', (route) => route.fulfill({ json: { title: 'NYNUCTF' } }))
+  })
   test('opens a category card and shows its challenge in a modal without joining', async ({ page }) => {
     const treeId = '01990000-0000-7000-8000-000000000001'
     const categoryId = '01990000-0000-7000-8000-000000000002'
     const challengeId = '01990000-0000-7000-8000-000000000003'
+    const skillId = '01990000-0000-7000-8000-000000000004'
     await page.route(`**/api/skill-trees/${treeId}`, (route) => route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify({
@@ -18,14 +25,21 @@ test.describe('skill tree discovery', () => {
           summary: '从 HTTP 开始',
           iconKey: 'web',
           sortOrder: 0,
-          contents: [{
-            contentId: challengeId,
-            kind: 'challenge',
+          skills: [{
+            skillId,
+            name: 'HTTP 基础',
             sortOrder: 0,
-            title: '第一道题',
-            summary: '题目摘要',
-            expectedMinutes: 30,
-            difficulty: 'Normal',
+            challengeCount: 1,
+            lessonCount: 0,
+            contents: [{
+              contentId: challengeId,
+              kind: 'challenge',
+              sortOrder: 0,
+              title: '第一道题',
+              summary: '题目摘要',
+              expectedMinutes: 30,
+              difficulty: 'Normal',
+            }],
           }],
         }],
       }),
@@ -59,9 +73,12 @@ test.describe('skill tree discovery', () => {
 
     await page.goto(`/skill-trees/${treeId}`)
     await expect(page.getByRole('link', { name: /Web 基础/ })).toBeVisible()
-    await page.getByRole('link', { name: /Web 基础/ }).click({ position: { x: 260, y: 90 } })
-    await expect(page.getByRole('link', { name: /第一道题/ })).toBeVisible()
-    await page.getByRole('link', { name: /第一道题/ }).click()
+    await page.getByRole('link', { name: /Web 基础/ }).click()
+    await expect(page).toHaveURL(`/skill-trees/${treeId}/${categoryId}/skills`)
+    await page.getByRole('link', { name: /HTTP 基础/ }).click()
+    await expect(page).toHaveURL(`/skill-trees/${treeId}/${categoryId}/skills/${skillId}`)
+    await expect(page.getByRole('region', { name: '技能内容' }).getByRole('link', { name: /第一道题/ })).toBeVisible()
+    await page.getByRole('region', { name: '技能内容' }).getByRole('link', { name: /第一道题/ }).click()
     await expect(page.getByRole('dialog', { name: '第一道题' })).toBeVisible()
     await expect(page.getByRole('dialog').getByText('阅读这段题目正文')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Join' })).toHaveCount(0)
@@ -78,7 +95,7 @@ test.describe('skill tree discovery', () => {
     await expect(page.getByText(/待审核|pending review/i)).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    await expect(page).toHaveURL(new RegExp(`category=${categoryId}$`))
+    await expect(page).toHaveURL(`/skill-trees/${treeId}/${categoryId}/skills/${skillId}`)
   })
 
   test('shows public counts and never renders aggregate progress', async ({ page }) => {
@@ -99,6 +116,9 @@ test.describe('skill tree discovery', () => {
       }),
     )
 
+    await page.route('**/api/skill-trees/01990000-0000-7000-8000-000000000001', (route) =>
+      route.fulfill({ json: { skillTreeId: '01990000-0000-7000-8000-000000000001', name: 'Web 工程师', categories: [] } })
+    )
     await page.goto('/skill-trees')
     await expect(page.getByText('Web 工程师')).toBeVisible()
     await page.getByRole('link', { name: /Web 工程师/ }).click({ position: { x: 260, y: 90 } })

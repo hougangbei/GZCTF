@@ -10,6 +10,7 @@ async function setup(page: Page, admin = false, language = 'zh-CN') {
   )
   let completed: string[] = []
   await page.route('**/api/my-learning*', (route) => route.fulfill({ json: { completedLessonIds: completed } }))
+  await page.route('**/api/my-learning/skill-trees/tree', route => route.fulfill({json:{completedLessonIds:completed,solvedChallengeIds:[],totalCount:2,completedCount:completed.length,categories:[],skills:[]}}))
   await page.route('**/api/skill-trees/tree', (route) =>
     route.fulfill({
       json: {
@@ -19,6 +20,7 @@ async function setup(page: Page, admin = false, language = 'zh-CN') {
           {
             categoryId: 'category',
             name: 'HTTP 基础',
+            skills: [{skillId:'default-skill',name:'HTTP 技能',summary:'',iconKey:'web',sortOrder:0,lessonCount:2,challengeCount:0,contents:[{kind:'lesson',contentId:'one',title:'HTTP 请求与响应'},{kind:'lesson',contentId:'two',title:'Cookie 与 Session'}]}],
             contents: [
               { kind: 'lesson', contentId: 'one', title: 'HTTP 请求与响应' },
               { kind: 'lesson', contentId: 'two', title: 'Cookie 与 Session' },

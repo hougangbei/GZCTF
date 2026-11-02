@@ -22,6 +22,7 @@ public sealed class SkillTree
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? DeletedAtUtc { get; set; }
+    public string? CoverHash { get; set; }
     public Guid? CurrentPublishedRevisionId { get; set; }
     public SkillTreeRevision? CurrentPublishedRevision { get; set; }
     [JsonIgnore, Timestamp]
@@ -58,6 +59,7 @@ public sealed class SkillCategory
     public uint RowVersion { get; set; }
     public List<SkillTreeCategoryRef> SkillTrees { get; set; } = [];
     public List<CategoryContent> Contents { get; set; } = [];
+    public List<CategorySkillRef> Skills { get; set; } = [];
 }
 
 public sealed class SkillTreeCategoryRef
@@ -101,4 +103,44 @@ public sealed class LearningPathRedirect
     public string OldSlug { get; set; } = string.Empty;
     public Guid SkillTreeId { get; set; }
     public SkillTree SkillTree { get; set; } = null!;
+}
+
+/// <summary>A reusable skill. Content membership belongs to this entity, independently of categories.</summary>
+public sealed class Skill
+{
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public string Name { get; set; } = string.Empty;
+    public string Summary { get; set; } = string.Empty;
+    public string IconKey { get; set; } = SkillTreeIconCatalog.Default;
+    public bool IsEnabled { get; set; } = true;
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? DeletedAtUtc { get; set; }
+    [JsonIgnore, Timestamp]
+    public uint RowVersion { get; set; }
+    public List<CategorySkillRef> Categories { get; set; } = [];
+    public List<SkillContent> Contents { get; set; } = [];
+}
+
+public sealed class CategorySkillRef
+{
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public Guid CategoryId { get; set; }
+    public SkillCategory Category { get; set; } = null!;
+    public Guid SkillId { get; set; }
+    public Skill Skill { get; set; } = null!;
+    public int SortOrder { get; set; }
+}
+
+public sealed class SkillContent
+{
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public Guid SkillId { get; set; }
+    public Skill Skill { get; set; } = null!;
+    public int SortOrder { get; set; }
+    public Guid? LessonId { get; set; }
+    public Lesson? Lesson { get; set; }
+    public Guid? ChallengeId { get; set; }
+    public CanonicalChallenge? Challenge { get; set; }
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 }

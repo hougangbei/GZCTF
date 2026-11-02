@@ -25,31 +25,74 @@ namespace GZCTF.Migrations
 
             modelBuilder.Entity("GZCTF.Features.AboutPage.Domain.AboutPageState", b =>
                 {
-                    b.Property<int>("Id").HasColumnType("integer");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-                    b.Property<Guid?>("CurrentVersionId").HasColumnType("uuid");
-                    b.Property<string>("DraftJson").IsRequired().HasColumnType("text");
-                    b.Property<long>("DraftRevision").HasColumnType("bigint");
-                    b.Property<DateTimeOffset>("DraftUpdatedAtUtc").HasColumnType("timestamp with time zone");
-                    b.Property<DateTimeOffset?>("LockCreatedAtUtc").HasColumnType("timestamp with time zone");
-                    b.Property<Guid?>("LockOwnerId").HasColumnType("uuid");
-                    b.Property<string>("LockOwnerName").HasMaxLength(80).HasColumnType("character varying(80)");
+
+                    b.Property<Guid?>("CurrentVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DraftJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("DraftRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("DraftUpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LockCreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("LockOwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("LockOwnerName")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
                     b.HasKey("Id");
+
                     b.HasIndex("CurrentVersionId");
+
                     b.ToTable("AboutPageStates");
                 });
 
             modelBuilder.Entity("GZCTF.Features.AboutPage.Domain.AboutPageVersion", b =>
                 {
-                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uuid");
-                    b.Property<string>("DocumentJson").IsRequired().HasColumnType("text");
-                    b.Property<DateTimeOffset>("PublishedAtUtc").HasColumnType("timestamp with time zone");
-                    b.Property<Guid>("PublisherId").HasColumnType("uuid");
-                    b.Property<string>("PublisherName").IsRequired().HasMaxLength(80).HasColumnType("character varying(80)");
-                    b.Property<long>("SourceDraftRevision").HasColumnType("bigint");
-                    b.Property<long>("VersionNumber").HasColumnType("bigint");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DocumentJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("PublishedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PublisherId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PublisherName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<long>("SourceDraftRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("VersionNumber")
+                        .HasColumnType("bigint");
+
                     b.HasKey("Id");
-                    b.HasIndex("VersionNumber").IsUnique();
+
+                    b.HasIndex("VersionNumber")
+                        .IsUnique();
+
                     b.ToTable("AboutPageVersions");
                 });
 
@@ -205,11 +248,6 @@ namespace GZCTF.Migrations
                     b.Property<byte>("PublicationState")
                         .HasColumnType("smallint");
 
-                    b.Property<int>("Score")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(100);
-
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -218,6 +256,11 @@ namespace GZCTF.Migrations
 
                     b.Property<string>("RuntimeConfigurationJson")
                         .HasColumnType("jsonb");
+
+                    b.Property<int>("Score")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(100);
 
                     b.Property<string>("SourceId")
                         .IsRequired()
@@ -1157,6 +1200,36 @@ namespace GZCTF.Migrations
                         });
                 });
 
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CategorySkillRef", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SkillId");
+
+                    b.HasIndex("CategoryId", "SkillId")
+                        .IsUnique();
+
+                    b.HasIndex("CategoryId", "SortOrder")
+                        .IsUnique();
+
+                    b.ToTable("CategorySkillRefs", t =>
+                        {
+                            t.HasCheckConstraint("CK_CategorySkillRefs_Order", "\"SortOrder\" >= 0");
+                        });
+                });
+
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.LearningPathRedirect", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1184,6 +1257,54 @@ namespace GZCTF.Migrations
                     b.HasIndex("SkillTreeId");
 
                     b.ToTable("LearningPathRedirects");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.Skill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IconKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeletedAtUtc");
+
+                    b.ToTable("Skills", t =>
+                        {
+                            t.HasCheckConstraint("CK_Skills_IconKey", "\"IconKey\" IN ('flag','web','crypto','pwn','brain','ai','terminal','network','cloud','shield','bug','code','database','linux','windows','mobile','reverse','forensics','osint','binary','key','lock','file','folder','book','target','trophy','rocket','lab','tools','chip','wifi','globe','server','container','chain','puzzle','lightning','star','compass')");
+                        });
                 });
 
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillCategory", b =>
@@ -1236,10 +1357,59 @@ namespace GZCTF.Migrations
                         });
                 });
 
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillContent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ChallengeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("LessonId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChallengeId");
+
+                    b.HasIndex("LessonId");
+
+                    b.HasIndex("SkillId", "ChallengeId")
+                        .IsUnique()
+                        .HasFilter("\"ChallengeId\" IS NOT NULL");
+
+                    b.HasIndex("SkillId", "LessonId")
+                        .IsUnique()
+                        .HasFilter("\"LessonId\" IS NOT NULL");
+
+                    b.HasIndex("SkillId", "SortOrder")
+                        .IsUnique();
+
+                    b.ToTable("SkillContents", t =>
+                        {
+                            t.HasCheckConstraint("CK_SkillContents_ExactlyOneContent", "(\"LessonId\" IS NOT NULL AND \"ChallengeId\" IS NULL) OR (\"LessonId\" IS NULL AND \"ChallengeId\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_SkillContents_Order", "\"SortOrder\" >= 0");
+                        });
+                });
+
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillTree", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("CoverHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -2999,6 +3169,25 @@ namespace GZCTF.Migrations
                     b.Navigation("Lesson");
                 });
 
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CategorySkillRef", b =>
+                {
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.SkillCategory", "Category")
+                        .WithMany("Skills")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.Skill", "Skill")
+                        .WithMany("Categories")
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Skill");
+                });
+
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.LearningPathRedirect", b =>
                 {
                     b.HasOne("GZCTF.Features.SkillTrees.Domain.SkillTree", "SkillTree")
@@ -3018,6 +3207,31 @@ namespace GZCTF.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("MergedIntoCategory");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillContent", b =>
+                {
+                    b.HasOne("GZCTF.Features.ChallengeLibrary.Domain.Challenge", "Challenge")
+                        .WithMany()
+                        .HasForeignKey("ChallengeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("GZCTF.Features.LearningPaths.Domain.Lesson", "Lesson")
+                        .WithMany()
+                        .HasForeignKey("LessonId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.Skill", "Skill")
+                        .WithMany("Contents")
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Challenge");
+
+                    b.Navigation("Lesson");
+
+                    b.Navigation("Skill");
                 });
 
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillTree", b =>
@@ -3650,11 +3864,20 @@ namespace GZCTF.Migrations
                     b.Navigation("Progress");
                 });
 
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.Skill", b =>
+                {
+                    b.Navigation("Categories");
+
+                    b.Navigation("Contents");
+                });
+
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillCategory", b =>
                 {
                     b.Navigation("Contents");
 
                     b.Navigation("SkillTrees");
+
+                    b.Navigation("Skills");
                 });
 
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillTree", b =>

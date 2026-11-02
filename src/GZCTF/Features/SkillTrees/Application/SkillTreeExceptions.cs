@@ -19,3 +19,5 @@ public sealed class ContentPublicationValidationException(
     public string Code { get; } = code;
 }
 public sealed class SkillTreeEnrollmentNotFoundException : Exception;
+
+public sealed class SkillSelectionRequiredException : Exception;

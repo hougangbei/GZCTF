@@ -1,25 +1,24 @@
 import { Button, Drawer, Group, Loader, Text } from '@mantine/core'
-import { mdiBookOpenPageVariantOutline, mdiPuzzleOutline, mdiCheck } from '@mdi/js'
-import { Icon } from '@mdi/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { Markdown } from '@Components/MarkdownRenderer'
+import { SkillDirectory } from '@Components/skill-trees/SkillHierarchyBrowser'
 import { useLanguage } from '@Utils/I18n'
 import { getLessonHeadings } from '@Utils/lessonMarkdown'
+import { orderedSkills, skillHref, type HierarchyTree } from '@Utils/skillHierarchy'
 import { useLesson, useLearningMutations } from '@Hooks/useChallengeLibraryAdmin'
-import { useMyLearning } from '@Hooks/useSkillTrees'
+import { useTreeProgress } from '@Hooks/useSkillHierarchy'
 import { useUser } from '@Hooks/useUser'
-import type { SkillTreeDetailResponse } from '@Api'
 import classes from './LessonReader.module.css'
 
-type Props = { tree: SkillTreeDetailResponse; categoryId: string; lessonId: string }
-export const LessonReader = ({ tree, categoryId, lessonId }: Props) => {
+type Props = { tree: HierarchyTree; categoryId: string; lessonId: string; skillId?: string }
+export const LessonReader = ({ tree, categoryId, lessonId, skillId }: Props) => {
   const { t } = useTranslation('lessonWorkspace')
   const { locale } = useLanguage()
   const { user } = useUser()
   const { data: lesson, error } = useLesson(lessonId, locale, true)
-  const { data: record } = useMyLearning(Boolean(user), locale)
+  const { data: record, mutate: refreshProgress } = useTreeProgress(tree.skillTreeId)
   const { completeLesson } = useLearningMutations()
   const [pending, setPending] = useState(false)
   const [completed, setCompleted] = useState(false)
@@ -27,15 +26,12 @@ export const LessonReader = ({ tree, categoryId, lessonId }: Props) => {
   const [directoryOpen, setDirectoryOpen] = useState(false)
   const [focused, setFocused] = useState(false)
   const headings = useMemo(() => getLessonHeadings(lesson?.body ?? ''), [lesson?.body])
-  const base = `/skill-trees/${tree.skillTreeId}`
   const category = tree.categories?.find((item) => item.categoryId === categoryId)
-  const items = (tree.categories ?? []).flatMap((category) =>
-    (category.contents ?? []).map((item) => ({ ...item, categoryId: category.categoryId }))
-  )
-  const index = items.findIndex(
-    (item) => item.kind === 'lesson' && item.contentId === lessonId && item.categoryId === categoryId
-  )
-  const href = (item: (typeof items)[number]) => `${base}/${item.categoryId}/${item.kind}/${item.contentId}`
+  const skill = orderedSkills(category).find((item) => item.skillId === skillId)
+  const items = skill?.contents ?? []
+  const index = items.findIndex((item) => item.kind === 'lesson' && item.contentId === lessonId)
+  const href = (item: (typeof items)[number]) =>
+    `${skillHref(tree.skillTreeId!, categoryId, skillId!)}/${item.kind}/${item.contentId}`
   const isCompleted = completed || (record?.completedLessonIds ?? []).includes(lessonId)
   const complete = async () => {
     setPending(true)
@@ -43,6 +39,7 @@ export const LessonReader = ({ tree, categoryId, lessonId }: Props) => {
     try {
       await completeLesson(lessonId)
       setCompleted(true)
+      await refreshProgress()
     } catch {
       setMessage(t('saveFailed'))
     } finally {
@@ -52,52 +49,32 @@ export const LessonReader = ({ tree, categoryId, lessonId }: Props) => {
 
   useEffect(() => {
     window.scrollTo(0, 0)
-  }, [lessonId])
+    if (sessionStorage.getItem('skill-directory-focus') === 'true') {
+      const heading = document.querySelector<HTMLElement>('article h1')
+      if (heading) {
+        heading.focus()
+        sessionStorage.removeItem('skill-directory-focus')
+      }
+    }
+  }, [lessonId, lesson])
 
   const directory = (
-    <nav aria-label={t('courseDirectory')} className={classes.directory}>
-      <Link to={base} className={classes.treeName}>
-        {tree.name}
-      </Link>
-      {tree.categories?.map((group) => (
-        <section key={group.categoryId}>
-          <h2>{group.name}</h2>
-          {group.contents?.map((item) => (
-            <Link
-              key={`${item.kind}-${item.contentId}`}
-              to={href({ ...item, categoryId: group.categoryId })}
-              aria-current={
-                item.kind === 'lesson' && item.contentId === lessonId && group.categoryId === categoryId
-                  ? 'page'
-                  : undefined
-              }
-              onClick={() => setDirectoryOpen(false)}
-            >
-              <Icon
-                size={0.75}
-                aria-hidden
-                path={
-                  item.kind === 'lesson' &&
-                  ((record?.completedLessonIds ?? []).includes(item.contentId ?? '') ||
-                    (item.contentId === lessonId && completed))
-                    ? mdiCheck
-                    : item.kind === 'lesson'
-                      ? mdiBookOpenPageVariantOutline
-                      : mdiPuzzleOutline
-                }
-              />
-              <span>{item.title}</span>
-            </Link>
-          ))}
-        </section>
-      ))}
-    </nav>
+    <SkillDirectory
+      tree={tree}
+      categoryId={categoryId}
+      skillId={skillId}
+      contentId={lessonId}
+      onNavigate={() => {
+        if (directoryOpen) sessionStorage.setItem('skill-directory-focus', 'true')
+        setDirectoryOpen(false)
+      }}
+    />
   )
 
   return (
     <div className={classes.reader} data-focused={focused || undefined}>
       <div className={classes.breadcrumb}>
-        <Link to={`${base}?category=${categoryId}`}>← {t('backToTree')}</Link>
+        <Link to={skillHref(tree.skillTreeId!, categoryId, skillId!)}>← {t('backToTree')}</Link>
         <span>/</span>
         <span>{tree.name}</span>
         <span>/</span>
@@ -127,7 +104,7 @@ export const LessonReader = ({ tree, categoryId, lessonId }: Props) => {
         ) : (
           <>
             <div className={classes.kind}>{t('lesson')}</div>
-            <h1>{lesson!.title}</h1>
+            <h1 tabIndex={-1}>{lesson!.title}</h1>
             <p className={classes.meta}>
               {t('readingTime', { count: Math.max(1, Math.ceil(lesson!.body.length / 450)) })} ·{' '}
               {t(isCompleted ? 'completed' : 'notCompleted')}

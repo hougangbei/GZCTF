@@ -47,7 +47,7 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
                 Localizations = [new ChallengeLocalization { Locale = "en", Title = "Hidden" }],
                 Flags = [new ChallengeFlag { Kind = ChallengeFlagKind.Static, Value = "flag{hidden}" }]
             });
-            await db.SaveChangesAsync();
+            await db.SaveRuntimeFixtureAsync();
         }
 
         var (_, learner) = await CreateLearnerClientAsync();
@@ -90,7 +90,7 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
                         Sha256 = hash, Flag = "flag{handout}" } }
                 })
             });
-            await db.SaveChangesAsync();
+            await db.SaveRuntimeFixtureAsync();
             var storage = scope.ServiceProvider.GetRequiredService<IBlobStorage>();
             using var stream = new MemoryStream(content);
             await storage.WriteAsync(storageKey, stream);
@@ -121,7 +121,7 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
                 Localizations = [new ChallengeLocalization { Locale = "en", Title = "Text only" }],
                 Flags = [new ChallengeFlag { Kind = ChallengeFlagKind.Static, Value = "flag{text}" }]
             });
-            await db.SaveChangesAsync();
+            await db.SaveRuntimeFixtureAsync();
         }
 
         var (_, learner) = await CreateLearnerClientAsync();
@@ -153,7 +153,7 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
                 Cpu = 1, MemoryMb = 128, StorageMb = 256, NetworkMode = "Open"
             })
         });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
 
         var adapter = new RecordingContainerAdapter(db);
         var runtime = new ChallengeRuntimeService(db, adapter, new LearningInstanceSettingsService(db));
@@ -185,7 +185,7 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
                     Cpu = 1, MemoryMb = 128, StorageMb = 256, NetworkMode = "Open"
                 })
             });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
 
         var settings = new LearningInstanceSettingsService(db);
         await settings.SaveAsync(new LearningInstanceSettings(2, 90));
@@ -201,14 +201,14 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
             Assert.InRange((container.ExpectStopAt - DateTimeOffset.UtcNow).TotalMinutes, 89, 91);
             container.ExpectStopAt = DateTimeOffset.UtcNow.AddMinutes(5);
             first.ExpiresAtUtc = container.ExpectStopAt;
-            await db.SaveChangesAsync();
+            await db.SaveRuntimeFixtureAsync();
             await runtime.ExtendAsync(user.Id, challengeIds[0]);
             Assert.InRange((container.ExpectStopAt - DateTimeOffset.UtcNow).TotalMinutes, 89, 91);
             Assert.Equal(container.ExpectStopAt, first.ExpiresAtUtc);
             await runtime.StopAsync(user.Id, challengeIds[0]);
             await runtime.StartAsync(user.Id, challengeIds[2]);
             second.ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(-1);
-            await db.SaveChangesAsync();
+            await db.SaveRuntimeFixtureAsync();
             await Assert.ThrowsAsync<InvalidOperationException>(
                 () => runtime.GetCurrentInstanceAsync(user.Id, challengeIds[1]));
             Assert.False(second.IsActive);
@@ -250,7 +250,7 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
                 Status = ChallengeInstanceStatus.Running, IsActive = true,
                 ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
             });
-            await db.SaveChangesAsync();
+            await db.SaveRuntimeFixtureAsync();
         }
 
         var response = await client.GetAsync($"/api/challenges/{challengeId}/instances");
@@ -375,7 +375,7 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
                 new UserChallengeInstance { UserId = first.Id, ChallengeId = dynamicChallengeId },
                 new UserChallengeInstance { UserId = second.Id, ChallengeId = dynamicChallengeId },
                 new UserChallengeInstance { UserId = first.Id, ChallengeId = staticChallengeId });
-            await db.SaveChangesAsync();
+            await db.SaveRuntimeFixtureAsync();
         }
 
         await using (var scope = factory.Services.CreateAsyncScope())
@@ -472,7 +472,7 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
             StartedAtUtc = DateTimeOffset.UtcNow,
             AssignedFlag = flag
         });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
     }
 
     private async Task<int> CountProgressRowsAsync(Guid challengeId, Guid userId)
@@ -584,7 +584,7 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
             IconKey = "web",
             Revisions = [revision]
         });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
 
         // Attachment modes must serve a real file, so seed the pool into blob storage.
         var storage = scope.ServiceProvider.GetRequiredService<IBlobStorage>();
@@ -641,7 +641,7 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
                 }]
             }
         });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         return challengeId;
     }
 }

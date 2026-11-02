@@ -133,7 +133,8 @@ public class AssetsController(
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Delete(string hash, CancellationToken token)
     {
-        if (await db.AboutPageStates.AsNoTracking().AnyAsync(state => state.DraftJson.Contains(hash), token) ||
+        if (await db.SkillTrees.AsNoTracking().AnyAsync(tree => tree.CoverHash == hash, token) ||
+            await db.AboutPageStates.AsNoTracking().AnyAsync(state => state.DraftJson.Contains(hash), token) ||
             await db.AboutPageVersions.AsNoTracking().AnyAsync(version => version.DocumentJson.Contains(hash), token))
             return Conflict(new RequestResponse("This image is referenced by an about page draft or published history."));
 

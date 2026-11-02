@@ -15,6 +15,7 @@ internal static class SkillTreeModelConfiguration
             entity.Property(x => x.Summary).HasMaxLength(1024).IsRequired();
             entity.Property(x => x.IconKey).HasMaxLength(32).IsRequired();
             entity.Property(x => x.RowVersion).IsRowVersion().IsConcurrencyToken();
+            entity.Property(x => x.CoverHash).HasMaxLength(64);
             entity.HasIndex(x => x.DeletedAtUtc);
             entity.HasOne(x => x.CurrentPublishedRevision).WithMany()
                 .HasForeignKey(x => x.CurrentPublishedRevisionId).OnDelete(DeleteBehavior.Restrict);
@@ -84,6 +85,44 @@ internal static class SkillTreeModelConfiguration
                 "CK_CategoryContents_ExactlyOneContent",
                 "(\"LessonId\" IS NOT NULL AND \"ChallengeId\" IS NULL) OR " +
                 "(\"LessonId\" IS NULL AND \"ChallengeId\" IS NOT NULL)"));
+        });
+
+        modelBuilder.Entity<Skill>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
+            entity.Property(x => x.Name).HasMaxLength(128).IsRequired();
+            entity.Property(x => x.Summary).HasMaxLength(1024).IsRequired();
+            entity.Property(x => x.IconKey).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.RowVersion).IsRowVersion().IsConcurrencyToken();
+            entity.HasIndex(x => x.DeletedAtUtc);
+            entity.ToTable(table => table.HasCheckConstraint("CK_Skills_IconKey",
+                "\"IconKey\" IN (" + string.Join(",", SkillTreeIconCatalog.Values.Keys.Select(key => "'" + key + "'")) + ")"));
+        });
+        modelBuilder.Entity<CategorySkillRef>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
+            entity.HasIndex(x => new { x.CategoryId, x.SkillId }).IsUnique();
+            entity.HasIndex(x => new { x.CategoryId, x.SortOrder }).IsUnique();
+            entity.HasOne(x => x.Category).WithMany(x => x.Skills).HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Skill).WithMany(x => x.Categories).HasForeignKey(x => x.SkillId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint("CK_CategorySkillRefs_Order", "\"SortOrder\" >= 0"));
+        });
+        modelBuilder.Entity<SkillContent>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
+            entity.HasIndex(x => new { x.SkillId, x.SortOrder }).IsUnique();
+            entity.HasIndex(x => new { x.SkillId, x.ChallengeId }).IsUnique().HasFilter("\"ChallengeId\" IS NOT NULL");
+            entity.HasIndex(x => new { x.SkillId, x.LessonId }).IsUnique().HasFilter("\"LessonId\" IS NOT NULL");
+            entity.HasOne(x => x.Skill).WithMany(x => x.Contents).HasForeignKey(x => x.SkillId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Challenge).WithMany().HasForeignKey(x => x.ChallengeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Lesson).WithMany().HasForeignKey(x => x.LessonId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => {
+                table.HasCheckConstraint("CK_SkillContents_ExactlyOneContent", "(\"LessonId\" IS NOT NULL AND \"ChallengeId\" IS NULL) OR (\"LessonId\" IS NULL AND \"ChallengeId\" IS NOT NULL)");
+                table.HasCheckConstraint("CK_SkillContents_Order", "\"SortOrder\" >= 0");
+            });
         });
 
         modelBuilder.Entity<SkillTreeEnrollment>(entity =>

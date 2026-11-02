@@ -61,7 +61,8 @@ public sealed class ChallengeLibraryService(
         if (challenge is null)
             return null;
         var categoryIds = await LoadCategoryIdsAsync(id, null, token);
-        return ToEditResponse(challenge, locale, categoryIds);
+        var result = ToEditResponse(challenge, locale, categoryIds);
+        return result with { Publication = result.Publication with { SkillIds = await ContentPublicationService.LoadContentSkillIdsAsync(db, id, null, token) } };
     }
 
     public async Task<ChallengeEditResponse?> UpdateChallengeAsync(
@@ -160,7 +161,8 @@ public sealed class ChallengeLibraryService(
         if (lesson is null)
             return null;
         var categoryIds = await LoadCategoryIdsAsync(null, id, token);
-        return ToLessonResponse(lesson, locale, categoryIds);
+        var result = ToLessonResponse(lesson, locale, categoryIds);
+        return result with { Publication = result.Publication with { SkillIds = await ContentPublicationService.LoadContentSkillIdsAsync(db, null, id, token) } };
     }
 
     public async Task<LessonResponse?> UpdateLessonAsync(
@@ -425,30 +427,16 @@ public sealed class ChallengeLibraryService(
 
     private async Task<IReadOnlyList<Guid>> LoadCategoryIdsAsync(
         Guid? challengeId, Guid? lessonId, CancellationToken token) =>
-        await db.CategoryContents
-            .AsNoTracking()
-            .Where(item => (challengeId != null && item.ChallengeId == challengeId) ||
-                           (lessonId != null && item.LessonId == lessonId))
-            .OrderBy(item => item.SortOrder)
-            .Select(item => item.CategoryId)
-            .Distinct()
-            .ToListAsync(token);
+        await ContentPublicationService.LoadContentCategoryIdsAsync(db, challengeId, lessonId, token);
 
     private async Task<Dictionary<Guid, IReadOnlyList<Guid>>> LoadCategoryLookupAsync(
         List<Guid> lessonIds, Guid? unusedChallengeId, CancellationToken token)
     {
-        var rows = await db.CategoryContents
-            .AsNoTracking()
-            .Where(item => item.LessonId != null && lessonIds.Contains(item.LessonId.Value))
-            .OrderBy(item => item.SortOrder)
-            .Select(item => new { LessonId = item.LessonId!.Value, item.CategoryId })
-            .ToListAsync(token);
-
-        return rows
-            .GroupBy(row => row.LessonId)
-            .ToDictionary(
-                group => group.Key,
-                group => (IReadOnlyList<Guid>)group.Select(row => row.CategoryId).Distinct().ToArray());
+        var rows = await db.CategorySkillRefs.AsNoTracking().Where(reference => reference.Skill.DeletedAtUtc == null && reference.Category.DeletedAtUtc == null)
+            .SelectMany(reference => reference.Skill.Contents.Where(content => content.LessonId != null && lessonIds.Contains(content.LessonId.Value))
+                .Select(content => new { LessonId = content.LessonId!.Value, reference.CategoryId })).ToListAsync(token);
+        return rows.GroupBy(row => row.LessonId).ToDictionary(group => group.Key,
+            group => (IReadOnlyList<Guid>)group.Select(row => row.CategoryId).Distinct().ToArray());
     }
 
     private static T? SelectLocalization<T>(

@@ -163,23 +163,25 @@ public class SkillTreeSchemaTests(GZCTFApplicationFactory factory)
             await migrator.MigrateAsync("20261006200000_AddChallengeScore");
             var oldTree = new SkillTree { Name = "Existing tree", IconKey = "web" };
             var oldCategory = new SkillCategory { Name = "Existing category", IconKey = "crypto" };
-            db.AddRange(oldTree, oldCategory);
+            db.SkillCategories.Add(oldCategory);
+            await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO \"SkillTrees\" (\"Id\", \"Name\", \"Summary\", \"IconKey\", \"CreatedAtUtc\", \"UpdatedAtUtc\") VALUES ({oldTree.Id}, {oldTree.Name}, {oldTree.Summary}, {oldTree.IconKey}, {oldTree.CreatedAtUtc}, {oldTree.UpdatedAtUtc})");
             await db.SaveChangesAsync();
 
-            await migrator.MigrateAsync();
+            await migrator.MigrateAsync("20261027030000_ExpandSkillTreeIcons");
             var newTree = new SkillTree { Name = "New tree", IconKey = "terminal" };
             var newCategory = new SkillCategory { Name = "New category", IconKey = "network" };
-            db.AddRange(newTree, newCategory);
+            db.SkillCategories.Add(newCategory);
+            await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO \"SkillTrees\" (\"Id\", \"Name\", \"Summary\", \"IconKey\", \"CreatedAtUtc\", \"UpdatedAtUtc\") VALUES ({newTree.Id}, {newTree.Name}, {newTree.Summary}, {newTree.IconKey}, {newTree.CreatedAtUtc}, {newTree.UpdatedAtUtc})");
             await db.SaveChangesAsync();
             db.ChangeTracker.Clear();
-            Assert.Equal("web", (await db.SkillTrees.FindAsync(oldTree.Id))!.IconKey);
+            Assert.Equal("web", await db.SkillTrees.Where(tree => tree.Id == oldTree.Id).Select(tree => tree.IconKey).SingleAsync());
             Assert.Equal("crypto", (await db.SkillCategories.FindAsync(oldCategory.Id))!.IconKey);
 
             await migrator.MigrateAsync("20261006200000_AddChallengeScore");
             db.ChangeTracker.Clear();
-            Assert.Equal("flag", (await db.SkillTrees.FindAsync(newTree.Id))!.IconKey);
+            Assert.Equal("flag", await db.SkillTrees.Where(tree => tree.Id == newTree.Id).Select(tree => tree.IconKey).SingleAsync());
             Assert.Equal("flag", (await db.SkillCategories.FindAsync(newCategory.Id))!.IconKey);
-            Assert.Equal("web", (await db.SkillTrees.FindAsync(oldTree.Id))!.IconKey);
+            Assert.Equal("web", await db.SkillTrees.Where(tree => tree.Id == oldTree.Id).Select(tree => tree.IconKey).SingleAsync());
             await migrator.MigrateAsync();
             Assert.Equal(2, await db.SkillTrees.CountAsync());
             Assert.Equal(2, await db.SkillCategories.CountAsync());

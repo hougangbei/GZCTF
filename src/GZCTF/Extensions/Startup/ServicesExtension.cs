@@ -1,4 +1,4 @@
-using System.Net.Mime;
+﻿using System.Net.Mime;
 using GZCTF.Middlewares;
 using GZCTF.Features.ChallengeLibrary.Application;
 using GZCTF.Features.Auditing.Application;
@@ -93,10 +93,12 @@ internal static class ServicesExtension
             builder.Services.AddScoped<SkillTreeQueryService>();
             builder.Services.AddScoped<AdminSkillTreeService>();
             builder.Services.AddScoped<SkillCategoryService>();
+            builder.Services.AddScoped<SkillService>();
+            builder.Services.AddScoped<SkillTreeCoverService>();
             builder.Services.AddScoped<ContentPublicationService>();
             builder.Services.AddScoped<SkillTreeEnrollmentService>();
             builder.Services.AddScoped<LearningRedirectService>();
-            builder.Services.AddSingleton<ISkillTreeCacheInvalidator, NoopSkillTreeCacheInvalidator>();
+            builder.Services.AddSingleton<ISkillTreeCacheInvalidator, SkillTreeCacheInvalidator>();
             builder.Services.AddScoped<SkillTreeBackfillService>();
             builder.Services.AddScoped<DynamicAttachmentAllocator>();
             builder.Services.AddScoped<ILegacyStorageAdapter, LegacyStorageAdapter>();

@@ -100,7 +100,7 @@ public class SkillCategoryTests(GZCTFApplicationFactory factory)
         db.SkillCategories.Add(category);
         var (tree, revision) = PublishedTree("Membership Tree", "flag", category);
         db.SkillTrees.Add(tree);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
         await SetCurrentRevisionAsync(db, tree.Id, revision.Id);
         // SetCurrentRevisionAsync bumps the tree row through raw SQL, so re-read the version.
         var treeRowVersion = await db.SkillTrees.AsNoTracking()
@@ -130,7 +130,7 @@ public class SkillCategoryTests(GZCTFApplicationFactory factory)
 
         var category = new SkillCategory { Id = Guid.CreateVersion7(), Name = "Impact Seed", Summary = "", IconKey = "flag" };
         db.SkillCategories.Add(category);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
 
         using var admin = await CreateAdminClientAsync();
 
@@ -167,7 +167,7 @@ public class SkillCategoryTests(GZCTFApplicationFactory factory)
         var first = PublishedTree("First", "flag", category);
         var second = PublishedTree("Second", "pwn", category);
         db.SkillTrees.AddRange(first.Tree, second.Tree);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
         await SetCurrentRevisionAsync(db, first.Tree.Id, first.Revision.Id);
         await SetCurrentRevisionAsync(db, second.Tree.Id, second.Revision.Id);
 
@@ -195,7 +195,7 @@ public class SkillCategoryTests(GZCTFApplicationFactory factory)
         db.SkillCategories.AddRange(survivor, duplicate);
         db.Challenges.Add(shared);
         db.Lessons.AddRange(survivorFirst, duplicateOnly);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
 
         return (survivor.Id, duplicate.Id, survivorFirst.Id, shared.Id, duplicateOnly.Id);
     }

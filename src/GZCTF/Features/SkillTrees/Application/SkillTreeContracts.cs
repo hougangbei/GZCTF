@@ -21,15 +21,15 @@ public static class SkillTreeProblemCodes
 
 public sealed record SkillTreeSummaryResponse(
     Guid SkillTreeId, string Name, string Summary, string IconKey,
-    int CategoryCount, int ChallengeCount, int LessonCount);
+    int CategoryCount, int ChallengeCount, int LessonCount, int SkillCount = 0, string? CoverUrl = null);
 
 public sealed record SkillTreeDetailResponse(
     Guid SkillTreeId, string Name, string Summary, string IconKey,
-    IReadOnlyList<SkillCategoryPublicResponse> Categories);
+    IReadOnlyList<SkillCategoryPublicResponse> Categories, int SkillCount = 0, string? CoverUrl = null);
 
 public sealed record SkillCategoryPublicResponse(
     Guid CategoryId, string Name, string Summary, string IconKey, int SortOrder,
-    IReadOnlyList<SkillTreeContentSummaryResponse> Contents);
+    IReadOnlyList<SkillTreeContentSummaryResponse> Contents, IReadOnlyList<SkillPublicResponse>? Skills = null);
 
 public sealed record SkillTreeContentSummaryResponse(
     Guid ContentId, string Kind, int SortOrder, string Title, string Summary,
@@ -53,7 +53,7 @@ public sealed record UpdateCategoryTreeMembershipsCommand(
 public sealed record SkillCategoryAdminResponse(
     Guid CategoryId, string Name, string Summary, string IconKey, uint RowVersion,
     IReadOnlyList<CategoryTreeReferenceResponse> Trees,
-    IReadOnlyList<SkillTreeContentSummaryResponse> Contents);
+    IReadOnlyList<SkillTreeContentSummaryResponse> Contents, IReadOnlyList<SkillPublicResponse>? Skills = null);
 public sealed record CategoryDeleteImpactResponse(
     Guid CategoryId, string Name, int DraftTreeCount, int PublishedTreeCount,
     int ChallengeCount, int LessonCount, bool RequiresTypedConfirmation, uint RowVersion);
@@ -72,12 +72,13 @@ public sealed record InlineSkillCategoryCommand(
     Guid SkillTreeId, string Name, string Summary, string IconKey);
 public sealed record PublishContentCommand(
     uint RowVersion,
-    IReadOnlyList<Guid> CategoryIds,
-    IReadOnlyList<InlineSkillCategoryCommand> InlineCategories);
+    IReadOnlyList<Guid>? CategoryIds = null,
+    IReadOnlyList<InlineSkillCategoryCommand>? InlineCategories = null,
+    IReadOnlyList<Guid>? SkillIds = null, IReadOnlyList<InlineSkillCommand>? InlineSkills = null);
 public sealed record ChallengePublicationEditState(
-    uint RowVersion, string PublicationState, IReadOnlyList<Guid> CategoryIds);
+    uint RowVersion, string PublicationState, IReadOnlyList<Guid> CategoryIds, IReadOnlyList<Guid>? SkillIds = null);
 public sealed record LessonPublicationEditState(
-    uint RowVersion, string PublicationState, IReadOnlyList<Guid> CategoryIds);
+    uint RowVersion, string PublicationState, IReadOnlyList<Guid> CategoryIds, IReadOnlyList<Guid>? SkillIds = null);
 
 /*
  * Enrollment and personal record contracts (ST12).
@@ -97,3 +98,25 @@ public sealed record MySkillTreeRecordResponse(
 public sealed record RecentLearningActivityResponse(
     string Kind, Guid ContentId, string Title, DateTimeOffset CompletedAtUtc, string? SolveMode);
 public sealed record LearningRedirectResponse(string TargetPath);
+
+public sealed record SkillPublicResponse(Guid SkillId, string Name, string Summary, string IconKey,
+    int SortOrder, int ChallengeCount, int LessonCount, IReadOnlyList<SkillTreeContentSummaryResponse> Contents,
+    bool IsEnabled = true);
+public sealed record SkillCommand(string Name, string Summary, string IconKey, bool IsEnabled = true, uint? RowVersion = null);
+public sealed record SkillCategoryReferenceResponse(Guid CategoryId, string Name);
+public sealed record SkillAdminResponse(Guid SkillId, string Name, string Summary, string IconKey, bool IsEnabled,
+    uint RowVersion, IReadOnlyList<SkillCategoryReferenceResponse> Categories, IReadOnlyList<SkillTreeContentSummaryResponse> Contents);
+public sealed record SkillContentUpdateCommand(uint RowVersion, IReadOnlyList<CategoryContentOrderCommand> Contents);
+public sealed record CategorySkillOrderCommand(Guid SkillId, int SortOrder);
+public sealed record CategorySkillsUpdateCommand(uint RowVersion, IReadOnlyList<CategorySkillOrderCommand> Skills);
+public sealed record SkillDeleteImpactResponse(Guid SkillId, string Name, int CategoryCount, int ChallengeCount,
+    int LessonCount, bool RequiresTypedConfirmation, uint RowVersion);
+public sealed record DeleteSkillCommand(string ConfirmationName, uint RowVersion);
+public sealed record InlineSkillCommand(Guid CategoryId, string Name, string Summary, string IconKey);
+public sealed record SkillTreeProgressCount(Guid SkillId, int TotalCount, int CompletedCount);
+public sealed record SkillCategoryProgressCount(Guid CategoryId, int TotalCount, int CompletedCount);
+public sealed record SkillTreeProgressResponse(int TotalCount, int CompletedCount,
+    IReadOnlyList<Guid> CompletedLessonIds, IReadOnlyList<Guid> SolvedChallengeIds,
+    IReadOnlyList<SkillCategoryProgressCount> Categories, IReadOnlyList<SkillTreeProgressCount> Skills);
+public sealed record SkillTreeCoverResponse(Guid SkillTreeId, string? CoverUrl, uint RowVersion);
+public sealed record DeleteSkillTreeCoverCommand(uint RowVersion);

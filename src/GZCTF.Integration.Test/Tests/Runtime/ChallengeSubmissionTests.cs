@@ -157,7 +157,7 @@ public sealed class ChallengeSubmissionTests(GZCTFApplicationFactory factory)
                 : [new ChallengeFlag { Kind = ChallengeFlagKind.Static, Value = flag },
                     new ChallengeFlag { Kind = ChallengeFlagKind.Static, Value = anotherFlag }]
         });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         return challengeId;
     }
 }

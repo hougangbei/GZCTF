@@ -43,7 +43,7 @@ public class SkillTreeParityTests(GZCTFApplicationFactory factory)
         Assert.Equal(seed.ModuleIds.Count,
             await db.SkillCategories.CountAsync(x => seed.ModuleIds.Contains(x.Id)));
         Assert.Equal(seed.ItemIds.Count,
-            await db.CategoryContents.CountAsync(x => seed.ItemIds.Contains(x.Id)));
+            await db.SkillContents.CountAsync(x => seed.ItemIds.Contains(x.Id)));
         Assert.Equal(seed.EnrollmentIds.Count,
             await db.SkillTreeEnrollments.CountAsync(x => seed.PathIds.Contains(x.SkillTreeId)));
         Assert.Equal(sourceChallengeProgressCount, await db.ChallengeProgress.CountAsync());
@@ -52,7 +52,7 @@ public class SkillTreeParityTests(GZCTFApplicationFactory factory)
             await db.SkillCategories.CountAsync(x => x.Name == DuplicatedModuleName));
 
         // Every source challenge mode survives the copy and stays published.
-        var copiedTypes = await db.CategoryContents
+        var copiedTypes = await db.SkillContents
             .Where(x => seed.ItemIds.Contains(x.Id) && x.ChallengeId != null)
             .Select(x => x.Challenge!.Type)
             .Distinct()
@@ -142,7 +142,7 @@ public class SkillTreeParityTests(GZCTFApplicationFactory factory)
             await db.SkillTrees.CountAsync(x => legacyPathIds.Contains(x.Id)));
         Assert.Equal(moduleIds.Count, await db.SkillCategories.CountAsync(x => moduleIds.Contains(x.Id)));
         Assert.Equal(challengeSourceIds.Length,
-            await db.CategoryContents.CountAsync(x => moduleIds.Contains(x.CategoryId)));
+            await db.SkillContents.CountAsync(x => moduleIds.Contains(x.SkillId)));
     }
 
     [Fact]
@@ -249,7 +249,7 @@ public class SkillTreeParityTests(GZCTFApplicationFactory factory)
             IconKey = "web",
             Revisions = [revision]
         });
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
 
         // Point the tree at the published revision after the graph exists to avoid a
         // circular dependency between the new tree and its own revision.
@@ -397,7 +397,7 @@ public class SkillTreeParityTests(GZCTFApplicationFactory factory)
             await using var scope = factory.Services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.LearningPaths.Add(path);
-            await db.SaveChangesAsync();
+            await db.SaveSkillTreeFixtureAsync();
 
             // Set the published pointer only after the revision row exists.
             await db.LearningPaths.Where(item => item.Id == pathId)
@@ -420,7 +420,7 @@ public class SkillTreeParityTests(GZCTFApplicationFactory factory)
                 SolvedAtUtc = DateTimeOffset.UtcNow,
                 SolveMode = ChallengeSolveMode.Independent
             });
-            await db.SaveChangesAsync();
+            await db.SaveSkillTreeFixtureAsync();
         }
 
         return new SeedGraph(pathIds, moduleIds, itemIds, enrollmentIds, currentPathId);

@@ -3,17 +3,19 @@ import { showNotification } from '@mantine/notifications'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router'
-import api, { Role, type SkillTreeCategoryAdminResponse, type SkillTreeDeleteImpactResponse } from '@Api'
-import { SkillTreeForm, type SkillTreeFormValues } from '@Components/admin/skill-trees/SkillTreeForm'
-import { CategoryPicker } from '@Components/admin/skill-trees/CategoryPicker'
-import { SortableCategoryList, type DraftCategory } from '@Components/admin/skill-trees/SortableCategoryList'
-import { TypedDeleteModal } from '@Components/admin/shared/TypedDeleteModal'
 import { WithNavBar } from '@Components/WithNavbar'
 import { WithRole } from '@Components/WithRole'
-import { useAdminSkillCategories, useAdminSkillTreeDraft, useSkillTreeAdminMutations } from '@Hooks/useSkillTreeAdmin'
+import { TypedDeleteModal } from '@Components/admin/shared/TypedDeleteModal'
+import { CategoryPicker } from '@Components/admin/skill-trees/CategoryPicker'
+import { SkillTreeCoverEditor } from '@Components/admin/skill-trees/SkillTreeCoverEditor'
+import { SkillTreeForm, type SkillTreeFormValues } from '@Components/admin/skill-trees/SkillTreeForm'
+import { SortableCategoryList, type DraftCategory } from '@Components/admin/skill-trees/SortableCategoryList'
+import type { SkillSummary } from '@Utils/skillHierarchy'
 import { moveItem, skillTreeIcons, type SkillTreeIconKey } from '@Utils/skillTreeAdmin'
-import { showSkillTreeError } from '@Utils/skillTreeAdminFeedback'
 import { getApiErrorCode } from '@Utils/skillTreeAdmin'
+import { showSkillTreeError } from '@Utils/skillTreeAdminFeedback'
+import { useAdminSkillCategories, useAdminSkillTreeDraft, useSkillTreeAdminMutations } from '@Hooks/useSkillTreeAdmin'
+import api, { Role, type SkillTreeCategoryAdminResponse, type SkillTreeDeleteImpactResponse } from '@Api'
 
 const toDraftCategory = (category: SkillTreeCategoryAdminResponse): DraftCategory => ({
   categoryId: category.categoryId ?? '',
@@ -134,7 +136,8 @@ const AdminSkillTreeEdit = () => {
     setCategories((current) =>
       current.some((item) => item.categoryId === category.categoryId)
         ? current
-        : [...current, { ...toDraftCategory(category), sortOrder: current.length }])
+        : [...current, { ...toDraftCategory(category), sortOrder: current.length }]
+    )
     setDirty(true)
   }
 
@@ -230,6 +233,8 @@ const AdminSkillTreeEdit = () => {
                 submitLabel={t('editor.save')}
               />
 
+              <SkillTreeCoverEditor id={id} />
+
               <Divider label={t('editor.categories')} labelPosition="left" mt="md" />
 
               <SortableCategoryList
@@ -272,18 +277,29 @@ const AdminSkillTreeEdit = () => {
                     <Text aria-hidden>{skillTreeIcons[(category.iconKey ?? 'flag') as SkillTreeIconKey] ?? '🚩'}</Text>
                     <Text fw={600}>{category.name}</Text>
                   </Group>
-                  {category.contents && category.contents.length > 0 ? (
-                    category.contents
-                      .slice()
-                      .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
-                      .map((content) => (
-                        <Text key={`${category.categoryId}-${content.contentId}`} size="sm" pl="lg">
-                          {content.title}
+                  {((category as typeof category & { skills?: SkillSummary[] }).skills ?? []).map((skill) => (
+                    <Stack key={skill.skillId} pl="lg" gap={4}>
+                      <Text fw={600}>
+                        技能 · {skill.name}
+                        {skill.isEnabled === false ? '（已停用，学员不可见）' : ''}
+                      </Text>
+                      {skill.contents.length ? (
+                        skill.contents.map((content) => (
+                          <Text key={`${content.kind}-${content.contentId}`} size="sm" pl="lg">
+                            {content.kind === 'lesson' ? '课节' : '题目'} · {content.title}{' '}
+                            {content.state && content.state !== 'Published' ? '（未发布，学员不可见）' : ''}
+                          </Text>
+                        ))
+                      ) : (
+                        <Text size="sm" c="dimmed">
+                          暂无内容，学员暂时无法学习
                         </Text>
-                      ))
-                  ) : (
+                      )}
+                    </Stack>
+                  ))}
+                  {!(category as typeof category & { skills?: SkillSummary[] }).skills?.length && (
                     <Text size="sm" c="dimmed" pl="lg">
-                      {t('editor.emptyPreview')}
+                      暂无技能，请先关联技能
                     </Text>
                   )}
                 </Stack>

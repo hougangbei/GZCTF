@@ -173,7 +173,7 @@ public class SkillTreeQueryTests(GZCTFApplicationFactory factory)
         db.SkillTrees.AddRange(emptyTree, populatedTree, draftTree, deletedTree);
         db.Challenges.Add(publishedChallenge);
         db.Lessons.AddRange(draftLesson, publishedLesson);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
 
         await using var scope2 = factory.Services.CreateAsyncScope();
         var db2 = scope2.ServiceProvider.GetRequiredService<AppDbContext>();

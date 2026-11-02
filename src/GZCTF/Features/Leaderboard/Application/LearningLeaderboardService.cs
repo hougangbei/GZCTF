@@ -33,7 +33,9 @@ public sealed class LearningLeaderboardService(AppDbContext db, IMemoryCache cac
                                revision.SkillTree.CurrentPublishedRevisionId == revision.Id)
             .SelectMany(revision => revision.Categories)
             .Where(reference => reference.Category.DeletedAtUtc == null)
-            .SelectMany(reference => reference.Category.Contents)
+            .SelectMany(reference => reference.Category.Skills)
+            .Where(reference => reference.Skill.DeletedAtUtc == null && reference.Skill.IsEnabled)
+            .SelectMany(reference => reference.Skill.Contents)
             .Where(content => content.ChallengeId != null &&
                               content.Challenge!.PublicationState == ChallengePublicationState.Published &&
                               content.Challenge.IsEnabled)

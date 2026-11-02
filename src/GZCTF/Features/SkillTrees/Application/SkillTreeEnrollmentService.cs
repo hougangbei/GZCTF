@@ -134,8 +134,9 @@ public sealed class SkillTreeEnrollmentService(AppDbContext db)
                                revision.SkillTree.CurrentPublishedRevisionId == revision.Id)
             .SelectMany(revision => revision.Categories)
             .AnyAsync(reference => reference.Category.DeletedAtUtc == null &&
-                                   reference.Category.Contents.Any(content => content.LessonId == lessonId &&
-                                       content.Lesson!.PublicationState == LessonPublicationState.Published), token);
+                                   reference.Category.Skills.Any(skill => skill.Skill.DeletedAtUtc == null && skill.Skill.IsEnabled &&
+                                       skill.Skill.Contents.Any(content => content.LessonId == lessonId &&
+                                       content.Lesson!.PublicationState == LessonPublicationState.Published)), token);
 
         return reachable ? LessonAccess.Allowed : LessonAccess.NotFound;
     }
@@ -185,9 +186,7 @@ public sealed class SkillTreeEnrollmentService(AppDbContext db)
             .Distinct()
             .ToList();
 
-        var contents = await db.CategoryContents
-            .AsNoTracking()
-            .Where(content => categoryIds.Contains(content.CategoryId))
+        var contents = await SkillHierarchyReader.CategoryContents(db, categoryIds)
             .ToListAsync(token);
 
         var challengeIds = contents
@@ -281,6 +280,24 @@ public sealed class SkillTreeEnrollmentService(AppDbContext db)
         var recentActivity = await BuildRecentActivityAsync(userId, token);
 
         return new MyLearningResponse(currentSkillTreeId, records, recentActivity);
+    }
+
+    public async Task<SkillTreeProgressResponse?> GetTreeProgressAsync(Guid userId, Guid treeId, CancellationToken token)
+    {
+        var tree = await new SkillTreeQueryService(db).GetPublishedAsync(treeId, token);
+        if (tree is null) return null;
+        var contents = tree.Categories.SelectMany(category => category.Contents).DistinctBy(content => (content.Kind, content.ContentId)).ToArray();
+        var lessonIds = contents.Where(content => content.Kind == "lesson").Select(content => content.ContentId).ToArray();
+        var challengeIds = contents.Where(content => content.Kind == "challenge").Select(content => content.ContentId).ToArray();
+        var completedLessons = await db.LessonProgress.AsNoTracking().Where(progress => progress.UserId == userId && lessonIds.Contains(progress.LessonId))
+            .Select(progress => progress.LessonId).Distinct().ToListAsync(token);
+        var solvedChallenges = await db.ChallengeProgress.AsNoTracking().Where(progress => progress.UserId == userId && challengeIds.Contains(progress.ChallengeId))
+            .Select(progress => progress.ChallengeId).Distinct().ToListAsync(token);
+        bool Completed(SkillTreeContentSummaryResponse content) => content.Kind == "lesson" ? completedLessons.Contains(content.ContentId) : solvedChallenges.Contains(content.ContentId);
+        var categories = tree.Categories.Select(category => new SkillCategoryProgressCount(category.CategoryId, category.Contents.Count, category.Contents.Count(Completed))).ToArray();
+        var skills = tree.Categories.SelectMany(category => category.Skills ?? []).DistinctBy(skill => skill.SkillId)
+            .Select(skill => new SkillTreeProgressCount(skill.SkillId, skill.Contents.Count, skill.Contents.Count(Completed))).ToArray();
+        return new(contents.Length, contents.Count(Completed), completedLessons, solvedChallenges, categories, skills);
     }
 
     private async Task<IReadOnlyList<RecentLearningActivityResponse>> BuildRecentActivityAsync(

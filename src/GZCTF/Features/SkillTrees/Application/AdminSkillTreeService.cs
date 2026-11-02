@@ -32,7 +32,7 @@ public sealed class AdminSkillTreeService(AppDbContext db, ISkillTreeCacheInvali
         db.SkillTrees.Add(tree);
         await db.SaveChangesAsync(token);
 
-        return new AdminSkillTreeResponse(tree.Id, tree.Name, tree.Summary, tree.IconKey, false, true, draft.RowVersion);
+        return new AdminSkillTreeResponse(tree.Id, tree.Name, tree.Summary, tree.IconKey, false, true, tree.RowVersion, SkillHierarchyReader.CoverUrl(tree.CoverHash));
     }
 
     public async Task<SkillTreeDraftResponse?> GetDraftAsync(Guid treeId, CancellationToken token)
@@ -216,8 +216,8 @@ public sealed class AdminSkillTreeService(AppDbContext db, ISkillTreeCacheInvali
             .ToList();
 
         var categoryCount = await db.SkillCategories.CountAsync(c => categoryIds.Contains(c.Id) && c.DeletedAtUtc == null, token);
-        var challengeCount = await db.CategoryContents.CountAsync(cc => categoryIds.Contains(cc.CategoryId) && cc.ChallengeId != null, token);
-        var lessonCount = await db.CategoryContents.CountAsync(cc => categoryIds.Contains(cc.CategoryId) && cc.LessonId != null, token);
+        var challengeCount = await SkillHierarchyReader.CategoryContents(db, categoryIds).Where(cc => cc.ChallengeId != null).Select(cc => cc.ChallengeId).Distinct().CountAsync(token);
+        var lessonCount = await SkillHierarchyReader.CategoryContents(db, categoryIds).Where(cc => cc.LessonId != null).Select(cc => cc.LessonId).Distinct().CountAsync(token);
         var enrollmentCount = await db.SkillTreeEnrollments.CountAsync(e => e.SkillTreeId == treeId, token);
 
         return new SkillTreeDeleteImpactResponse(
@@ -285,7 +285,7 @@ public sealed class AdminSkillTreeService(AppDbContext db, ISkillTreeCacheInvali
             t.Id, t.Name, t.Summary, t.IconKey,
             t.Revisions.Any(r => r.Status == SkillTreeRevisionStatus.Published),
             t.Revisions.Any(r => r.Status == SkillTreeRevisionStatus.Draft),
-            t.RowVersion
+            t.RowVersion, SkillHierarchyReader.CoverUrl(t.CoverHash)
         )).ToArray();
     }
 
@@ -317,79 +317,15 @@ public sealed class AdminSkillTreeService(AppDbContext db, ISkillTreeCacheInvali
 
         var categoryIds = activeRefs.Select(cr => cr.CategoryId).ToList();
 
-        var contents = await db.CategoryContents
-            .AsNoTracking()
-            .Include(cc => cc.Challenge)
-                .ThenInclude(c => c!.Localizations)
-            .Include(cc => cc.Lesson)
-                .ThenInclude(l => l!.Localizations)
-            .Where(cc => categoryIds.Contains(cc.CategoryId))
-            .OrderBy(cc => cc.CategoryId)
-            .ThenBy(cc => cc.SortOrder)
-            .ToListAsync(token);
-
-        var challengeIds = contents.Where(cc => cc.ChallengeId is not null).Select(cc => cc.ChallengeId!.Value).Distinct().ToList();
-        var lessonIds = contents.Where(cc => cc.LessonId is not null).Select(cc => cc.LessonId!.Value).Distinct().ToList();
-
-        var challenges = await db.Challenges
-            .AsNoTracking()
-            .Include(c => c.Localizations)
-            .Where(c => challengeIds.Contains(c.Id))
-            .ToListAsync(token);
-
-        var lessons = await db.Lessons
-            .AsNoTracking()
-            .Include(l => l.Localizations)
-            .Where(l => lessonIds.Contains(l.Id))
-            .ToListAsync(token);
-
-        var challengeMap = challenges.ToDictionary(c => c.Id);
-        var lessonMap = lessons.ToDictionary(l => l.Id);
-
-        var publishedContents = contents
-            .Where(cc => (cc.ChallengeId is not null
-                           && challengeMap.TryGetValue(cc.ChallengeId!.Value, out var ch)
-                           && ch.PublicationState == ChallengePublicationState.Published
-                           && ch.IsEnabled)
-                         || (cc.LessonId is not null
-                             && lessonMap.TryGetValue(cc.LessonId!.Value, out var ls)
-                             && ls.PublicationState == LessonPublicationState.Published))
-            .ToList();
-
-        var contentsByCategory = publishedContents
-            .GroupBy(cc => cc.CategoryId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        var categories = activeRefs.Select(cr =>
+        var skills = await SkillHierarchyReader.LoadSkillsAsync(db, categoryIds, false, token);
+        var categories = activeRefs.Select(reference =>
         {
-            var list = contentsByCategory.TryGetValue(cr.CategoryId, out var items) ? items : [];
-            var summaries = list.Select(cc =>
-            {
-                if (cc.ChallengeId is { } cid && challengeMap.TryGetValue(cid, out var challenge))
-                {
-                    return new SkillTreeContentSummaryResponse(
-                        cid, "challenge", cc.SortOrder,
-                        PickTitle(challenge.Localizations) ?? string.Empty,
-                        PickSummary(challenge.Localizations) ?? string.Empty,
-                        challenge.ExpectedMinutes,
-                        challenge.Difficulty.ToString());
-                }
-
-                if (cc.LessonId is { } lid && lessonMap.TryGetValue(lid, out var lesson))
-                {
-                    return new SkillTreeContentSummaryResponse(
-                        lid, "lesson", cc.SortOrder,
-                        PickTitle(lesson.Localizations) ?? string.Empty,
-                        string.Empty, 0, string.Empty);
-                }
-
-                return new SkillTreeContentSummaryResponse(cc.Id, "unknown", cc.SortOrder, string.Empty, string.Empty, 0, string.Empty);
-            }).ToArray();
-            return new SkillCategoryPublicResponse(
-                cr.CategoryId, cr.Category.Name, cr.Category.Summary, cr.Category.IconKey, cr.SortOrder, summaries);
+            var categorySkills = skills.GetValueOrDefault(reference.CategoryId, []);
+            return new SkillCategoryPublicResponse(reference.CategoryId, reference.Category.Name, reference.Category.Summary,
+                reference.Category.IconKey, reference.SortOrder, SkillHierarchyReader.Flatten(categorySkills), categorySkills);
         }).ToArray();
-
-        return new SkillTreeDetailResponse(tree.Id, tree.Name, tree.Summary, tree.IconKey, categories);
+        return new(tree.Id, tree.Name, tree.Summary, tree.IconKey, categories,
+            skills.Values.SelectMany(value => value).Select(skill => skill.SkillId).Distinct().Count(), SkillHierarchyReader.CoverUrl(tree.CoverHash));
     }
 
     private static string PickTitle(IEnumerable<ChallengeLocalization>? localizations) =>
@@ -423,7 +359,7 @@ public sealed class AdminSkillTreeService(AppDbContext db, ISkillTreeCacheInvali
 
         return new SkillTreeDraftResponse(
             tree.Id, draft.Id, tree.Name, tree.Summary, tree.IconKey,
-            draft.RowVersion, categories);
+            draft.RowVersion, categories, SkillHierarchyReader.CoverUrl(tree.CoverHash));
     }
 }
 
@@ -435,10 +371,10 @@ public sealed record SkillTreeCategoryOrderCommand(Guid CategoryId, int SortOrde
 public sealed record PublishSkillTreeCommand(uint RowVersion);
 public sealed record AdminSkillTreeResponse(
     Guid SkillTreeId, string Name, string Summary, string IconKey,
-    bool IsPublished, bool HasDraft, uint RowVersion);
+    bool IsPublished, bool HasDraft, uint RowVersion, string? CoverUrl = null);
 public sealed record SkillTreeDraftResponse(
     Guid SkillTreeId, Guid RevisionId, string Name, string Summary, string IconKey,
-    uint RowVersion, IReadOnlyList<SkillTreeCategoryAdminResponse> Categories);
+    uint RowVersion, IReadOnlyList<SkillTreeCategoryAdminResponse> Categories, string? CoverUrl = null);
 public sealed record SkillTreeCategoryAdminResponse(
     Guid CategoryId, string Name, string Summary, string IconKey, int SortOrder, uint RowVersion,
     IReadOnlyList<CategoryTreeReferenceResponse> Trees,

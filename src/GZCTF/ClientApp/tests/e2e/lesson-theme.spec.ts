@@ -10,6 +10,7 @@ async function setup(page: Page, options: { category?: string; expired?: boolean
     localStorage.setItem('mantine-color-scheme-value', dark ? 'dark' : 'light')
   }, options.dark ?? true)
   await page.route('**/api/**', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/my-learning/skill-trees/*',route=>route.fulfill({json:{totalCount:1,completedCount:0,completedLessonIds:[],solvedChallengeIds:[],categories:[],skills:[]}}))
   await page.route('**/api/account/profile', (route) =>
     route.fulfill({ json: { userId: 'learner', userName: 'Learner', role: 'User' } })
   )
@@ -39,6 +40,7 @@ async function setup(page: Page, options: { category?: string; expired?: boolean
       },
     ],
   }
+  for (const category of tree.categories) Object.assign(category, {skills:[{skillId:'default-skill',name:'入门技能',summary:'',iconKey:'web',sortOrder:0,challengeCount:category.contents.length,lessonCount:0,contents:category.contents}]})
   await page.route('**/api/skill-trees', (route) => route.fulfill({ json: [tree] }))
   await page.route(`**/api/skill-trees/${treeId}`, (route) => route.fulfill({ json: tree }))
   await page.route(`**/api/challenges/${challengeId}?locale=*`, (route) =>
@@ -185,7 +187,7 @@ test('challenge portal and skill-tree surfaces follow light, dark and system pre
     .poll(() => dialog.evaluate((element) => getComputedStyle(element).backgroundColor))
     .toBe(await themeColor(page, '--hbc-card'))
   await page.keyboard.press('Escape')
-  const card = page.getByRole('link', { name: /HTTP 请求与身份验证/ })
+  const card = page.getByRole('region', {name:'技能内容'}).getByRole('link', { name: /HTTP 请求与身份验证/ })
   await expect
     .poll(() => card.evaluate((element) => getComputedStyle(element).backgroundColor))
     .toBe(await themeColor(page, '--hbc-card'))

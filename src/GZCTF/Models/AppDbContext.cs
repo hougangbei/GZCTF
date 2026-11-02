@@ -85,6 +85,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<SkillTreeRevision> SkillTreeRevisions { get; set; } = null!;
     public DbSet<SkillCategory> SkillCategories { get; set; } = null!;
     public DbSet<SkillTreeCategoryRef> SkillTreeCategoryRefs { get; set; } = null!;
+    public DbSet<Skill> Skills { get; set; } = null!;
+    public DbSet<CategorySkillRef> CategorySkillRefs { get; set; } = null!;
+    public DbSet<SkillContent> SkillContents { get; set; } = null!;
     public DbSet<CategoryContent> CategoryContents { get; set; } = null!;
     public DbSet<SkillTreeEnrollment> SkillTreeEnrollments { get; set; } = null!;
     public DbSet<LearningPathRedirect> LearningPathRedirects { get; set; } = null!;

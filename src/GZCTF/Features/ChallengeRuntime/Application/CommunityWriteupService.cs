@@ -117,6 +117,5 @@ public sealed class CommunityWriteupService(AppDbContext db, IBlobStorage storag
     }
 
     private Task<bool> IsPublicChallengeAsync(Guid id, CancellationToken token) =>
-        db.Challenges.AsNoTracking().AnyAsync(item => item.Id == id &&
-            item.PublicationState == ChallengePublicationState.Published && item.IsEnabled, token);
+        ChallengeAccessPolicy.IsPublicAsync(db, id, token);
 }

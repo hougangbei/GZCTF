@@ -58,6 +58,18 @@ public sealed class AdminLessonsController(
             await publicationService.PublishLessonAsync(id, command, token);
             return NoContent();
         }
+        catch (SkillSelectionRequiredException)
+        {
+            return Conflict(ApiError.Conflict("skill_selection_required", "Select a skill explicitly for this category.", HttpContext.TraceIdentifier));
+        }
+        catch (SkillCategoryValidationException exception)
+        {
+            return BadRequest(ApiError.Validation("skill_invalid", exception.Message, HttpContext.TraceIdentifier, null));
+        }
+        catch (SkillTreeInvalidIconException)
+        {
+            return BadRequest(ApiError.Validation("skill_tree_invalid_icon", "The icon is not supported.", HttpContext.TraceIdentifier, null));
+        }
         catch (ContentCategoryRequiredException)
         {
             return BadRequest(ApiError.Validation(

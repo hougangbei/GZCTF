@@ -28,16 +28,19 @@ public sealed class LearningRedirectService(AppDbContext db)
 
         var belongsToTree = await db.SkillTreeCategoryRefs
             .AsNoTracking()
-            .AnyAsync(cr => cr.Revision.SkillTreeId == treeId && cr.CategoryId == categoryGuid, token);
+            .AnyAsync(cr => cr.Revision.SkillTreeId == treeId && cr.Revision.SkillTree.CurrentPublishedRevisionId == cr.RevisionId &&
+                cr.CategoryId == categoryGuid && cr.Category.DeletedAtUtc == null, token);
 
         if (!belongsToTree)
             return null;
 
         // Legacy deep links address content by its own entity id, matching the workspace route.
-        var content = await db.CategoryContents
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.CategoryId == categoryGuid &&
-                                       (c.ChallengeId == contentGuid || c.LessonId == contentGuid), token);
+        var content = await db.CategorySkillRefs.AsNoTracking()
+            .Where(reference => reference.CategoryId == categoryGuid && reference.Skill.DeletedAtUtc == null && reference.Skill.IsEnabled)
+            .SelectMany(reference => reference.Skill.Contents)
+            .FirstOrDefaultAsync(content => (content.ChallengeId == contentGuid && content.Challenge!.IsEnabled &&
+                content.Challenge.PublicationState == Features.ChallengeLibrary.Domain.ChallengePublicationState.Published) ||
+                (content.LessonId == contentGuid && content.Lesson!.PublicationState == Features.LearningPaths.Domain.LessonPublicationState.Published), token);
 
         if (content is null)
             return null;

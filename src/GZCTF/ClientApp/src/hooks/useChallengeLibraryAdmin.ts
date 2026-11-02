@@ -73,14 +73,20 @@ export const useLearningMutations = () => {
     await mutate(`/api/challenges/${challengeId}/instances`, null, false)
   }
 
-  const submitChallenge = async (challengeId: string, flag: string) =>
-    (await api.challengeSubmissions.challengeSubmissionsSubmit(challengeId, { flag })).data as {
+  const submitChallenge = async (challengeId: string, flag: string) => {
+    const result = (await api.challengeSubmissions.challengeSubmissionsSubmit(challengeId, { flag })).data as {
       accepted: boolean
       firstSolve: boolean
       solveMode?: ChallengeSolveMode | null
       rejectionCode?: string
       submissionId: string
     }
+    if (result.accepted) await mutate((key) => {
+      const path = Array.isArray(key) ? key[0] : key
+      return typeof path === 'string' && path.startsWith('/api/my-learning')
+    })
+    return result
+  }
 
   const nextHint = async (challengeId: string, locale: string) =>
     (await api.challenges.challengesNextHint(challengeId, { locale })).data as {

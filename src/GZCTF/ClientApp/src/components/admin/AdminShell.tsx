@@ -43,6 +43,7 @@ export const AdminShell = ({ children }: PropsWithChildren) => {
           path: workspace('categories'),
           icon: mdiFolderOutline,
         },
+        { key: 'skills', label: '技能库', path: '/admin/skills', icon: mdiSitemapOutline },
         {
           key: 'challenges',
           label: t('skillTrees:workspace.tabs.challenges'),

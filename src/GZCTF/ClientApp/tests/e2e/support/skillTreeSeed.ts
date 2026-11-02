@@ -4,8 +4,8 @@ import { createRoleContext, login } from './auth'
 /**
  * Shared seeding helpers for the ST27 browser suites. Publishing content requires the
  * target category to already belong to a published tree, so the order is:
- * create tree -> publish empty -> create category -> attach to tree -> publish tree ->
- * publish content.
+ * create tree -> publish empty -> create category and skill -> attach skill to category ->
+ * attach category to tree -> publish tree -> publish content into the skill.
  */
 
 export type TreeSummary = {
@@ -18,6 +18,7 @@ export type TreeSummary = {
 export type SeededTree = {
   treeId: string
   categoryId: string
+  skillId: string
   lessonId: string
   challengeId: string
 }
@@ -68,6 +69,24 @@ export async function createCategory(page: Page, name: string, iconKey = 'flag')
   })
   expect(response.ok()).toBeTruthy()
   return (await response.json()).categoryId as string
+}
+
+export async function createSkill(page: Page, name: string, iconKey = 'flag'): Promise<string> {
+  const response = await page.request.post('/api/admin/skills', {
+    data: { name, summary: '', iconKey, isEnabled: true },
+  })
+  expect(response.ok()).toBeTruthy()
+  return (await response.json()).skillId as string
+}
+
+export async function attachSkills(page: Page, categoryId: string, skillIds: string[]): Promise<void> {
+  const detail = await page.request.get(`/api/admin/skill-categories/${categoryId}`)
+  expect(detail.ok()).toBeTruthy()
+  const { rowVersion } = await detail.json()
+  const response = await page.request.put(`/api/admin/skill-categories/${categoryId}/skills`, {
+    data: { rowVersion, skills: skillIds.map((skillId, sortOrder) => ({ skillId, sortOrder })) },
+  })
+  expect(response.ok()).toBeTruthy()
 }
 
 export async function attachCategory(page: Page, treeId: string, categoryIds: string[]): Promise<void> {
@@ -126,7 +145,7 @@ export async function publishContent(
   page: Page,
   kind: 'lesson' | 'challenge',
   contentId: string,
-  categoryIds: string[],
+  skillIds: string[],
 ): Promise<void> {
   // Challenges expose their publication state through the edit endpoint; lessons do not.
   const detailPath = kind === 'challenge'
@@ -136,7 +155,7 @@ export async function publishContent(
   expect(detail.ok()).toBeTruthy()
   const rowVersion = (await detail.json()).publication.rowVersion as number
   const response = await page.request.post(`/api/admin/${kind}s/${contentId}/publish`, {
-    data: { rowVersion, categoryIds, inlineCategories: [] },
+    data: { rowVersion, skillIds, inlineSkills: [], categoryIds: [], inlineCategories: [] },
   })
   expect(response.ok()).toBeTruthy()
 }
@@ -169,6 +188,8 @@ export async function seedSharedTrees(
     await publishTree(page, secondTreeId)
 
     const categoryId = await createCategory(page, input.categoryName)
+    const skillId = await createSkill(page, `Skill ${input.suffix}`)
+    await attachSkills(page, categoryId, [skillId])
     await attachCategory(page, firstTreeId, [categoryId])
     await attachCategory(page, secondTreeId, [categoryId])
     await publishTree(page, firstTreeId)
@@ -176,10 +197,10 @@ export async function seedSharedTrees(
 
     const lessonId = await createLesson(page, input.lessonTitle)
     const challengeId = await createChallenge(page, { title: input.challengeTitle, flag: input.flag })
-    await publishContent(page, 'lesson', lessonId, [categoryId])
-    await publishContent(page, 'challenge', challengeId, [categoryId])
+    await publishContent(page, 'lesson', lessonId, [skillId])
+    await publishContent(page, 'challenge', challengeId, [skillId])
 
-    return { treeId: firstTreeId, secondTreeId, emptyTreeId, categoryId, lessonId, challengeId }
+    return { treeId: firstTreeId, secondTreeId, emptyTreeId, categoryId, skillId, lessonId, challengeId }
   } finally {
     await close()
   }

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { createRoleContext } from './support/auth'
+import { attachSkills, createSkill } from './support/skillTreeSeed'
 
 test.describe('skill tree administration', () => {
   test('administrator manages skill trees, categories and shared content', async ({ browser }) => {
@@ -31,6 +32,7 @@ test.describe('skill tree administration', () => {
     const categoryCopy = `Category A copy ${id}`
     const challengeTitle = `Challenge ${id}`
     const lessonTitle = `Lesson ${id}`
+    const skillName = `Skill ${id}`
 
     const createCategory = async (name: string) => {
       await page.goto('/admin/skill-trees?tab=categories')
@@ -46,14 +48,18 @@ test.describe('skill tree administration', () => {
       await page.getByRole('button', { name: 'Add category' }).first().click()
     }
 
-    const publishIntoCategory = async (kind: 'challenge' | 'lesson', contentId: string) => {
+    const publishIntoSkill = async (kind: 'challenge' | 'lesson', contentId: string) => {
       await page.goto(`/admin/library/${kind}s/${contentId}`)
       await page.getByRole('button', { name: kind === 'challenge' ? 'Publish challenge' : 'Publish lesson' }).click()
       const dialog = page.getByRole('dialog')
-      await dialog.getByText(treeName, { exact: true }).click()
-      await dialog.getByText(categoryA, { exact: true }).click()
+      await dialog.getByRole('combobox', { name: '选择路线', exact: true }).click()
+      await page.getByRole('option', { name: treeName, exact: true }).click()
+      await dialog.getByRole('combobox', { name: '选择类别', exact: true }).click()
+      await page.getByRole('option', { name: categoryA, exact: true }).click()
+      await dialog.getByLabel('关联技能', { exact: true }).click()
+      await page.getByRole('option', { name: skillName, exact: true }).click()
       const publishPromise = page.waitForResponse((response) => response.url().includes('/publish') && response.request().method() === 'POST')
-      await dialog.getByRole('button', { name: 'Publish' }).click()
+      await dialog.getByRole('button', { name: '发布', exact: true }).click()
       await publishPromise
       await expect(
         page.getByText(kind === 'challenge' ? 'Challenge published' : 'Lesson published')
@@ -71,6 +77,9 @@ test.describe('skill tree administration', () => {
 
     // 2. Create two categories from the categories tab.
     await createCategory(categoryA)
+    const categoryAId = page.url().split('/').pop()!
+    const skillId = await createSkill(page, skillName)
+    await attachSkills(page, categoryAId, [skillId])
     await createCategory(categoryB)
 
     // 3. Add both to the tree, reorder categories and publish.
@@ -94,9 +103,9 @@ test.describe('skill tree administration', () => {
     })
     expect(challengeResponse.ok()).toBeTruthy()
     const challengeId = (await challengeResponse.json()).challenge.id as string
-    await publishIntoCategory('challenge', challengeId)
+    await publishIntoSkill('challenge', challengeId)
 
-    // 5. Create a draft lesson and publish it into the same category.
+    // 5. Create a draft lesson and publish it into the same skill.
     const lessonResponse = await page.request.post('/api/admin/lessons', {
       data: {
         locale: 'en',
@@ -105,15 +114,14 @@ test.describe('skill tree administration', () => {
     })
     expect(lessonResponse.ok()).toBeTruthy()
     const lessonId = (await lessonResponse.json()).id as string
-    await publishIntoCategory('lesson', lessonId)
+    await publishIntoSkill('lesson', lessonId)
 
-    // 6. Reorder category contents and verify the shared order in the tree preview.
-    await page.goto('/admin/skill-trees?tab=categories')
-    await page.getByText(categoryA).first().click()
+    // 6. Reorder skill contents and verify the shared order in the tree preview.
+    await page.goto(`/admin/skills/${skillId}`)
     await expect(page.getByText(lessonTitle).first()).toBeVisible()
-    await page.getByRole('button', { name: `Move up: ${lessonTitle}` }).click()
-    await page.getByRole('button', { name: 'Save order' }).click()
-    await expect(page.getByText('Content order saved')).toBeVisible({ timeout: 10_000 })
+    await page.getByRole('button', { name: `上移 ${lessonTitle}` }).click()
+    await page.getByRole('button', { name: '保存内容顺序' }).click()
+    await expect(page.getByText('保存成功')).toBeVisible({ timeout: 10_000 })
 
     await page.goto('/admin/skill-trees')
     await page.getByText(treeName).first().click()
@@ -138,7 +146,7 @@ test.describe('skill tree administration', () => {
 
     const categoriesResponse = await page.request.get('/api/admin/skill-categories')
     const categoryList = await categoriesResponse.json() as Array<{ name: string; categoryId: string }>
-    const categoryAId = categoryList.find((item) => item.name === categoryA)!.categoryId
+    expect(categoryList.find((item) => item.name === categoryA)?.categoryId).toBe(categoryAId)
 
     await page.goto(`/admin/skill-categories/${categoryAId}`)
     await page.getByRole('button', { name: 'Merge categories' }).click()
