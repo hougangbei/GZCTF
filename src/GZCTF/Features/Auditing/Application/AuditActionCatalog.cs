@@ -56,6 +56,8 @@ public static class AuditActionCatalog
             ["updates.validate"] = new("updates.validate", "settings", "deployment"),
             ["updates.apply"] = new("updates.apply", "settings", "deployment"),
             ["imports.zip"] = new("imports.zip", "content", "import_batch", true),
+            ["platform-imports.execute"] = new("platform-imports.execute", "content", "import_batch", true),
+            ["platform-imports.preview"] = new("platform-imports.preview", "content", "import_batch", true),
             ["writeups.review"] = new("writeups.review", "content", "writeup"),
             ["cohorts.create"] = new("cohorts.create", "cohorts", "cohort"),
             ["cohorts.update"] = new("cohorts.update", "cohorts", "cohort"),

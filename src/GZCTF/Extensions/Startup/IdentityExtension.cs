@@ -1,3 +1,4 @@
+using GZCTF.Features.Imports.Application;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 
@@ -43,6 +44,8 @@ internal static class IdentityExtension
                 .AddEntityFrameworkStores<AppDbContext>()
                 .AddErrorDescriber<TranslatedIdentityErrorDescriber>()
                 .AddDefaultTokenProviders();
+
+            builder.Services.AddScoped<IPasswordHasher<UserInfo>, CtfdPasswordHasher>();
 
             builder.Services.Configure<DataProtectionTokenProviderOptions>(o =>
                 o.TokenLifespan = TimeSpan.FromHours(3)

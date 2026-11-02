@@ -59,7 +59,7 @@ public sealed class ChallengeSubmissionService(
             var instance = await runtime.GetOrCreateInstanceAsync(userId, challengeId, token);
             var accepted = challenge.Type is ChallengeType.StaticAttachment or ChallengeType.StaticContainer
                 ? challenge.Flags.Where(item => item.Kind == ChallengeFlagKind.Static)
-                    .Aggregate(false, (match, item) => MatchesFlag(item.Value, submittedFlag) | match)
+                    .Aggregate(false, (match, item) => MatchesFlag(item.Value, submittedFlag, IsCaseInsensitive(item.MetadataJson)) | match)
                 : MatchesFlag(await ResolveExpectedFlagAsync(challenge, instance, userId, token), submittedFlag);
             var submission = new ChallengeSubmission
             {
@@ -75,7 +75,8 @@ public sealed class ChallengeSubmissionService(
 
             if (!accepted)
             {
-                if (limitTransaction is not null) await limitTransaction.CommitAsync(token);
+                if (limitTransaction is not null)
+                    await limitTransaction.CommitAsync(token);
                 return new ChallengeSubmissionResult(false, false, null, submission.RejectionCode, submission.Id);
             }
 
@@ -151,13 +152,15 @@ public sealed class ChallengeSubmissionService(
         }
         finally
         {
-            if (limitTransaction is not null) await limitTransaction.DisposeAsync();
+            if (limitTransaction is not null)
+                await limitTransaction.DisposeAsync();
         }
     }
 
     private async Task StopSolvedContainerAsync(CanonicalChallenge challenge, Guid userId, Guid challengeId)
     {
-        if (!challenge.Type.IsContainer()) return;
+        if (!challenge.Type.IsContainer())
+            return;
         try
         {
             await runtime.StopAsync(userId, challengeId, CancellationToken.None);
@@ -197,9 +200,20 @@ public sealed class ChallengeSubmissionService(
     private static string Hash(string value) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
 
-    private static bool MatchesFlag(string? expected, string submitted)
+    private static bool IsCaseInsensitive(string? metadata)
     {
-        if (string.IsNullOrEmpty(expected)) return false;
+        if (string.IsNullOrEmpty(metadata))
+            return false;
+        try
+        { using var doc = System.Text.Json.JsonDocument.Parse(metadata); return doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object && doc.RootElement.TryGetProperty("IgnoreCase", out var value) && value.ValueKind == System.Text.Json.JsonValueKind.True; }
+        catch (System.Text.Json.JsonException) { return false; }
+    }
+    private static bool MatchesFlag(string? expected, string submitted, bool ignoreCase = false)
+    {
+        if (string.IsNullOrEmpty(expected))
+            return false;
+        if (ignoreCase)
+        { expected = expected.ToUpperInvariant(); submitted = submitted.ToUpperInvariant(); }
         return CryptographicOperations.FixedTimeEquals(
             SHA256.HashData(Encoding.UTF8.GetBytes(expected)),
             SHA256.HashData(Encoding.UTF8.GetBytes(submitted)));

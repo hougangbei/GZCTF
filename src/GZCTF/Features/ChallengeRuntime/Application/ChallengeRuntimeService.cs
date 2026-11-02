@@ -71,7 +71,8 @@ public sealed class ChallengeRuntimeService(
                 var containerRunning = current.ContainerId is { } containerId &&
                     await db.Containers.AnyAsync(item => item.Id == containerId &&
                         item.Status == ContainerStatus.Running && item.ExpectStopAt > now, token);
-                if (current.ExpiresAtUtc > now && containerRunning) return current;
+                if (current.ExpiresAtUtc > now && containerRunning)
+                    return current;
                 await RetireExpiredAsync(current, token);
                 current = null;
             }
@@ -96,7 +97,10 @@ public sealed class ChallengeRuntimeService(
             var image = settings.ContainerImage ?? settings.Image;
             if (string.IsNullOrWhiteSpace(image))
                 throw new InvalidOperationException("challenge.container_configuration_invalid");
-            var flag = ResolveFlag(challenge, userId, settings.FlagTemplate);
+            var flag = settings.FlagMode is "gzctf" or "gzctf-random"
+                ? GZCTF.Features.Imports.Application.ImportedFlagGenerator.Generate(settings.FlagMode, settings.FlagTemplate,
+                    settings.ImportSourceInstance ?? challenge.SourceType, challenge.SourceId, userId)
+                : ResolveFlag(challenge, userId, settings.FlagTemplate);
             var container = await containers.StartAsync(new CanonicalContainerRequest(
                 userId, challengeId, image, settings.ExposedPort, settings.Cpu,
                 settings.MemoryMb, settings.StorageMb, settings.NetworkMode, flag), token);
@@ -104,7 +108,8 @@ public sealed class ChallengeRuntimeService(
                 throw new InvalidOperationException("challenge.container_unavailable");
 
             var expires = DateTimeOffset.UtcNow.AddMinutes(policy.LifetimeMinutes);
-            if (db.Entry(container).State == EntityState.Detached) db.Containers.Add(container);
+            if (db.Entry(container).State == EntityState.Detached)
+                db.Containers.Add(container);
             container.ExpectStopAt = expires;
             instance.ContainerId = container.Id;
             instance.AssignedFlag = flag;
@@ -132,7 +137,8 @@ public sealed class ChallengeRuntimeService(
         if (instance.ContainerId is { } containerId)
         {
             var container = await db.Containers.SingleOrDefaultAsync(item => item.Id == containerId, token);
-            if (container is not null) container.ExpectStopAt = expires;
+            if (container is not null)
+                container.ExpectStopAt = expires;
         }
         await db.SaveChangesAsync(token);
         return instance;
@@ -166,12 +172,14 @@ public sealed class ChallengeRuntimeService(
         Guid userId, Guid challengeId, CancellationToken token = default)
     {
         var instance = await GetOwnedInstanceAsync(userId, challengeId, token);
-        if (instance.Status != ChallengeInstanceStatus.Running) return instance;
+        if (instance.Status != ChallengeInstanceStatus.Running)
+            return instance;
         var now = DateTimeOffset.UtcNow;
         var running = instance.ExpiresAtUtc > now && instance.ContainerId is { } id &&
             await db.Containers.AnyAsync(container => container.Id == id &&
                 container.Status == ContainerStatus.Running && container.ExpectStopAt > now, token);
-        if (running) return instance;
+        if (running)
+            return instance;
         await RetireExpiredAsync(instance, token, stopContainer: false);
         throw new InvalidOperationException("challenge.instance_expired");
     }
@@ -219,5 +227,5 @@ public sealed class ChallengeRuntimeService(
         int MemoryMb,
         int StorageMb,
         string NetworkMode,
-        string? FlagTemplate);
+        string? FlagTemplate, string? FlagMode = null, string? ImportSourceInstance = null);
 }

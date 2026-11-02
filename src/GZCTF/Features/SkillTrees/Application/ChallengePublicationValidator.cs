@@ -31,6 +31,12 @@ internal static class ChallengePublicationValidator
 
             foreach (var attachment in attachments)
             {
+                if (attachment.RemoteUrl is { } remote)
+                {
+                    if (challenge.Type == ChallengeType.DynamicAttachment || !Uri.TryCreate(remote, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https") || !string.IsNullOrEmpty(uri.UserInfo))
+                        throw new ContentPublicationValidationException("Remote attachment URL is invalid.", "content_attachment_invalid");
+                    continue;
+                }
                 if (string.IsNullOrWhiteSpace(attachment.FileName) ||
                     string.IsNullOrWhiteSpace(attachment.Sha256) ||
                     string.IsNullOrWhiteSpace(attachment.Flag))
@@ -53,7 +59,8 @@ internal static class ChallengePublicationValidator
             }
         }
 
-        if (!challenge.Type.IsContainer()) return;
+        if (!challenge.Type.IsContainer())
+            return;
 
         ContainerSettings? settings;
         try
@@ -76,6 +83,7 @@ internal static class ChallengePublicationValidator
                 "content_container_configuration_required");
 
         if (challenge.Type == ChallengeType.DynamicContainer &&
+            settings.FlagMode is not ("gzctf-random" or "gzctf") &&
             string.IsNullOrWhiteSpace(settings.FlagTemplate) &&
             !challenge.Flags.Any(flag => flag.Kind == ChallengeFlagKind.Template &&
                                          !string.IsNullOrWhiteSpace(flag.Template)))
@@ -85,7 +93,8 @@ internal static class ChallengePublicationValidator
 
     private static IReadOnlyList<AttachmentCandidate> ReadAttachments(string? metadata)
     {
-        if (string.IsNullOrWhiteSpace(metadata)) return [];
+        if (string.IsNullOrWhiteSpace(metadata))
+            return [];
         try
         {
             using var document = JsonDocument.Parse(metadata);
@@ -103,7 +112,7 @@ internal static class ChallengePublicationValidator
     }
 
     private sealed record AttachmentCandidate(
-        string FileName, string Sha256, string Flag, string? StorageKey);
+        string FileName, string Sha256, string Flag, string? StorageKey, string? RemoteUrl = null);
 
     private sealed record ContainerSettings(
         string? ContainerImage,
@@ -113,5 +122,5 @@ internal static class ChallengePublicationValidator
         int MemoryMb,
         int StorageMb,
         string? NetworkMode,
-        string? FlagTemplate);
+        string? FlagTemplate, string? FlagMode = null);
 }

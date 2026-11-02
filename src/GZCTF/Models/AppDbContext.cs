@@ -5,6 +5,7 @@ using GZCTF.Features.AboutPage.Domain;
 using GZCTF.Features.ChallengeRuntime.Domain;
 using GZCTF.Features.Dashboard.Domain;
 using GZCTF.Features.Imports.Domain;
+using GZCTF.Features.Imports.Infrastructure;
 using GZCTF.Features.LearningPaths.Domain;
 using GZCTF.Features.LearningPaths.Infrastructure;
 using GZCTF.Features.LearningProgress.Domain;
@@ -74,6 +75,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<Dashboard> Dashboards { get; set; } = null!;
     public DbSet<DashboardToken> DashboardTokens { get; set; } = null!;
     public DbSet<LearnerDailySolveStat> LearnerDailySolveStats { get; set; } = null!;
+    public DbSet<PlatformImportBatch> PlatformImportBatches { get; set; } = null!;
+    public DbSet<PlatformImportMap> PlatformImportMaps { get; set; } = null!;
+    public DbSet<PlatformHistoryMember> PlatformHistoryMembers { get; set; } = null!;
+    public DbSet<PlatformHistorySubmission> PlatformHistorySubmissions { get; set; } = null!;
+    public DbSet<PlatformHistoryAward> PlatformHistoryAwards { get; set; } = null!;
     public DbSet<MigrationBatch> MigrationBatches { get; set; } = null!;
     public DbSet<LegacyChallengeMap> LegacyChallengeMaps { get; set; } = null!;
     public DbSet<LegacyPathMap> LegacyPathMaps { get; set; } = null!;
@@ -573,5 +579,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
                 .HasForeignKey(item => item.ChallengeId).OnDelete(DeleteBehavior.Cascade);
         });
         SkillTreeModelConfiguration.Configure(builder);
+        PlatformImportModelConfiguration.Configure(builder);
     }
 }

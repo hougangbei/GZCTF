@@ -1,4 +1,3 @@
-import { runtimeErrorKey } from '@Utils/runtimeErrors'
 import { Alert, Badge, Button, Group, Stack, Text, TextInput, Title } from '@mantine/core'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -6,6 +5,7 @@ import { Link } from 'react-router'
 import { useSWRConfig } from 'swr'
 import { Markdown } from '@Components/MarkdownRenderer'
 import { useLanguage } from '@Utils/I18n'
+import { runtimeErrorKey } from '@Utils/runtimeErrors'
 import { useChallenge, useChallengeInstance, useLearningMutations } from '@Hooks/useChallengeLibraryAdmin'
 import { useUser } from '@Hooks/useUser'
 import { ChallengeInstanceStatus } from '@Api'
@@ -48,7 +48,9 @@ export const ChallengeWorkspace = ({
   const instanceActionInFlight = useRef(false)
   const [instanceActionPending, setInstanceActionPending] = useState(false)
 
-  const refreshExpiredInstance = useCallback(() => { void mutateInstance().catch(() => undefined) }, [mutateInstance])
+  const refreshExpiredInstance = useCallback(() => {
+    void mutateInstance().catch(() => undefined)
+  }, [mutateInstance])
 
   if (!challenge && !error) return <Text>{t('loading')}</Text>
   if (error) return <Text c="red">{t('loadFailed')}</Text>
@@ -124,7 +126,8 @@ export const ChallengeWorkspace = ({
   }
 
   const typeKey = challenge!.type.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
-  const hasResource = !!user && (challenge!.hasAttachment || challenge!.hasContainer)
+  const hasResource =
+    !!user && (challenge!.hasAttachment || challenge!.hasSupplementaryAttachment || challenge!.hasContainer)
 
   return (
     <div className={classes.workspace}>
@@ -181,7 +184,11 @@ export const ChallengeWorkspace = ({
             </Title>
             {instance?.status === ChallengeInstanceStatus.Running ? (
               <Stack gap="sm" align="flex-start">
-                <InstanceConnection instance={instance} category={challenge!.ctfCategory} onExpire={refreshExpiredInstance} />
+                <InstanceConnection
+                  instance={instance}
+                  category={challenge!.ctfCategory}
+                  onExpire={refreshExpiredInstance}
+                />
                 <Group gap="xs">
                   <Button
                     variant="default"
@@ -223,6 +230,20 @@ export const ChallengeWorkspace = ({
                 {t('start')}
               </Button>
             ) : (
+              <Button component="a" variant="light" href={`/api/challenges/${challengeId}/attachment`}>
+                {t('downloadAttachment')}
+              </Button>
+            )}
+            {challenge!.hasSupplementaryAttachment && (
+              <Button
+                component="a"
+                variant="default"
+                href={`/api/challenges/${challengeId}/attachment?supplementary=true`}
+              >
+                补充附件
+              </Button>
+            )}
+            {challenge!.hasContainer && challenge!.hasAttachment && (
               <Button component="a" variant="light" href={`/api/challenges/${challengeId}/attachment`}>
                 {t('downloadAttachment')}
               </Button>

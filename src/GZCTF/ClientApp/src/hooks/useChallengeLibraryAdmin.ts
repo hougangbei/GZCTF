@@ -26,6 +26,7 @@ export const useChallenge = (id: string | undefined, locale: string, enabled: bo
     hintLocaleCount: number
     hasWriteup: boolean
     hasAttachment: boolean
+    hasSupplementaryAttachment?: boolean
     hasContainer: boolean
   }>(id && enabled ? `/api/challenges/${id}?locale=${localeQuery(locale)}` : null, fetcher)
 
@@ -81,10 +82,11 @@ export const useLearningMutations = () => {
       rejectionCode?: string
       submissionId: string
     }
-    if (result.accepted) await mutate((key) => {
-      const path = Array.isArray(key) ? key[0] : key
-      return typeof path === 'string' && path.startsWith('/api/my-learning')
-    })
+    if (result.accepted)
+      await mutate((key) => {
+        const path = Array.isArray(key) ? key[0] : key
+        return typeof path === 'string' && path.startsWith('/api/my-learning')
+      })
     return result
   }
 

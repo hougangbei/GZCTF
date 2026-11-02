@@ -23,7 +23,8 @@ internal static class LearningModelConfiguration
             entity.Property(e => e.Type).HasConversion<byte>();
             entity.Property(e => e.CtfCategory).HasConversion<byte>();
             entity.Property(e => e.Difficulty).HasConversion<byte>();
-            entity.Property(e => e.Score).HasDefaultValue(100);
+            // Zero is a valid imported score; it must not be mistaken for an unset store-generated default.
+            entity.Property(e => e.Score).HasDefaultValue(100).HasSentinel(-1);
             entity.ToTable(table => table.HasCheckConstraint(
                 "CK_Challenges_Score_Range", "\"Score\" >= 0 AND \"Score\" <= 10000"));
             entity.Property(e => e.SubmissionLimit).HasDefaultValue(0);

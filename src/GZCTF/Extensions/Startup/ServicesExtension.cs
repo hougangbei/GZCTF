@@ -123,6 +123,10 @@ internal static class ServicesExtension
             builder.Services.AddScoped<DashboardDeltaPublisher>();
             builder.Services.AddSingleton<DashboardCache>();
             builder.Services.AddScoped<CanonicalImportService>();
+            builder.Services.AddScoped<PlatformArchiveReader>();
+            builder.Services.AddScoped<PlatformImportService>();
+            builder.Services.AddScoped<ImportedAccountService>();
+            builder.Services.AddScoped<PlatformHistoryService>();
             builder.Services.AddScoped<ImportParityService>();
             builder.Services.AddScoped<LegacyDatabaseSource>();
             builder.Services.AddScoped<StartupLegacyMigrationService>();
