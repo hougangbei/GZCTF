@@ -6,7 +6,7 @@ internal static class ImportedFlagGenerator
 {
     internal static string Generate(string mode, string? template, string source, string challenge, Guid user)
     {
-        if (mode == "gzctf-random")
+        if (mode is "gzctf-random" or "ctfd-whale")
             return $"flag{Guid.NewGuid():B}";
         if (mode != "gzctf")
             throw new InvalidOperationException("Unsupported imported flag mode.");

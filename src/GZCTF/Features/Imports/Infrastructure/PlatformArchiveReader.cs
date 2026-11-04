@@ -9,7 +9,7 @@ namespace GZCTF.Features.Imports.Infrastructure;
 /// <summary>Reads untrusted platform backups without extracting or contacting external services.</summary>
 public sealed class PlatformArchiveReader
 {
-    public const long MaxCompressedBytes = 128L * 1024 * 1024;
+    public const long MaxCompressedBytes = 256L * 1024 * 1024;
     public const long MaxExpandedBytes = 256L * 1024 * 1024;
     public const int MaxFiles = 10000;
 

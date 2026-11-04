@@ -97,13 +97,13 @@ public sealed class ChallengeRuntimeService(
             var image = settings.ContainerImage ?? settings.Image;
             if (string.IsNullOrWhiteSpace(image))
                 throw new InvalidOperationException("challenge.container_configuration_invalid");
-            var flag = settings.FlagMode is "gzctf" or "gzctf-random"
+            var flag = settings.FlagMode is "gzctf" or "gzctf-random" or "ctfd-whale"
                 ? GZCTF.Features.Imports.Application.ImportedFlagGenerator.Generate(settings.FlagMode, settings.FlagTemplate,
                     settings.ImportSourceInstance ?? challenge.SourceType, challenge.SourceId, userId)
                 : ResolveFlag(challenge, userId, settings.FlagTemplate);
             var container = await containers.StartAsync(new CanonicalContainerRequest(
                 userId, challengeId, image, settings.ExposedPort, settings.Cpu,
-                settings.MemoryMb, settings.StorageMb, settings.NetworkMode, flag), token);
+                settings.MemoryMb, settings.StorageMb, settings.NetworkMode, flag, settings.FlagMode == "ctfd-whale"), token);
             if (container is null)
                 throw new InvalidOperationException("challenge.container_unavailable");
 

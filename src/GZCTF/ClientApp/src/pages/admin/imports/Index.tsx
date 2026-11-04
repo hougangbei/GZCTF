@@ -95,7 +95,7 @@ const AdminImports = () => {
           </Text>
           <Card withBorder>
             <Stack>
-              <Input.Wrapper label="导出 ZIP">
+              <Input.Wrapper label="导出 ZIP" description="完整备份 ZIP 最大 256 MiB，解压后总量不超过 256 MiB。">
                 <input
                   aria-label="导出 ZIP"
                   type="file"

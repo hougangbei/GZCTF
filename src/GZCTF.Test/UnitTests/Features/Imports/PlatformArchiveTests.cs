@@ -118,7 +118,7 @@ public sealed class PlatformArchiveTests
         });
         var package = await new PlatformArchiveReader().ReadAsync(zip);
         Assert.Contains(package.Issues, issue => issue.Code == "duplicate_source_id");
-        Assert.Contains(package.Issues, issue => issue.Code == "missing_flags");
+        Assert.Contains(package.Issues, issue => issue.Code == "missing_flags_disabled");
     }
 
     [Fact]

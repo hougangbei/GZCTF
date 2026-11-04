@@ -340,7 +340,7 @@ public class DockerManager : IContainerManager
             Env = BuildContainerEnv(config),
             HostConfig = new()
             {
-                Memory = config.MemoryLimit * 1024 * 1024,
+                Memory = config.MemoryLimit * 1024L * 1024,
                 NanoCPUs = config.CPUCount * 100_000_000L,
                 NetworkMode = _meta.NetworkNames[config.NetworkMode]
             }
@@ -359,7 +359,11 @@ public class DockerManager : IContainerManager
             env.Add($"GZCTF_GAME_ID={gameId}");
 
         if (!string.IsNullOrWhiteSpace(config.Flag))
+        {
             env.Add($"GZCTF_FLAG={config.Flag}");
+            if (config.UseWhaleFlagEnvironment)
+                env.Add($"FLAG={config.Flag}");
+        }
 
         return env;
     }

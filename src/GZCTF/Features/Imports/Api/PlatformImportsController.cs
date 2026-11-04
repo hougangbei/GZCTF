@@ -20,16 +20,16 @@ public sealed class PlatformImportsController(AppDbContext db, PlatformArchiveRe
         var batch = await db.PlatformImportBatches.AsNoTracking().SingleOrDefaultAsync(item => item.Id == id, token);
         return batch is null ? NotFound() : Ok(PlatformImportService.ToInfo(batch));
     }
-    [HttpPost("preview"), AuditAction("platform-imports.preview"), RequestSizeLimit(128L * 1024 * 1024 + 1024 * 1024)]
+    [HttpPost("preview"), AuditAction("platform-imports.preview"), RequestSizeLimit(PlatformArchiveReader.MaxCompressedBytes + 1024 * 1024), RequestFormLimits(MultipartBodyLengthLimit = PlatformArchiveReader.MaxCompressedBytes)]
     public Task<IActionResult> Preview(IFormFile package, [FromForm] string options, CancellationToken token) => Handle(package, options, null, token);
-    [HttpPost, AuditAction("platform-imports.execute"), RequestSizeLimit(128L * 1024 * 1024 + 1024 * 1024)]
+    [HttpPost, AuditAction("platform-imports.execute"), RequestSizeLimit(PlatformArchiveReader.MaxCompressedBytes + 1024 * 1024), RequestFormLimits(MultipartBodyLengthLimit = PlatformArchiveReader.MaxCompressedBytes)]
     public Task<IActionResult> Execute(IFormFile package, [FromForm] string options, [FromForm] string planFingerprint, CancellationToken token) => Handle(package, options, planFingerprint, token);
     private async Task<IActionResult> Handle(IFormFile package, string options, string? planFingerprint, CancellationToken token)
     {
         Response.Headers.CacheControl = "no-store";
         try
         {
-            if (package.Length is <= 0 or > 128L * 1024 * 1024 || options.Length > 32768)
+            if (package.Length is <= 0 or > PlatformArchiveReader.MaxCompressedBytes || options.Length > 32768)
                 return BadRequest(new { code = "import.invalid_package" });
             var settings = JsonSerializer.Deserialize<PlatformImportOptions>(options, JsonOptions) ?? throw new InvalidDataException("import.invalid_options");
             await using var stream = package.OpenReadStream();

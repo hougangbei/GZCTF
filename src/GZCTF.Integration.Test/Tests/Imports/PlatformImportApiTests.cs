@@ -114,6 +114,40 @@ public class PlatformImportApiTests(GZCTFApplicationFactory factory)
         Assert.False(await inner.ExistsAsync(store.WrittenKey!));
         Assert.False(await db.PlatformImportBatches.AsNoTracking().AnyAsync(item => item.SourceInstance == options.SourceInstance));
     }
+    [Fact]
+    public async Task Blank_source_username_can_be_explicitly_overridden_or_skipped_after_preview()
+    {
+        using var admin = await AdminAsync();
+        var archive = AccountPackage("   ", $"blank-{Guid.NewGuid():N}@example.test");
+        var instance = "blank-" + Guid.NewGuid().ToString("N");
+        MultipartFormDataContent Form(string? replacement = null, bool skip = false, string? plan = null)
+        {
+            var form = new MultipartFormDataContent();
+            form.Add(new ByteArrayContent(archive), "package", "fixture.zip");
+            form.Add(new StringContent(JsonSerializer.Serialize(new PlatformImportOptions(instance,
+                UserNameOverrides: replacement is null ? null : new Dictionary<string, string> { ["1"] = replacement },
+                SkipUserIds: skip ? ["1"] : null))), "options");
+            if (plan is not null) form.Add(new StringContent(plan), "planFingerprint");
+            return form;
+        }
+        using var before = await admin.PostAsync("/api/admin/platform-imports/preview", Form());
+        before.EnsureSuccessStatusCode();
+        var invalid = await before.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(invalid.GetProperty("canImport").GetBoolean());
+        Assert.Contains("invalid_user_name", invalid.GetProperty("issues").GetRawText());
+        using var skipped = await admin.PostAsync("/api/admin/platform-imports/preview", Form(skip: true));
+        skipped.EnsureSuccessStatusCode();
+        Assert.True((await skipped.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("canImport").GetBoolean());
+        var name = "b" + Guid.NewGuid().ToString("N")[..12];
+        using var after = await admin.PostAsync("/api/admin/platform-imports/preview", Form(name));
+        after.EnsureSuccessStatusCode();
+        var valid = await after.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(valid.GetProperty("canImport").GetBoolean());
+        using var executed = await admin.PostAsync("/api/admin/platform-imports", Form(name, plan: valid.GetProperty("planFingerprint").GetString()));
+        executed.EnsureSuccessStatusCode();
+        using var scope = factory.Services.CreateScope();
+        Assert.True(await scope.ServiceProvider.GetRequiredService<AppDbContext>().Users.AnyAsync(u => u.UserName == name));
+    }
     private sealed class FailingBlobStore(IBlobStorage inner, Func<string, Task>? afterWrite = null) : IBlobStorage
     {
         public string? WrittenKey;

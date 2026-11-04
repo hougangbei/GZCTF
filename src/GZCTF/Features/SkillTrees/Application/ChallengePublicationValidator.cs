@@ -83,7 +83,7 @@ internal static class ChallengePublicationValidator
                 "content_container_configuration_required");
 
         if (challenge.Type == ChallengeType.DynamicContainer &&
-            settings.FlagMode is not ("gzctf-random" or "gzctf") &&
+            settings.FlagMode is not ("gzctf-random" or "gzctf" or "ctfd-whale") &&
             string.IsNullOrWhiteSpace(settings.FlagTemplate) &&
             !challenge.Flags.Any(flag => flag.Kind == ChallengeFlagKind.Template &&
                                          !string.IsNullOrWhiteSpace(flag.Template)))
