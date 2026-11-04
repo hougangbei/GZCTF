@@ -227,8 +227,7 @@
     "recentActivity": "最近学习活动"
   },
   "leaderboard": {
-    "scoreBreakdown": "旧成绩 {{imported}} · 新增 {{earned}}",
-    "baselineNote": "旧成绩以迁入日为起点，之后累计新通关；旧题重做不重复加分。",
+    "cumulativeNote": "积分持续累计，同一题目重复完成不重复加分。",
     "yourPosition": "你的位置",
     "learningSpace": "学习空间",
     "breadcrumbLabel": "当前位置",

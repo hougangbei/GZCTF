@@ -34,13 +34,14 @@ test('score migration is explicit, binds preview, and requires accounts and hist
   await expect(page.getByRole('button', { name: '确认导入', exact: true })).toHaveCount(0)
 })
 
-test('leaderboard explains imported baseline and added score on a phone', async ({ page }) => {
+test('leaderboard shows one cumulative total without a migration breakdown on a phone', async ({ page }) => {
   await setup(page)
-  await page.route('**/api/learning-leaderboard?*', route => route.fulfill({ json: { metric: 'score', entries: [{ rank: 1, userName: 'Student', score: 350, solvedCount: 3, importedScore: 250, earnedScore: 100, importedSolvedCount: 2, earnedSolvedCount: 1 }], series: [] } }))
+  await page.route('**/api/learning-leaderboard?*', route => route.fulfill({ json: { metric: 'score', hasImportedScores: true, entries: [{ rank: 1, userName: 'Student', score: 350, solvedCount: 3, importedScore: 250, earnedScore: 100, importedSolvedCount: 2, earnedSolvedCount: 1 }], series: [] } }))
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/leaderboard')
   await expect(page.getByRole('cell', { name: 'Student', exact: true })).toBeVisible()
-  await expect(page.getByText('旧成绩 250 · 新增 100', { exact: true })).toBeVisible()
-  await expect(page.getByText('旧成绩以迁入日为起点，之后累计新通关；旧题重做不重复加分。', { exact: true })).toBeVisible()
+  await expect(page.getByRole('cell', { name: '350', exact: true })).toBeVisible()
+  await expect(page.getByText('旧成绩 250 · 新增 100', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('积分持续累计，同一题目重复完成不重复加分。', { exact: true })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
 })

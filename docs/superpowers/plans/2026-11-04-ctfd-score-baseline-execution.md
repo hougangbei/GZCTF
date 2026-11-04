@@ -22,7 +22,7 @@ Run: `/Users/bubble/.dotnet/dotnet test src/GZCTF.Integration.Test --no-restore 
 
 - [x] 更新 `LearningLeaderboardService.cs`，原生通关过滤 `ImportedScoreBaselineId == null`；旧基线独立于题目发布状态计分。隐藏/封禁用户排除，0活动账号不因迁入上榜。保持现有 solves/score 排序，时间取原事件时间，图表基线落在迁入日。
 - [x] API 附加 `ImportedScore` 和 `EarnedScore`、`ImportedSolvedCount`、`EarnedSolvedCount` 可选默认字段；不影响原生成客户端。
-- [x] 导入页勾选成绩迁入时自动保持账号/历史启用，变更选项废弃旧预检。显示旧成绩基线说明和风险；排行榜说明旧基线与新增积分。
+- [x] 导入页勾选成绩迁入时自动保持账号/历史启用，变更选项废弃旧预检。显示旧成绩基线说明和风险；排行榜仅展示合并后的累计积分，不展示旧成绩与新增积分拆分。
 - [x] 浏览器测试覆盖默认关闭、显式打开、选项改变重预检、旧 API 字段缺失兼容。
 
 Run: `pnpm check` and `E2E_BASE_URL=http://127.0.0.1:63017 pnpm exec playwright test tests/e2e/platform-imports.spec.ts`
@@ -46,3 +46,7 @@ Run: `pnpm check` and `E2E_BASE_URL=http://127.0.0.1:63017 pnpm exec playwright 
 - 独立规格与质量审查通过。审查发现并修复负分曲线下界截断，以及先合并题目再延迟入账导致旧题可重复得分的边界；各有回归。
 - 已有第三方依赖安全公告保留，本轮未更换依赖；同分顺序沿用训练平台规则，历史趋势以迁入日快照开始。正式成绩基线应使用最终确认的完整备份，不会实时同步源 CTFd 后续数据。
 - 本轮仅本地提交，未发布镜像、推送远端或变更线上环境。
+
+## 展示调整（用户后续确认）
+
+排行榜保留一个累计总分：原总分作为起点，新分直接累加，不单独展示旧分/新增数值。仅调整前端展示及说明，基线入账、扣分、通关和重复计分保护不变；更新现有浏览器回归验证总分与不显示拆分。
