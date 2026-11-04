@@ -45,3 +45,65 @@ test('leaderboard shows one cumulative total without a migration breakdown on a 
   await expect(page.getByText('积分持续累计，同一题目重复完成不重复加分。', { exact: true })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
 })
+
+for (const width of [1440, 390]) {
+  test(`historical competition trend spans years and switches metrics at ${width}px`, async ({ page }) => {
+    await setup(page)
+    await page.route('**/api/learning-leaderboard?*', route => {
+      const metric = new URL(route.request().url()).searchParams.get('metric')
+      return route.fulfill({ json: {
+        metric, hasImportedScores: true, hasHistoricalTrend: true,
+        entries: [{ rank: 1, userName: 'Student', score: 350, solvedCount: 3 }],
+        series: [{ userName: 'Student', points: [
+          { date: '2021-08-25', score: 100, solvedCount: 1 },
+          { date: '2024-05-02', score: 250, solvedCount: 2 },
+          { date: '2026-11-04', score: 350, solvedCount: 3 },
+        ] }],
+      } })
+    })
+    await page.setViewportSize({ width, height: 1000 })
+    await page.goto('/leaderboard')
+    await expect(page.locator('canvas')).toBeVisible()
+    await expect(page.getByText('历史走势按原时间和导出时分值回算，仅供趋势参考。', { exact: true })).toBeVisible()
+    await expect(page.getByRole('cell', { name: '350', exact: true })).toBeVisible()
+    await page.getByText('累计解题数', { exact: true }).click()
+    await expect(page.getByRole('img', { name: '积分走势 · 累计解题数', exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
+  })
+}
+
+test('historical zoom survives automatic leaderboard refresh', async ({ page }) => {
+  await setup(page)
+  let requests = 0
+  await page.route('**/api/learning-leaderboard?*', route => {
+    requests++
+    return route.fulfill({ json: { generatedAtUtc: requests, metric: 'score', hasImportedScores: true, hasHistoricalTrend: true,
+      entries: [{ rank: 1, userName: 'Student', score: 350, solvedCount: 3 }],
+      series: [{ userName: 'Student', points: [
+        { date: '2021-08-25', score: 100, solvedCount: 1 },
+        { date: '2024-05-02', score: 250, solvedCount: 2 },
+        { date: '2026-11-04', score: 350, solvedCount: 3 },
+      ] }],
+    } })
+  })
+  await page.goto('/leaderboard')
+  await expect(page.locator('canvas')).toBeVisible()
+  const selected = await page.evaluate(async () => {
+    const dependency = performance.getEntriesByType('resource').map(entry => entry.name).find(url => /\/echarts\.js\?/.test(url))
+    if (!dependency) throw new Error('ECharts dependency not loaded')
+    const echarts = await import(dependency)
+    const chart = echarts.getInstanceByDom(document.querySelector('[role="img"]')!)
+    chart.dispatchAction({ type: 'dataZoom', start: 40, end: 70 })
+    return { dependency, start: chart.getOption().dataZoom[0].start, end: chart.getOption().dataZoom[0].end }
+  })
+  const before = requests
+  await expect.poll(() => requests, { timeout: 20000 }).toBeGreaterThan(before)
+  await page.waitForTimeout(250)
+  const range = await page.evaluate(async dependency => {
+    const echarts = await import(dependency)
+    const chart = echarts.getInstanceByDom(document.querySelector('[role="img"]')!)
+    return { start: chart.getOption().dataZoom[0].start, end: chart.getOption().dataZoom[0].end }
+  }, selected.dependency)
+  expect(range.start).toBeCloseTo(selected.start)
+  expect(range.end).toBeCloseTo(selected.end)
+})

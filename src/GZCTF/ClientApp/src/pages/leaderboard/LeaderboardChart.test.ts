@@ -57,3 +57,22 @@ it('keeps negative imported scores visible while solve counts start at zero', ()
   expect(buildLeaderboardChart(members, 'solves', false, 'zh-CN', true).yAxis).toMatchObject({ min: 0 })
   expect(buildLeaderboardChart(series, 'score', false, 'zh-CN', true).yAxis).toMatchObject({ min: 0 })
 })
+
+it('shows years on multi-year timelines and starts with the complete zoom range', () => {
+  const members = [{ userName: 'learner', points: [
+    { date: '2021-08-25', score: 100, solvedCount: 1 },
+    { date: '2024-05-02', score: 250, solvedCount: 2 },
+    { date: '2026-11-04', score: 350, solvedCount: 3 },
+  ] }]
+  const option = buildLeaderboardChart(members, 'score', false, 'zh-CN', true)
+  const axis = option.xAxis as { axisLabel: { formatter: (value: number) => string } }
+  expect(axis.axisLabel.formatter(Date.parse('2024-05-02T00:00:00Z'))).toContain('2024')
+  expect(option.dataZoom).toEqual(expect.arrayContaining([
+    expect.objectContaining({ type: 'inside', start: 0, end: 100 }),
+    expect.objectContaining({ type: 'slider', start: 0, end: 100 }),
+  ]))
+  const lines = Array.isArray(option.series) ? option.series : [option.series]
+  expect(lines[0]).toMatchObject({ step: 'end', data: [
+    ['2021-08-25T00:00:00Z', 100], ['2024-05-02T00:00:00Z', 250], ['2026-11-04T00:00:00Z', 350],
+  ] })
+})

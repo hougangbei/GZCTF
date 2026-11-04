@@ -13,9 +13,9 @@ public sealed record LearningLeaderboardPoint(DateOnly Date, int SolvedCount, lo
 public sealed record LearningLeaderboardSeries(string UserName, IReadOnlyList<LearningLeaderboardPoint> Points);
 public sealed record LearningLeaderboardResponse(string Metric, DateTimeOffset GeneratedAtUtc,
     IReadOnlyList<LearningLeaderboardEntry> Entries, IReadOnlyList<LearningLeaderboardSeries> Series,
-    bool HasImportedScores = false);
+    bool HasImportedScores = false, bool HasHistoricalTrend = false);
 
-public sealed class LearningLeaderboardService(AppDbContext db, IMemoryCache cache)
+public sealed class LearningLeaderboardService(AppDbContext db, IMemoryCache cache, ImportedScoreTimelineService? importedTimeline = null)
 {
     public async Task<LearningLeaderboardResponse> GetAsync(string metric, CancellationToken token)
     {
@@ -43,7 +43,7 @@ public sealed class LearningLeaderboardService(AppDbContext db, IMemoryCache cac
             .ToArrayAsync(token);
         var baselines = await db.PlatformScoreBaselines.AsNoTracking()
             .Where(baseline => !baseline.Hidden && baseline.User.Role != Role.Banned && baseline.User.UserName != null)
-            .Select(baseline => new Baseline(baseline.UserId, baseline.User.UserName!, baseline.Score, baseline.SolvedCount,
+            .Select(baseline => new Baseline(baseline.Id, baseline.BatchId, baseline.SourceUserId, baseline.UserId, baseline.User.UserName!, baseline.Score, baseline.SolvedCount,
                 baseline.HasActivity, baseline.LastScoringAtUtc, baseline.CreatedAtUtc))
             .ToArrayAsync(token);
         var byUser = solves.ToLookup(solve => solve.UserId);
@@ -65,40 +65,50 @@ public sealed class LearningLeaderboardService(AppDbContext db, IMemoryCache cac
         var top = sorted.ThenBy(item => item.LastSolveAtUtc).ThenBy(item => item.UserName, StringComparer.Ordinal).Take(50).ToArray();
         var entries = top.Select((item, index) => new LearningLeaderboardEntry(index + 1, item.UserName, item.SolvedCount,
             item.Score, item.ImportedScore, item.EarnedScore, item.ImportedSolvedCount, item.EarnedSolvedCount)).ToArray();
-        var dates = solves.Select(solve => Date(solve.SolvedAtUtc))
-            .Concat(baselines.Where(baseline => baseline.HasActivity).Select(baseline => Date(baseline.CreatedAtUtc))).ToArray();
-        var endDate = dates.Length == 0 ? (DateOnly?)null : dates.Max();
+        var selected = top.Take(10).Select(item => item.Baseline).Where(b => b is { HasActivity: true })
+            .Select(b => new ImportedTimelineBaseline(b!.Id, b.BatchId, b.SourceUserId, b.Score, b.SolvedCount)).ToArray();
+        var history = importedTimeline is null
+            ? new Dictionary<Guid, IReadOnlyList<LearningLeaderboardPoint>>()
+            : await importedTimeline.GetAsync(selected, token);
+        var endDate = Date(DateTimeOffset.UtcNow);
         var series = top.Take(10).Select(item =>
         {
             var solvedCount = 0;
             long score = 0;
-            var points = Events(item).GroupBy(point => point.Date).OrderBy(group => group.Key).Select(group =>
+            var hasHistory = item.Baseline is { } baseline && history.ContainsKey(baseline.Id);
+            var points = Events(item, history).GroupBy(point => point.Date).OrderBy(group => group.Key).Select(group =>
             {
                 solvedCount += group.Sum(point => point.SolvedCount);
                 score += group.Sum(point => point.Score);
                 return new LearningLeaderboardPoint(group.Key, solvedCount, score);
             }).ToList();
-            if (endDate is { } end && points.Count > 0 && points[^1].Date < end)
-                points.Add(new LearningLeaderboardPoint(end, solvedCount, score));
+            if (hasHistory && points.Count > 0 && points[0].Date > DateOnly.MinValue)
+                points.Insert(0, new LearningLeaderboardPoint(points[0].Date.AddDays(-1), 0, 0));
+            if (points.Count > 0 && points[^1].Date < endDate)
+                points.Add(new LearningLeaderboardPoint(endDate, solvedCount, score));
             return new LearningLeaderboardSeries(item.UserName, points);
         }).ToArray();
         var response = new LearningLeaderboardResponse(metric, DateTimeOffset.UtcNow, entries, series,
-            top.Any(item => item.Baseline is { HasActivity: true }));
+            top.Any(item => item.Baseline is { HasActivity: true }), history.Count > 0);
         cache.Set(cacheKey, response, TimeSpan.FromSeconds(10));
         return response;
     }
 
-    private static IEnumerable<LearningLeaderboardPoint> Events(Ranked item)
+    private static IEnumerable<LearningLeaderboardPoint> Events(Ranked item, IReadOnlyDictionary<Guid, IReadOnlyList<LearningLeaderboardPoint>> history)
     {
-        // A snapshot is not a reconstruction of historical daily dynamic scores.
         if (item.Baseline is { HasActivity: true } baseline)
-            yield return new LearningLeaderboardPoint(Date(baseline.CreatedAtUtc), baseline.SolvedCount, baseline.Score);
+        {
+            if (history.TryGetValue(baseline.Id, out var historical))
+                foreach (var point in historical) yield return point;
+            else
+                yield return new LearningLeaderboardPoint(Date(baseline.CreatedAtUtc), baseline.SolvedCount, baseline.Score);
+        }
         foreach (var solve in item.Solves)
             yield return new LearningLeaderboardPoint(Date(solve.SolvedAtUtc), 1, solve.Score);
     }
     private static DateOnly Date(DateTimeOffset time) => DateOnly.FromDateTime(time.ToOffset(TimeSpan.FromHours(8)).Date);
     private sealed record Solve(Guid UserId, string UserName, DateTimeOffset SolvedAtUtc, int Score);
-    private sealed record Baseline(Guid UserId, string UserName, int Score, int SolvedCount, bool HasActivity,
+    private sealed record Baseline(Guid Id, Guid BatchId, string SourceUserId, Guid UserId, string UserName, int Score, int SolvedCount, bool HasActivity,
         DateTimeOffset? LastScoringAtUtc, DateTimeOffset CreatedAtUtc);
     private sealed record Ranked(string UserName, int SolvedCount, long Score, int ImportedScore, long EarnedScore,
         int ImportedSolvedCount, int EarnedSolvedCount, DateTimeOffset LastSolveAtUtc, Solve[] Solves, Baseline? Baseline);

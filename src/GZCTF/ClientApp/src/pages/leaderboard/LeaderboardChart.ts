@@ -69,7 +69,16 @@ export const buildLeaderboardChart = (
       members.map((member, index) => [member.userName, !mobile || index < 3 || member.userName === currentUserName])
     ),
   },
-  grid: { left: mobile ? 44 : 56, right: mobile ? 14 : 24, bottom: 58, top: 22 },
+  grid: { left: mobile ? 44 : 56, right: mobile ? 14 : 24, bottom: 96, top: 22 },
+  dataZoom: [
+    { type: 'inside', start: 0, end: 100, xAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'ctrl' },
+    {
+      type: 'slider', start: 0, end: 100, xAxisIndex: 0, filterMode: 'none',
+      bottom: 32, height: 18, showDetail: false, showDataShadow: false,
+      borderColor: palette.border, fillerColor: palette.border, handleStyle: { color: palette.accent },
+      textStyle: { color: palette.muted },
+    },
+  ],
   xAxis: {
     type: 'time',
     minInterval: 86400000,
@@ -82,6 +91,7 @@ export const buildLeaderboardChart = (
       margin: 15,
       formatter: (value: number) =>
         new Date(value).toLocaleDateString(language, {
+          ...(new Set(members.flatMap(member => member.points.map(point => point.date.slice(0, 4)))).size > 1 ? { year: 'numeric' as const } : {}),
           month: 'numeric',
           day: 'numeric',
           timeZone: 'UTC',

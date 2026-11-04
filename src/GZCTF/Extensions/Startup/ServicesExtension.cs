@@ -118,6 +118,7 @@ internal static class ServicesExtension
             builder.Services.AddScoped<DailySolveProjection>();
             builder.Services.AddScoped<DashboardSnapshotService>();
             builder.Services.AddScoped<LearningLeaderboardService>();
+            builder.Services.AddScoped<ImportedScoreTimelineService>();
             builder.Services.AddSingleton(_ => new DashboardRequestLimiter());
             builder.Services.AddScoped<DashboardTokenService>();
             builder.Services.AddScoped<DashboardDeltaPublisher>();

@@ -16,7 +16,7 @@ import classes from './Leaderboard.module.css'
 import { buildLeaderboardChart, type Metric, type LeaderboardSeries } from './LeaderboardChart'
 
 type Entry = { rank: number; userName: string; solvedCount: number; score: number }
-type Snapshot = { metric: Metric; entries: Entry[]; series: LeaderboardSeries[]; hasImportedScores?: boolean }
+type Snapshot = { metric: Metric; entries: Entry[]; series: LeaderboardSeries[]; hasImportedScores?: boolean; hasHistoricalTrend?: boolean }
 
 const LearningLeaderboard = () => {
   const { t, i18n } = useTranslation('skillTrees')
@@ -167,10 +167,12 @@ const LearningLeaderboard = () => {
                 <EchartsContainer
                   key={isMobile ? 'mobile' : 'desktop'}
                   option={chart}
-                  style={{ height: isMobile ? 250 : 370, width: '100%' }}
+                  preserveDataZoom
+                  style={{ height: isMobile ? 280 : 390, width: '100%' }}
                   role="img"
                   aria-label={`${t('leaderboard.trendTitle')} · ${metricLabel}`}
                 />
+                {snapshot.hasHistoricalTrend && <p className={classes.tableNote}>{t('leaderboard.historicalTrendNote')}</p>}
               </section>
             )}
             <section className={classes.ranking} aria-labelledby="ranking-title">

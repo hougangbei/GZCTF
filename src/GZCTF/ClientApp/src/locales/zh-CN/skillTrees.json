@@ -227,6 +227,7 @@
     "recentActivity": "最近学习活动"
   },
   "leaderboard": {
+    "historicalTrendNote": "历史走势按原时间和导出时分值回算，仅供趋势参考。",
     "cumulativeNote": "积分持续累计，同一题目重复完成不重复加分。",
     "yourPosition": "你的位置",
     "learningSpace": "学习空间",

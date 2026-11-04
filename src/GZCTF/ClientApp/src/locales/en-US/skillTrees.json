@@ -227,6 +227,7 @@
     "recentActivity": "Recent activity"
   },
   "leaderboard": {
+    "historicalTrendNote": "Historical trends use original dates and exported point values as an estimate.",
     "cumulativeNote": "Points accumulate over time. Repeating the same challenge does not add points.",
     "yourPosition": "Your position",
     "learningSpace": "Learning space",
