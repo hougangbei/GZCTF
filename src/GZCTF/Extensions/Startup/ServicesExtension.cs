@@ -125,6 +125,7 @@ internal static class ServicesExtension
             builder.Services.AddScoped<CanonicalImportService>();
             builder.Services.AddScoped<PlatformArchiveReader>();
             builder.Services.AddScoped<PlatformImportService>();
+            builder.Services.AddScoped<PlatformScoreMigrationService>();
             builder.Services.AddScoped<ImportedAccountService>();
             builder.Services.AddScoped<PlatformHistoryService>();
             builder.Services.AddScoped<ImportParityService>();

@@ -39,6 +39,7 @@ const AdminImports = () => {
     sourceInstance: '',
     includeAccounts: true,
     includeHistory: true,
+    mergeScores: false,
   })
   const [preview, setPreview] = useState<ImportPreview>()
   const [result, setResult] = useState<ImportBatch>()
@@ -143,15 +144,29 @@ const AdminImports = () => {
                 label="导入账号（保留受支持的旧密码，首次成功登录自动升级）"
                 checked={options.includeAccounts}
                 disabled={pending}
-                onChange={(event) => update({ ...options, includeAccounts: event.currentTarget.checked })}
+                onChange={(event) => update({ ...options, includeAccounts: event.currentTarget.checked, mergeScores: event.currentTarget.checked ? options.mergeScores : false })}
               />
               <Checkbox
                 label="保留原比赛历史成绩、队伍和提交记录"
-                description="历史记录独立存放，不计入训练排行榜；不会把队伍通关当作每个人的通关。"
+                description={options.mergeScores ? "同时保存来源历史，并将个人旧成绩作为训练排行榜起点。" : "历史记录独立存放；未勾选合并成绩时不计入训练排行榜。队伍成绩不分配给个人。"}
                 checked={options.includeHistory}
                 disabled={pending}
-                onChange={(event) => update({ ...options, includeHistory: event.currentTarget.checked })}
+                onChange={(event) => update({ ...options, includeHistory: event.currentTarget.checked, mergeScores: event.currentTarget.checked ? options.mergeScores : false })}
               />
+              <Checkbox
+                label="合并 CTFd 旧成绩到训练排行榜"
+                description="仅支持 CTFd 个人模式的一次性迁移。保留旧总分和扣分，后续新题继续累计；同时导入账号和历史。"
+                checked={options.mergeScores ?? false}
+                disabled={pending}
+                onChange={(event) => update({
+                  ...options,
+                  mergeScores: event.currentTarget.checked,
+                  ...(event.currentTarget.checked ? { includeAccounts: true, includeHistory: true } : {}),
+                })}
+              />
+              {options.mergeScores && (
+                <Alert>旧题通关同步保留，重做不重复加分。旧总分固定为导出时的快照，不受题目停用或后来改分影响。每个来源只迁入一次成绩。</Alert>
+              )}
               <Button
                 w="fit-content"
                 loading={pending}

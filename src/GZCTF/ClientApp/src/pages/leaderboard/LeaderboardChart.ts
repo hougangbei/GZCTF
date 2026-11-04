@@ -90,7 +90,9 @@ export const buildLeaderboardChart = (
   },
   yAxis: {
     type: 'value',
-    min: 0,
+    min: metric === 'score'
+      ? members.reduce((minimum, member) => member.points.reduce((value, point) => Math.min(value, point.score), minimum), 0)
+      : 0,
     minInterval: metric === 'solves' ? 1 : undefined,
     splitNumber: 4,
     axisLabel: { color: palette.muted },

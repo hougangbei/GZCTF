@@ -19,7 +19,7 @@ export const ImportHistory = ({ admin = false }: { admin?: boolean }) => {
     <Stack>
       <Title order={1}>{admin ? '迁入历史数据档案' : '我的比赛历史'}</Title>
       <Text c="dimmed">
-        这里保留原平台的记录，独立于当前训练进度和排行榜。队伍记录以队伍标识展示，不视为个人独立通关。历史分数未导出的会标为“未提供”，不会用当前题目分值代替。
+        这里保留原平台的提交与成绩档案。管理员若选择合并旧成绩，个人总分和通关会另行接入训练排行榜；队伍记录不分配为个人通关。未导出的逐次历史分数仍标为“未提供”，不以当前题目分值补填。
       </Text>
       <Group>
         {data.batches.map((batch) => (

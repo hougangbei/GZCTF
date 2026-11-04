@@ -8,6 +8,25 @@ public static class PlatformImportModelConfiguration
 {
     public static void Configure(ModelBuilder builder)
     {
+        builder.Entity<PlatformScoreBaseline>(entity =>
+        {
+            entity.Property(e => e.SourceInstance).HasMaxLength(128);
+            entity.Property(e => e.SourceUserId).HasMaxLength(128);
+            entity.HasIndex(e => e.UserId).IsUnique();
+            entity.HasIndex(e => new { e.SourceInstance, e.SourceUserId }).IsUnique();
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<PlatformImportBatch>().WithMany().HasForeignKey(e => e.BatchId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<PlatformScoreMigration>(entity =>
+        {
+            entity.Property(e => e.SourceInstance).HasMaxLength(128);
+            entity.Property(e => e.ArchiveFingerprint).HasMaxLength(64);
+            entity.Property(e => e.CanonicalSkipUserIdsHash).HasMaxLength(64);
+            entity.HasIndex(e => e.SourceInstance).IsUnique();
+            entity.HasOne<PlatformImportBatch>().WithMany().HasForeignKey(e => e.BatchId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<GZCTF.Features.LearningProgress.Domain.ChallengeProgress>()
+            .HasOne(e => e.ImportedScoreBaseline).WithMany().HasForeignKey(e => e.ImportedScoreBaselineId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<PlatformImportBatch>(entity =>
         {
             entity.Property(e => e.SourceInstance).HasMaxLength(128);

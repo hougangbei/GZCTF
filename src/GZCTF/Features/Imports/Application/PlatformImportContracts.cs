@@ -28,7 +28,7 @@ public sealed record PlatformImportPackage(string Format, string Fingerprint, st
 
 public sealed record PlatformImportOptions(string SourceInstance, string? TreeName = null, Guid? TargetSkillId = null,
     uint? TargetSkillRowVersion = null, bool IncludeAccounts = true, bool IncludeHistory = true,
-    IReadOnlyDictionary<string, string>? UserNameOverrides = null, IReadOnlyList<string>? SkipUserIds = null);
+    IReadOnlyDictionary<string, string>? UserNameOverrides = null, IReadOnlyList<string>? SkipUserIds = null, bool MergeScores = false);
 public sealed record PlatformImportPreview(string Format, string Fingerprint, string Title, int ChallengeCount,
     int FileCount, int UserCount, int TeamCount, int SubmissionCount, int AwardCount,
     IReadOnlyList<PlatformImportIssue> Issues, bool CanImport, string PlanFingerprint);

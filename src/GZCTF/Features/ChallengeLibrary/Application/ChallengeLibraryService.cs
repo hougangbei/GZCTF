@@ -235,6 +235,7 @@ public sealed class ChallengeLibraryService(
                 ChallengeId = survivorId,
                 SolvedAtUtc = earliest.SolvedAtUtc,
                 SolveMode = earliest.SolveMode,
+                ImportedScoreBaselineId = userProgress.Select(p => p.ImportedScoreBaselineId).FirstOrDefault(id => id != null),
                 AttributionMetadataJson = earliest.AttributionMetadataJson
             });
         }

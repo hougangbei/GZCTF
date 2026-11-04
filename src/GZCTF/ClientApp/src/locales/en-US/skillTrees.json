@@ -227,6 +227,8 @@
     "recentActivity": "Recent activity"
   },
   "leaderboard": {
+    "scoreBreakdown": "Imported {{imported}} · New {{earned}}",
+    "baselineNote": "Imported scores start on the migration date. New solves add points; repeating an imported solve adds none.",
     "yourPosition": "Your position",
     "learningSpace": "Learning space",
     "breadcrumbLabel": "Breadcrumb",

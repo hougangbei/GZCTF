@@ -47,3 +47,13 @@ it('applies the provided theme to highlighted lines and chart labels', () => {
   })
   expect(option.legend).toMatchObject({ textStyle: { color: palette.muted }, pageIconColor: palette.accent })
 })
+
+it('keeps negative imported scores visible while solve counts start at zero', () => {
+  const members = [{ userName: 'learner', points: [
+    { date: '2026-11-04', score: -150, solvedCount: 0 },
+    { date: '2026-11-05', score: 50, solvedCount: 1 },
+  ] }]
+  expect(buildLeaderboardChart(members, 'score', false, 'zh-CN', true).yAxis).toMatchObject({ min: -150 })
+  expect(buildLeaderboardChart(members, 'solves', false, 'zh-CN', true).yAxis).toMatchObject({ min: 0 })
+  expect(buildLeaderboardChart(series, 'score', false, 'zh-CN', true).yAxis).toMatchObject({ min: 0 })
+})

@@ -80,3 +80,30 @@ public sealed class PlatformHistoryAward
     public DateTimeOffset? AwardedAtUtc { get; set; }
     [JsonIgnore] public string ProtectedMetadata { get; set; } = string.Empty;
 }
+
+// Immutable source scoreboard snapshot. Restrict deletes: losing this row would re-award imported solves.
+public sealed class PlatformScoreBaseline
+{
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public string SourceInstance { get; set; } = string.Empty;
+    public string SourceUserId { get; set; } = string.Empty;
+    public Guid UserId { get; set; }
+    [JsonIgnore] public UserInfo User { get; set; } = null!;
+    public Guid BatchId { get; set; }
+    public int Score { get; set; }
+    public int SolvedCount { get; set; }
+    public bool Hidden { get; set; }
+    public bool HasActivity { get; set; }
+    public DateTimeOffset? LastScoringAtUtc { get; set; }
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class PlatformScoreMigration
+{
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public string SourceInstance { get; set; } = string.Empty;
+    public string ArchiveFingerprint { get; set; } = string.Empty;
+    public string CanonicalSkipUserIdsHash { get; set; } = string.Empty;
+    public Guid BatchId { get; set; }
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+}

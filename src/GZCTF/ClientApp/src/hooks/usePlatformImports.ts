@@ -9,6 +9,7 @@ export type ImportOptions = {
   targetSkillRowVersion?: number
   includeAccounts: boolean
   includeHistory: boolean
+  mergeScores?: boolean
   userNameOverrides?: Record<string, string>
   skipUserIds?: string[]
 }

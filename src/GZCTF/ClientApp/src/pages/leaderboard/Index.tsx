@@ -15,8 +15,8 @@ import { fetcher } from '@Api'
 import classes from './Leaderboard.module.css'
 import { buildLeaderboardChart, type Metric, type LeaderboardSeries } from './LeaderboardChart'
 
-type Entry = { rank: number; userName: string; solvedCount: number; score: number }
-type Snapshot = { metric: Metric; entries: Entry[]; series: LeaderboardSeries[] }
+type Entry = { rank: number; userName: string; solvedCount: number; score: number; importedScore?: number; earnedScore?: number; importedSolvedCount?: number }
+type Snapshot = { metric: Metric; entries: Entry[]; series: LeaderboardSeries[]; hasImportedScores?: boolean }
 
 const LearningLeaderboard = () => {
   const { t, i18n } = useTranslation('skillTrees')
@@ -29,6 +29,7 @@ const LearningLeaderboard = () => {
     { refreshInterval: 15000, shouldRetryOnError: false }
   )
   const snapshot = data?.metric === metric ? data : undefined
+  const hasImportedScores = snapshot?.hasImportedScores ?? snapshot?.entries.some(entry => (entry.importedSolvedCount ?? 0) > 0 || (entry.importedScore ?? 0) !== 0) ?? false
   const isMobile = useIsMobile(640)
   const reducedMotion = useReducedMotion()
   const theme = useMantineTheme()
@@ -216,12 +217,18 @@ const LearningLeaderboard = () => {
                       </td>
                       <td className={classes.primaryValue}>
                         <strong>{(metric === 'score' ? entry.score : entry.solvedCount).toLocaleString()}</strong>
+                        {metric === 'score' && entry.importedScore !== undefined &&
+                          ((entry.importedSolvedCount ?? 0) > 0 || entry.importedScore !== 0) && (
+                          <small className={classes.scoreBreakdown}>
+                            {t('leaderboard.scoreBreakdown', { imported: entry.importedScore.toLocaleString(), earned: (entry.earnedScore ?? entry.score - entry.importedScore).toLocaleString() })}
+                          </small>
+                        )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <p className={classes.tableNote}>{t('leaderboard.emptyNote')}</p>
+              <p className={classes.tableNote}>{t(hasImportedScores ? 'leaderboard.baselineNote' : 'leaderboard.emptyNote')}</p>
             </section>
           </div>
         )}

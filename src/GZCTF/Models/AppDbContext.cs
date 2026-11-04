@@ -75,6 +75,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<Dashboard> Dashboards { get; set; } = null!;
     public DbSet<DashboardToken> DashboardTokens { get; set; } = null!;
     public DbSet<LearnerDailySolveStat> LearnerDailySolveStats { get; set; } = null!;
+    public DbSet<PlatformScoreBaseline> PlatformScoreBaselines { get; set; } = null!;
+    public DbSet<PlatformScoreMigration> PlatformScoreMigrations { get; set; } = null!;
     public DbSet<PlatformImportBatch> PlatformImportBatches { get; set; } = null!;
     public DbSet<PlatformImportMap> PlatformImportMaps { get; set; } = null!;
     public DbSet<PlatformHistoryMember> PlatformHistoryMembers { get; set; } = null!;

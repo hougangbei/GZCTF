@@ -1124,6 +1124,96 @@ namespace GZCTF.Migrations
                     b.ToTable("PlatformImportMaps");
                 });
 
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformScoreBaseline", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("HasActivity")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Hidden")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LastScoringAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SolvedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SourceInstance")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SourceUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.HasIndex("SourceInstance", "SourceUserId")
+                        .IsUnique();
+
+                    b.ToTable("PlatformScoreBaselines");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformScoreMigration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ArchiveFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CanonicalSkipUserIdsHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SourceInstance")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("SourceInstance")
+                        .IsUnique();
+
+                    b.ToTable("PlatformScoreMigrations");
+                });
+
             modelBuilder.Entity("GZCTF.Features.LearningPaths.Domain.Enrollment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1417,6 +1507,9 @@ namespace GZCTF.Migrations
                     b.Property<Guid>("ChallengeId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ImportedScoreBaselineId")
+                        .HasColumnType("uuid");
+
                     b.Property<byte>("SolveMode")
                         .HasColumnType("smallint");
 
@@ -1429,6 +1522,8 @@ namespace GZCTF.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ChallengeId");
+
+                    b.HasIndex("ImportedScoreBaselineId");
 
                     b.HasIndex("SolvedAtUtc");
 
@@ -3340,6 +3435,32 @@ namespace GZCTF.Migrations
                     b.Navigation("Batch");
                 });
 
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformScoreBaseline", b =>
+                {
+                    b.HasOne("GZCTF.Features.Imports.Domain.PlatformImportBatch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GZCTF.Models.Data.UserInfo", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformScoreMigration", b =>
+                {
+                    b.HasOne("GZCTF.Features.Imports.Domain.PlatformImportBatch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("GZCTF.Features.LearningPaths.Domain.Enrollment", b =>
                 {
                     b.HasOne("GZCTF.Features.LearningPaths.Domain.LearningPath", "Path")
@@ -3476,6 +3597,11 @@ namespace GZCTF.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("GZCTF.Features.Imports.Domain.PlatformScoreBaseline", "ImportedScoreBaseline")
+                        .WithMany()
+                        .HasForeignKey("ImportedScoreBaselineId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("GZCTF.Models.Data.UserInfo", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -3483,6 +3609,8 @@ namespace GZCTF.Migrations
                         .IsRequired();
 
                     b.Navigation("Challenge");
+
+                    b.Navigation("ImportedScoreBaseline");
 
                     b.Navigation("User");
                 });

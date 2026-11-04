@@ -25,12 +25,15 @@ public sealed record PlatformImportBatchInfo(Guid Id, string SourceInstance, str
     int SubmissionCount, int AwardCount, string ReportJson);
 
 public sealed partial class PlatformImportService(AppDbContext db, ImportedAccountService accounts,
-    PlatformHistoryService history, IBlobStorage storage, ISkillTreeCacheInvalidator cache, ILogger<PlatformImportService>? logger = null)
+    PlatformHistoryService history, IBlobStorage storage, ISkillTreeCacheInvalidator cache, ILogger<PlatformImportService>? logger = null,
+    Microsoft.Extensions.Caching.Memory.IMemoryCache? memoryCache = null, PlatformScoreMigrationService? scoreMigration = null)
 {
     public async Task<PlatformImportPreview> PreviewAsync(PlatformImportPackage package, PlatformImportOptions options,
         CancellationToken token = default)
     {
-        List<PlatformImportIssue> issues = [.. package.Issues];
+        List<PlatformImportIssue> issues = [.. package.Issues.Select(issue => options.MergeScores && issue.Code == "historical_score_unavailable"
+            ? issue with { Message = "逐条历史得分缺失的记录仍保留为空；初始总分独立按来源题目快照及奖励计算。" }
+            : issue)];
         if (!SourceName().IsMatch(options.SourceInstance ?? ""))
             issues.Add(new("error", "invalid_source_instance", "", "来源标识需为1–128位字母、数字、点、下划线、冒号、斜线或横线。"));
         if ((options.TreeName ?? package.Title).Length is < 1 or > 128)
@@ -79,8 +82,11 @@ public sealed partial class PlatformImportService(AppDbContext db, ImportedAccou
                     !string.Equals(Convert.ToHexStringLower(SHA256.HashData(bytes)), attachment.Sha256, StringComparison.OrdinalIgnoreCase)))
                     issues.Add(new("error", "invalid_attachment", challenge.SourceId, "附件缺失或校验失败。"));
         }
-        issues.Add(new("warning", "source_scoring_retained", "", "原比赛计分规则、截止日期和赛制仅保存在来源档案中，不直接套用为训练限制。"));
+        issues.Add(options.MergeScores
+            ? new("warning", "source_score_snapshot", "", "原站总分将固定为初始积分；原有解题只恢复进度，后续新解题另行加分。")
+            : new("warning", "source_scoring_retained", "", "原比赛计分规则、截止日期和赛制仅保存在来源档案中，不直接套用为训练限制。"));
         issues.AddRange(await accounts.PreviewAsync(package, options, token));
+        issues.AddRange(await (scoreMigration ?? new PlatformScoreMigrationService(db)).PreviewAsync(package, options, token));
         if (package.Format == "GZCTF-GAME" && options.IncludeAccounts)
             issues.Add(new("warning", "no_accounts_in_game_export", "", "比赛包不包含账号或历史成绩；本次只导入题目与资源。"));
         var plan = Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
@@ -92,6 +98,7 @@ public sealed partial class PlatformImportService(AppDbContext db, ImportedAccou
             options.TargetSkillRowVersion,
             options.IncludeAccounts,
             options.IncludeHistory,
+            options.MergeScores,
             SkippedUsers = options.SkipUserIds?.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray(),
             Overrides = options.UserNameOverrides?.OrderBy(item => item.Key, StringComparer.Ordinal).ToArray(),
             TargetVersion = targetVersion,
@@ -120,6 +127,12 @@ public sealed partial class PlatformImportService(AppDbContext db, ImportedAccou
             throw new PlatformImportPlanChangedException();
         if (!preview.CanImport)
             throw new PlatformImportRejectedException(preview);
+        if (options.MergeScores)
+        {
+            var migrated = await db.PlatformScoreMigrations.AsNoTracking().SingleOrDefaultAsync(m => m.SourceInstance == options.SourceInstance, token);
+            if (migrated is not null)
+                return ToInfo(await db.PlatformImportBatches.AsNoTracking().SingleAsync(b => b.Id == migrated.BatchId, token));
+        }
         var batch = new PlatformImportBatch
         {
             SourceInstance = options.SourceInstance,
@@ -300,9 +313,12 @@ public sealed partial class PlatformImportService(AppDbContext db, ImportedAccou
             await db.SaveChangesAsync(token);
             batch.UserCount = await accounts.ImportAsync(package, options, batch, token);
             await history.ImportAsync(package, options, batch, token);
+            await (scoreMigration ?? new PlatformScoreMigrationService(db)).ImportAsync(package, options, batch, token);
             await db.SaveChangesAsync(token);
             await transaction.CommitAsync(token);
             committed = true;
+            memoryCache?.Remove("learning-leaderboard:score");
+            memoryCache?.Remove("learning-leaderboard:solves");
             try
             {
                 if (targetSkill is not null)
