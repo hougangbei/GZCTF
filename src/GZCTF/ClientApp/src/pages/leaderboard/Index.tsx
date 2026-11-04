@@ -1,4 +1,4 @@
-import { Button, SegmentedControl, Skeleton, useComputedColorScheme, useMantineTheme } from '@mantine/core'
+import { Modal, Text, Button, SegmentedControl, Skeleton, useComputedColorScheme, useMantineTheme } from '@mantine/core'
 import { useReducedMotion } from '@mantine/hooks'
 import { mdiArrowRight, mdiChartLine, mdiReload, mdiTrophyOutline } from '@mdi/js'
 import { Icon } from '@mdi/react'
@@ -15,13 +15,14 @@ import { fetcher } from '@Api'
 import classes from './Leaderboard.module.css'
 import { buildLeaderboardChart, type Metric, type LeaderboardSeries } from './LeaderboardChart'
 
-type Entry = { rank: number; userName: string; solvedCount: number; score: number }
+type Entry = { rank: number; userName: string; solvedCount: number; score: number; level?: number; bio?: string }
 type Snapshot = { metric: Metric; entries: Entry[]; series: LeaderboardSeries[]; hasImportedScores?: boolean; hasHistoricalTrend?: boolean }
 
 const LearningLeaderboard = () => {
   const { t, i18n } = useTranslation('skillTrees')
   const { user, error: userError } = useUser()
   const currentUserName = userError ? undefined : (user?.userName ?? undefined)
+  const [signature, setSignature] = useState<{ name: string; bio: string }>()
   const [metric, setMetric] = useState<Metric>('score')
   const { data, error, isValidating, mutate } = useSWR<Snapshot>(
     `/api/learning-leaderboard?metric=${metric}`,
@@ -188,6 +189,8 @@ const LearningLeaderboard = () => {
                   <tr>
                     <th scope="col">{t('leaderboard.rank')}</th>
                     <th scope="col">{t('leaderboard.username')}</th>
+                    <th scope="col" className={classes.levelColumn}>{t('leaderboard.level')}</th>
+                    <th scope="col" className={classes.signatureColumn}>{t('leaderboard.signature')}</th>
                     <th scope="col">{otherLabel}</th>
                     <th scope="col">{metricLabel}</th>
                   </tr>
@@ -206,10 +209,13 @@ const LearningLeaderboard = () => {
                       </td>
                       <td className={classes.name} title={entry.userName}>
                         <span className={classes.nameText}>{entry.userName}</span>
+                        <span className={classes.mobileProfile}><span className={classes.levelBadge}>Lv.{entry.level ?? 1}</span><button type="button" className={classes.mobileBio} disabled={!entry.bio} aria-label={t('leaderboard.viewSignature', { name: entry.userName })} onClick={() => setSignature({ name: entry.userName, bio: entry.bio! })}>{entry.bio || t('leaderboard.noSignature')}</button></span>
                         {entry.userName === currentUserName && (
                           <span className={classes.selfLabel}>{t('leaderboard.yourPosition')}</span>
                         )}
                       </td>
+                      <td className={classes.levelColumn}><span className={classes.levelBadge}>Lv.{entry.level ?? 1}</span></td>
+                      <td className={classes.signatureColumn}><button type="button" disabled={!entry.bio} aria-label={t('leaderboard.viewSignature', { name: entry.userName })} onClick={() => setSignature({ name: entry.userName, bio: entry.bio! })}>{entry.bio || t('leaderboard.noSignature')}</button></td>
                       <td className={classes.secondaryValue}>
                         {(metric === 'score' ? entry.solvedCount : entry.score).toLocaleString()}
                         <span className={classes.mobileLabel}>
@@ -229,6 +235,9 @@ const LearningLeaderboard = () => {
           </div>
         )}
       </div>
+      <Modal opened={!!signature} onClose={() => setSignature(undefined)} title={signature ? t('leaderboard.viewSignature', { name: signature.name }) : ''} centered>
+        <Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{signature?.bio}</Text>
+      </Modal>
     </WithNavBar>
   )
 }

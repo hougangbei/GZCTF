@@ -23,6 +23,13 @@ public static class AuditActionCatalog
     private static readonly IReadOnlyDictionary<string, AuditActionDefinition> Actions =
         new Dictionary<string, AuditActionDefinition>(StringComparer.Ordinal)
         {
+            ["learning_rankings.adjust"] = new("learning_rankings.adjust", "learning_rankings", "user"),
+            ["learning_rankings.reverse"] = new("learning_rankings.reverse", "learning_rankings", "ranking_operation"),
+            ["learning_rankings.visibility"] = new("learning_rankings.visibility", "learning_rankings", "user"),
+            ["learning_rankings.mark_solve"] = new("learning_rankings.mark_solve", "learning_rankings", "user"),
+            ["learning_rankings.revoke_solve"] = new("learning_rankings.revoke_solve", "learning_rankings", "user"),
+            ["learning_rankings.levels.preview"] = new("learning_rankings.levels.preview", "learning_rankings", "ranking_levels"),
+            ["learning_rankings.levels"] = new("learning_rankings.levels", "learning_rankings", "ranking_levels"),
             ["users.config.update"] = new("users.config.update", "settings", "configuration"),
             ["users.logo.upload"] = new("users.logo.upload", "settings", "logo"),
             ["users.logo.reset"] = new("users.logo.reset", "settings", "logo"),

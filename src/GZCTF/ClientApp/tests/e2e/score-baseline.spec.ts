@@ -39,7 +39,7 @@ test('leaderboard shows one cumulative total without a migration breakdown on a 
   await page.route('**/api/learning-leaderboard?*', route => route.fulfill({ json: { metric: 'score', hasImportedScores: true, entries: [{ rank: 1, userName: 'Student', score: 350, solvedCount: 3, importedScore: 250, earnedScore: 100, importedSolvedCount: 2, earnedSolvedCount: 1 }], series: [] } }))
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/leaderboard')
-  await expect(page.getByRole('cell', { name: 'Student', exact: true })).toBeVisible()
+  await expect(page.getByText('Student', { exact: true })).toBeVisible()
   await expect(page.getByRole('cell', { name: '350', exact: true })).toBeVisible()
   await expect(page.getByText('旧成绩 250 · 新增 100', { exact: true })).toHaveCount(0)
   await expect(page.getByText('积分持续累计，同一题目重复完成不重复加分。', { exact: true })).toBeVisible()

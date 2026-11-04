@@ -19,6 +19,7 @@ public sealed class ChallengeProgress
     public Guid ChallengeId { get; set; }
     public CanonicalChallenge Challenge { get; set; } = null!;
     public DateTimeOffset SolvedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+    public int? ImportedFrozenScore { get; set; }
     public Guid? ImportedScoreBaselineId { get; set; }
     [JsonIgnore] public GZCTF.Features.Imports.Domain.PlatformScoreBaseline? ImportedScoreBaseline { get; set; }
     public ChallengeSolveMode SolveMode { get; set; } = ChallengeSolveMode.Independent;

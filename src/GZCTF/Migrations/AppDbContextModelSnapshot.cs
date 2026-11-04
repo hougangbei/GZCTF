@@ -1214,6 +1214,169 @@ namespace GZCTF.Migrations
                     b.ToTable("PlatformScoreMigrations");
                 });
 
+            modelBuilder.Entity("GZCTF.Features.Leaderboard.Domain.RankingLevelSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ThresholdsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RankingLevelSettings");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Leaderboard.Domain.RankingOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActorName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<long>("AfterScore")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("BeforeScore")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("ChallengeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Delta")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("DetailsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PayloadHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid?>("ReversesId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SolvedDelta")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperationId")
+                        .IsUnique();
+
+                    b.HasIndex("ReversesId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "CreatedAtUtc");
+
+                    b.ToTable("RankingOperations");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Leaderboard.Domain.RankingScoreEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ChallengeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("ScoreDelta")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SolvedDelta")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RankingScoreEvents");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Leaderboard.Domain.RankingSolveCorrection", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChallengeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AttributionMetadataJson")
+                        .HasColumnType("text");
+
+                    b.Property<int>("FrozenScore")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ImportedScoreBaselineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("OriginalSolvedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Revoked")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("UserId", "ChallengeId");
+
+                    b.ToTable("RankingSolveCorrections");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Leaderboard.Domain.RankingUserState", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool?>("Hidden")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("RankingUserStates");
+                });
+
             modelBuilder.Entity("GZCTF.Features.LearningPaths.Domain.Enrollment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1506,6 +1669,9 @@ namespace GZCTF.Migrations
 
                     b.Property<Guid>("ChallengeId")
                         .HasColumnType("uuid");
+
+                    b.Property<int?>("ImportedFrozenScore")
+                        .HasColumnType("integer");
 
                     b.Property<Guid?>("ImportedScoreBaselineId")
                         .HasColumnType("uuid");

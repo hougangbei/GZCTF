@@ -135,7 +135,7 @@ public sealed class PlatformScoreMigrationService(AppDbContext db)
                 db.ChallengeProgress.Add(new ChallengeProgress
                 {
                     UserId = baseline.UserId, ChallengeId = challenges[solve.ChallengeId], SolvedAtUtc = solve.SubmittedAtUtc!.Value,
-                    SolveMode = ChallengeSolveMode.Independent, ImportedScoreBaseline = baseline,
+                    SolveMode = ChallengeSolveMode.Independent, ImportedScoreBaseline = baseline, ImportedFrozenScore = sourceChallenges[solve.ChallengeId].Score,
                     AttributionMetadataJson = JsonSerializer.Serialize(new { Source = "platform-score-baseline", options.SourceInstance, batch.Id, solve.SourceId })
                 });
         }

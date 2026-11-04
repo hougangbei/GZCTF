@@ -63,6 +63,48 @@ public sealed class ImportedScoreTimelineService(AppDbContext db, IMemoryCache c
         return result;
     }
 
+    private sealed record FrozenContext(IReadOnlyDictionary<string, int> Values,
+        IReadOnlyDictionary<string, string> SubmissionChallenges, ILookup<Guid, string> MappedChallenges);
+    private readonly Dictionary<Guid, FrozenContext> _frozenContexts = [];
+
+    internal async Task<int> FrozenScoreAsync(GZCTF.Features.LearningProgress.Domain.ChallengeProgress progress, CancellationToken token)
+    {
+        var baselineId = progress.ImportedScoreBaselineId!.Value;
+        if (!_frozenContexts.TryGetValue(baselineId, out var context))
+        {
+            var baseline = await db.PlatformScoreBaselines.AsNoTracking().SingleAsync(b => b.Id == baselineId, token);
+            IReadOnlyDictionary<string, int>? values;
+            if (cache.TryGetValue($"imported-timeline-values:{baseline.BatchId}", out QuestionValues? cached) && cached is not null)
+                values = cached.Values;
+            else
+            {
+                var batch = await db.PlatformImportBatches.AsNoTracking().SingleAsync(b => b.Id == baseline.BatchId, token);
+                values = ReadValues(batch.ProtectedMetadata);
+                if (values is not null)
+                    cache.Set($"imported-timeline-values:{baseline.BatchId}", new QuestionValues(values), TimeSpan.FromMinutes(10));
+            }
+            if (values is null) throw new RankingValidationException("ranking.import_frozen_score_unavailable");
+            var submissions = await db.PlatformHistorySubmissions.AsNoTracking()
+                .Where(h => h.BatchId == baseline.BatchId && h.SourceUserId == baseline.SourceUserId)
+                .Select(h => new { h.SourceId, h.SourceChallengeId }).ToArrayAsync(token);
+            var mappings = await db.PlatformImportMaps.AsNoTracking().Where(m => m.SourceInstance == baseline.SourceInstance && m.Kind == "challenge")
+                .Select(m => new { m.TargetId, m.SourceId }).ToArrayAsync(token);
+            context = new(values, submissions.ToDictionary(h => h.SourceId, h => h.SourceChallengeId), mappings.ToLookup(m => m.TargetId, m => m.SourceId));
+            _frozenContexts[baselineId] = context;
+        }
+        string? sourceChallengeId = null;
+        if (progress.AttributionMetadataJson is not null)
+        {
+            using var metadata = JsonDocument.Parse(progress.AttributionMetadataJson);
+            if (metadata.RootElement.TryGetProperty("SourceId", out var id) && id.ValueKind == JsonValueKind.String)
+                sourceChallengeId = context.SubmissionChallenges.GetValueOrDefault(id.GetString()!);
+        }
+        sourceChallengeId ??= context.MappedChallenges[progress.ChallengeId].SingleOrDefault();
+        if (sourceChallengeId is null || !context.Values.TryGetValue(sourceChallengeId, out var score))
+            throw new RankingValidationException("ranking.import_frozen_score_unavailable");
+        return score;
+    }
+
     // Exact selected batch/user pairs keep unrelated accounts out of the history reads.
     private static Expression<Func<T, bool>> Selected<T>(IEnumerable<ImportedTimelineBaseline> selected)
     {

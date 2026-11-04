@@ -6,6 +6,8 @@ using GZCTF.Features.ChallengeRuntime.Domain;
 using GZCTF.Features.Dashboard.Domain;
 using GZCTF.Features.Dashboard.Application;
 using GZCTF.Features.LearningProgress.Domain;
+using GZCTF.Features.Leaderboard.Application;
+using GZCTF.Features.Leaderboard.Domain;
 using GZCTF.Features.QqBot.Application;
 using GZCTF.Models;
 using GZCTF.Utils;
@@ -29,7 +31,8 @@ public sealed class ChallengeSubmissionService(
     DailySolveProjection dailyProjection,
     DashboardDeltaPublisher dashboardDeltas,
     QqBotNotifier qqBot,
-    ILogger<ChallengeSubmissionService> logger)
+    ILogger<ChallengeSubmissionService> logger,
+    Microsoft.Extensions.Caching.Memory.IMemoryCache? rankingCache = null)
 {
     public async Task<ChallengeSubmissionResult> SubmitAsync(
         Guid userId, Guid challengeId, string submittedFlag, CancellationToken token = default)
@@ -37,6 +40,8 @@ public sealed class ChallengeSubmissionService(
         var challenge = await db.Challenges.Include(item => item.Flags)
             .Include(item => item.Localizations)
             .SingleAsync(item => item.Id == challengeId, token);
+        if (challenge.PublicationState == ChallengePublicationState.Merged)
+            return new ChallengeSubmissionResult(false, false, null, "challenge.merged", Guid.Empty);
         IDbContextTransaction? limitTransaction = null;
         try
         {
@@ -96,8 +101,10 @@ public sealed class ChallengeSubmissionService(
             {
                 try
                 {
+                    await RankingScoreService.LockAsync(db, userId, token);
                     var existing = await db.ChallengeProgress.AnyAsync(item =>
-                        item.UserId == userId && item.ChallengeId == challengeId, token);
+                        item.UserId == userId && item.ChallengeId == challengeId, token) ||
+                        await db.Challenges.AnyAsync(c => c.Id == challengeId && c.PublicationState == ChallengePublicationState.Merged, token);
                     if (existing)
                     {
                         await transaction.CommitAsync(token);
@@ -105,12 +112,13 @@ public sealed class ChallengeSubmissionService(
                     }
                     else
                     {
-                        db.ChallengeProgress.Add(new ChallengeProgress
+                        var restored = await AdminRankingService.RestoreImportedAsync(db, userId, challengeId, null, token);
+                        if (!restored)
                         {
-                            UserId = userId,
-                            ChallengeId = challengeId,
-                            SolveMode = mode
-                        });
+                            db.ChallengeProgress.Add(new ChallengeProgress { UserId = userId, ChallengeId = challengeId, SolveMode = mode });
+                            if (await db.RankingSolveCorrections.AnyAsync(c => c.UserId == userId && c.ChallengeId == challengeId && c.ImportedScoreBaselineId == null, token))
+                                db.RankingScoreEvents.Add(new RankingScoreEvent { UserId=userId, ChallengeId=challengeId, ScoreDelta=challenge.Score, SolvedDelta=1 });
+                        }
                         await dailyProjection.RecordFirstSolveAsync(userId, DateOnly.FromDateTime(DateTime.UtcNow), token);
 
                         submission.FirstSolve = true;
@@ -128,6 +136,7 @@ public sealed class ChallengeSubmissionService(
                 }
             }
 
+            if (result.FirstSolve && rankingCache is not null) AdminRankingService.Invalidate(rankingCache);
             await StopSolvedContainerAsync(challenge, userId, challengeId);
             if (result.FirstSolve)
             {

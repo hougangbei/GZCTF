@@ -104,6 +104,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<AboutPageState> AboutPageStates { get; set; } = null!;
     public DbSet<AboutPageVersion> AboutPageVersions { get; set; } = null!;
 
+    public DbSet<GZCTF.Features.Leaderboard.Domain.RankingScoreEvent> RankingScoreEvents { get; set; } = null!;
+    public DbSet<GZCTF.Features.Leaderboard.Domain.RankingOperation> RankingOperations { get; set; } = null!;
+    public DbSet<GZCTF.Features.Leaderboard.Domain.RankingUserState> RankingUserStates { get; set; } = null!;
+    public DbSet<GZCTF.Features.Leaderboard.Domain.RankingSolveCorrection> RankingSolveCorrections { get; set; } = null!;
+    public DbSet<GZCTF.Features.Leaderboard.Domain.RankingLevelSettings> RankingLevelSettings { get; set; } = null!;
+
     private static ValueConverter<T?, string> GetJsonConverter<T>() where T : class, new() =>
         new(
             v => JsonSerializer.Serialize(v ?? new(), JsonOptions),
@@ -566,6 +572,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
                 .HasMaxLength(Limits.MaxLogStatusLength);
         });
 
+        builder.Entity<GZCTF.Features.Leaderboard.Domain.RankingOperation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.OperationId).IsUnique();
+            entity.HasIndex(e => e.ReversesId).IsUnique();
+            entity.HasIndex(e => new { e.UserId, e.CreatedAtUtc });
+            entity.Property(e => e.PayloadHash).HasMaxLength(64);
+            entity.Property(e => e.ActorName).HasMaxLength(80);
+            entity.Property(e => e.Kind).HasMaxLength(32);
+            entity.Property(e => e.Reason).HasMaxLength(1000);
+        });
+        builder.Entity<GZCTF.Features.Leaderboard.Domain.RankingUserState>().HasKey(e => e.UserId);
+        builder.Entity<GZCTF.Features.Leaderboard.Domain.RankingSolveCorrection>().HasKey(e => new { e.UserId, e.ChallengeId });
+        builder.Entity<GZCTF.Features.Leaderboard.Domain.RankingLevelSettings>().HasKey(e => e.Id);
         LearningModelConfiguration.Configure(builder);
         builder.Entity<CommunityWriteup>(entity =>
         {

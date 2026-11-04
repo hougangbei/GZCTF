@@ -197,7 +197,10 @@ public sealed class ChallengeLibraryService(
         if (duplicateId == survivorId)
             throw new ChallengeMergeException("A challenge cannot be merged into itself.");
 
-        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token);
+        // The account lock serializes scoring and merges. READ COMMITTED ensures that
+        // progress committed while we waited for that lock is visible to the merge.
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, token);
+        await GZCTF.Features.Leaderboard.Application.RankingScoreService.LockAsync(db, Guid.Empty, token);
         var duplicate = await db.Challenges.SingleOrDefaultAsync(item => item.Id == duplicateId, token)
                         ?? throw new ChallengeMergeException("Duplicate challenge was not found.");
         var survivor = await db.Challenges.SingleOrDefaultAsync(item => item.Id == survivorId, token)
@@ -209,6 +212,24 @@ public sealed class ChallengeLibraryService(
         if (await conflictChecker.HasConflictAsync(duplicateId, token) ||
             await conflictChecker.HasConflictAsync(survivorId, token))
             throw new ChallengeMergeConflictException();
+
+        var corrections = await db.RankingSolveCorrections.AsNoTracking()
+            .Where(c => c.ChallengeId == duplicateId || c.ChallengeId == survivorId).ToArrayAsync(token);
+        foreach (var correction in corrections)
+        {
+            var otherId = correction.ChallengeId == duplicateId ? survivorId : duplicateId;
+            if (corrections.Any(c => c.UserId == correction.UserId && c.ChallengeId == otherId) ||
+                await db.ChallengeProgress.AnyAsync(p => p.UserId == correction.UserId && p.ChallengeId == otherId, token))
+                throw new ChallengeMergeException("These challenges have overlapping ranking corrections; resolve the duplicate learner attribution before merging.");
+        }
+        foreach (var correction in corrections.Where(c => c.ChallengeId == duplicateId))
+        {
+            await db.RankingSolveCorrections.Where(c => c.UserId == correction.UserId && c.ChallengeId == duplicateId).ExecuteDeleteAsync(token);
+            correction.ChallengeId = survivorId;
+            db.RankingSolveCorrections.Add(correction);
+        }
+        await db.RankingScoreEvents.Where(e => e.ChallengeId == duplicateId)
+            .ExecuteUpdateAsync(u => u.SetProperty(e => e.ChallengeId, survivorId), token);
 
         var affectedUserIds = await db.ChallengeProgress
             .Where(progress => progress.ChallengeId == duplicateId || progress.ChallengeId == survivorId)
@@ -236,7 +257,8 @@ public sealed class ChallengeLibraryService(
                 SolvedAtUtc = earliest.SolvedAtUtc,
                 SolveMode = earliest.SolveMode,
                 ImportedScoreBaselineId = userProgress.Select(p => p.ImportedScoreBaselineId).FirstOrDefault(id => id != null),
-                AttributionMetadataJson = earliest.AttributionMetadataJson
+                ImportedFrozenScore = userProgress.FirstOrDefault(p => p.ImportedScoreBaselineId != null)?.ImportedFrozenScore,
+                AttributionMetadataJson = userProgress.FirstOrDefault(p => p.ImportedScoreBaselineId != null)?.AttributionMetadataJson ?? earliest.AttributionMetadataJson
             });
         }
 
