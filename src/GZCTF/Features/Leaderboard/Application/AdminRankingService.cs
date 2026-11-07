@@ -1,3 +1,4 @@
+using GZCTF.Features.ChallengeRuntime.Application;
 using System.Text;
 using System.Text.Json;
 using GZCTF.Features.ChallengeLibrary.Domain;
@@ -48,14 +49,17 @@ public sealed class AdminRankingService(AppDbContext db, RankingScoreService sco
             catch (RankingValidationException) { unavailableFrozenScores.Add(imported.ChallengeId); }
         }
         var corrections = await db.RankingSolveCorrections.AsNoTracking().Where(c => c.UserId == userId).ToDictionaryAsync(c => c.ChallengeId, token);
+        var published = await PublishedCourseContentReader.GetChallengesAsync(db, token);
         var challenges = await db.Challenges.AsNoTracking().Include(c => c.Localizations)
             .Where(c => c.PublicationState != ChallengePublicationState.Merged).ToArrayAsync(token);
+        challenges = challenges.Where(c => published.ContainsKey(c.Id) || progress.ContainsKey(c.Id) || corrections.ContainsKey(c.Id))
+            .Select(c => published.GetValueOrDefault(c.Id) ?? c).ToArray();
         return new(user, challenges.Select(c =>
         {
             progress.TryGetValue(c.Id, out var p);
             corrections.TryGetValue(c.Id, out var correction);
             return new RankingChallengeResponse(c.Id, c.Localizations.FirstOrDefault(l => l.Locale == "zh-CN")?.Title ?? c.Localizations.FirstOrDefault()?.Title ?? c.Id.ToString(),
-                unavailableFrozenScores.Contains(c.Id) ? 0 : p?.ImportedFrozenScore ?? (correction?.ImportedScoreBaselineId != null ? correction.FrozenScore : c.Score), p != null,
+                unavailableFrozenScores.Contains(c.Id) ? 0 : p?.ImportedFrozenScore ?? (correction?.ImportedScoreBaselineId != null ? correction.FrozenScore : published.GetValueOrDefault(c.Id)?.Score ?? 0), p != null,
                 p?.ImportedScoreBaselineId != null || correction?.ImportedScoreBaselineId != null, p?.SolvedAtUtc, !unavailableFrozenScores.Contains(c.Id));
         }).OrderBy(c => c.Title).ToArray(), (await OperationsAsync(userId, 0, 100, token)).Items);
     }
@@ -106,17 +110,23 @@ public sealed class AdminRankingService(AppDbContext db, RankingScoreService sco
             var challenge = await db.Challenges.SingleOrDefaultAsync(ch => ch.Id == challengeId, token) ?? throw new KeyNotFoundException();
             if (challenge.PublicationState == ChallengePublicationState.Merged)
                 throw new RankingValidationException("ranking.challenge_merged");
+            var published = await PublishedCourseContentReader.GetChallengeAsync(db, challengeId, token);
             var progress = await db.ChallengeProgress.SingleOrDefaultAsync(p => p.UserId == userId && p.ChallengeId == challengeId, token);
+            // Imported corrections retain their frozen baseline. Native changes use current published values.
+            var effectiveScore = published?.Score ?? 0;
             if (solved)
             {
                 if (progress != null)
                     return;
+                if (published is null && !await db.RankingSolveCorrections.AnyAsync(correction =>
+                        correction.UserId == userId && correction.ChallengeId == challengeId && correction.ImportedScoreBaselineId != null, token))
+                    throw new RankingValidationException("ranking.challenge_not_published");
                 var restored = await RestoreImportedAsync(db, userId, challengeId, op, token);
                 if (!restored)
                 {
                     db.ChallengeProgress.Add(new ChallengeProgress { UserId = userId, ChallengeId = challengeId });
                     if (await db.RankingSolveCorrections.AnyAsync(c => c.UserId == userId && c.ChallengeId == challengeId && c.ImportedScoreBaselineId == null, token))
-                        db.RankingScoreEvents.Add(new RankingScoreEvent { UserId = userId, ChallengeId = challengeId, ScoreDelta = challenge.Score, SolvedDelta = 1 });
+                        db.RankingScoreEvents.Add(new RankingScoreEvent { UserId = userId, ChallengeId = challengeId, ScoreDelta = effectiveScore, SolvedDelta = 1 });
                 }
             }
             else
@@ -131,19 +141,19 @@ public sealed class AdminRankingService(AppDbContext db, RankingScoreService sco
                         UserId = userId,
                         ChallengeId = challengeId,
                         ImportedScoreBaselineId = progress.ImportedScoreBaselineId,
-                        FrozenScore = progress.ImportedScoreBaselineId == null ? challenge.Score : progress.ImportedFrozenScore ?? await timeline.FrozenScoreAsync(progress, token),
+                        FrozenScore = progress.ImportedScoreBaselineId == null ? effectiveScore : progress.ImportedFrozenScore ?? await timeline.FrozenScoreAsync(progress, token),
                         OriginalSolvedAtUtc = progress.SolvedAtUtc,
                         AttributionMetadataJson = progress.AttributionMetadataJson
                     };
                     db.RankingSolveCorrections.Add(correction);
                     if (correction.ImportedScoreBaselineId == null)
-                        db.RankingScoreEvents.Add(new RankingScoreEvent { UserId = userId, ChallengeId = challengeId, ScoreDelta = challenge.Score, SolvedDelta = 1, AtUtc = progress.SolvedAtUtc });
+                        db.RankingScoreEvents.Add(new RankingScoreEvent { UserId = userId, ChallengeId = challengeId, ScoreDelta = effectiveScore, SolvedDelta = 1, AtUtc = progress.SolvedAtUtc });
                 }
                 correction.Revoked = true;
                 if (correction.ImportedScoreBaselineId != null)
                 { op.Delta = -correction.FrozenScore; op.SolvedDelta = -1; }
                 if (correction.ImportedScoreBaselineId == null)
-                    db.RankingScoreEvents.Add(new RankingScoreEvent { UserId = userId, ChallengeId = challengeId, ScoreDelta = -challenge.Score, SolvedDelta = -1 });
+                    db.RankingScoreEvents.Add(new RankingScoreEvent { UserId = userId, ChallengeId = challengeId, ScoreDelta = -effectiveScore, SolvedDelta = -1 });
                 db.ChallengeProgress.Remove(progress);
             }
             await db.SaveChangesAsync(token);

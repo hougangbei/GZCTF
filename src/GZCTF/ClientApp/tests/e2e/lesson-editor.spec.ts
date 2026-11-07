@@ -92,12 +92,12 @@ test('upload blocks saving until inserted and upload failure keeps lesson text',
   const { updates } = await setup(page)
   let releaseUpload: (() => void) | undefined
   let failUpload = false
-  await page.route('**/api/assets', async (route) => {
+  await page.route('**/api/admin/content-assets?kind=lesson&contentId=*', async (route) => {
     if (failUpload) return route.fulfill({ status: 503, json: {} })
     await new Promise<void>((resolve) => {
       releaseUpload = resolve
     })
-    return route.fulfill({ json: [{ hash: 'lesson-image', name: 'test.png' }] })
+    return route.fulfill({ json: [{ hash: 'lesson-image', name: 'test.png',url:'/api/admin/content-assets/lesson/lesson/lesson-image/test.png' }] })
   })
   await page.goto(editorPath)
   const body = page.getByRole('textbox', { name: 'Markdown body', exact: true })
@@ -118,11 +118,11 @@ test('upload blocks saving until inserted and upload failure keeps lesson text',
   await page.keyboard.press('Control+s')
   expect(updates).toHaveLength(0)
   releaseUpload!()
-  await expect.poll(() => body.inputValue()).toContain('/assets/lesson-image/test.png')
+  await expect.poll(() => body.inputValue()).toContain('/api/admin/content-assets/lesson/lesson/lesson-image/test.png')
   await expect(title).toHaveValue('Updated title')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByText('Saved', { exact: true })).toBeVisible()
-  expect(updates[0].localizations.find((item) => item.locale === 'en')?.body).toContain('/assets/lesson-image/test.png')
+  expect(updates[0].localizations.find((item) => item.locale === 'en')?.body).toContain('/api/admin/content-assets/lesson/lesson/lesson-image/test.png')
   const savedBody = await body.inputValue()
   failUpload = true
   await page.locator('input[type="file"]').setInputFiles(file)
@@ -239,8 +239,8 @@ test('Chinese content uses the same locale code requested by the learner', async
 test('format tools wrap selections and images insert through paste and drop', async ({ page }) => {
   await setup(page)
   let images = 0
-  await page.route('**/api/assets', (route) =>
-    route.fulfill({ json: [{ hash: `image-${++images}`, name: 'lesson.png' }] })
+  await page.route('**/api/admin/content-assets?kind=lesson&contentId=*', (route) =>
+    route.fulfill({ json: [{ hash: `image-${++images}`, name: 'lesson.png',url:`/api/admin/content-assets/lesson/lesson/image-${images}/lesson.png` }] })
   )
   await page.goto(editorPath)
   const body = page.getByRole('textbox', { name: 'Markdown body', exact: true })
@@ -259,7 +259,7 @@ test('format tools wrap selections and images insert through paste and drop', as
           : new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true })
       element.dispatchEvent(event)
     }, type)
-    await expect(body).toHaveValue(new RegExp(`/assets/image-${type === 'paste' ? 1 : 2}/lesson.png`))
+    await expect(body).toHaveValue(new RegExp(`/api/admin/content-assets/lesson/lesson/image-${type === 'paste' ? 1 : 2}/lesson.png`))
   }
   expect(images).toBe(2)
 })

@@ -1,3 +1,4 @@
+using GZCTF.Features.SkillTrees.Application;
 using System.Net.Mime;
 using GZCTF.Features.Shared;
 using GZCTF.Features.ChallengeRuntime.Application;
@@ -19,21 +20,31 @@ public sealed class ChallengeInstancesController(
     ChallengeRuntimeService runtime,
     UserManager<UserInfo> users,
     ChallengeAccessPolicy access,
-    AppDbContext db) : ControllerBase
+    AppDbContext db,
+    CourseWorkspaceContentService workspaceContents) : ControllerBase
 {
     [HttpGet]
     public Task<ActionResult<ChallengeInstanceResponse>> Get(Guid challengeId, CancellationToken token) =>
-        Execute(challengeId, () => runtime.GetCurrentInstanceAsync(GetUserId(), challengeId, token));
+        Execute(challengeId, () => runtime.GetCurrentInstanceAsync(GetUserId(), challengeId, token), allowOwned: true);
 
     [HttpPost]
     [AuditAction("challenge_instances.start")]
-    public Task<ActionResult<ChallengeInstanceResponse>> Start(Guid challengeId, CancellationToken token) =>
-        Execute(challengeId, () => runtime.StartAsync(GetUserId(), challengeId, token));
+    public async Task<ActionResult<ChallengeInstanceResponse>> Start(Guid challengeId, [FromQuery] Guid? course, CancellationToken token)
+    {
+        var user = await users.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+        var admin = user.Role == GZCTF.Utils.Role.Admin;
+        if (course.HasValue && !admin) return Forbid();
+        var draft = course is { } treeId
+            ? await workspaceContents.GetWorkspaceChallengeAsync(treeId, challengeId, token) : null;
+        if (course.HasValue && draft is null) return NotFound();
+        return await Execute(challengeId, () => runtime.StartAsync(user.Id, challengeId, token, admin, draft));
+    }
 
     [HttpPost("extend")]
     [AuditAction("challenge_instances.extend")]
     public Task<ActionResult<ChallengeInstanceResponse>> Extend(Guid challengeId, CancellationToken token) =>
-        Execute(challengeId, () => runtime.ExtendAsync(GetUserId(), challengeId, token));
+        Execute(challengeId, () => runtime.ExtendAsync(GetUserId(), challengeId, token), allowOwned: true);
 
     [HttpDelete]
     [AuditAction("challenge_instances.stop")]
@@ -41,7 +52,8 @@ public sealed class ChallengeInstancesController(
     {
         var user = await users.GetUserAsync(User);
         if (user is null) return Unauthorized();
-        if (!await access.CanAccessAsync(challengeId, user, token)) return NotFound();
+        if (!await access.CanAccessAsync(challengeId, user, token) &&
+            !await db.UserChallengeInstances.AnyAsync(i => i.UserId == user.Id && i.ChallengeId == challengeId && i.IsActive, token)) return NotFound();
         try
         {
             await runtime.StopAsync(GetUserId(), challengeId, token);
@@ -59,11 +71,12 @@ public sealed class ChallengeInstancesController(
     }
 
     private async Task<ActionResult<ChallengeInstanceResponse>> Execute(
-        Guid challengeId, Func<Task<UserChallengeInstance>> action)
+        Guid challengeId, Func<Task<UserChallengeInstance>> action, bool allowOwned = false)
     {
         var user = await users.GetUserAsync(User);
         if (user is null) return Unauthorized();
-        if (!await access.CanAccessAsync(challengeId, user, HttpContext.RequestAborted)) return NotFound();
+        if (!await access.CanAccessAsync(challengeId, user, HttpContext.RequestAborted) &&
+            !(allowOwned && await db.UserChallengeInstances.AnyAsync(i => i.UserId == user.Id && i.ChallengeId == challengeId && i.IsActive, HttpContext.RequestAborted))) return NotFound();
         try
         {
             return Ok(await ToResponseAsync(await action(), HttpContext.RequestAborted));

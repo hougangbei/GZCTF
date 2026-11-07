@@ -1,3 +1,4 @@
+using GZCTF.Features.SkillTrees.Application;
 using GZCTF.Features.ChallengeLibrary.Domain;
 using GZCTF.Features.SkillTrees.Domain;
 using GZCTF.Integration.Test.Tests.SkillTrees;
@@ -28,6 +29,12 @@ internal static class PublishedSkillFixture
         var count = await db.SaveSkillTreeFixtureAsync();
         foreach (var tree in trees) tree.CurrentPublishedRevisionId = tree.Revisions.Single().Id;
         if (trees.Count > 0) count += await db.SaveChangesAsync();
+        var activeTrees = await db.SkillTrees.Where(t => t.CurrentPublishedRevisionId != null && t.DeletedAtUtc == null)
+            .Select(t => new { t.Id, RevisionId = t.CurrentPublishedRevisionId!.Value }).ToArrayAsync();
+        foreach (var active in activeTrees)
+            if (!await db.CoursePublishedVersions.AnyAsync(v => v.Id == active.RevisionId))
+                await CourseSnapshotBuilder.CaptureCurrentAsync(db, active.Id, active.RevisionId, default);
+        count += await db.SaveChangesAsync();
         return count;
     }
 }

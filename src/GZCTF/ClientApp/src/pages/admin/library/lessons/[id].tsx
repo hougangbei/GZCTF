@@ -1,7 +1,11 @@
-import { Alert, Badge, Button, Group, Select, Text, TextInput, Title } from '@mantine/core'
+import { useHistoryLeaveGuard } from '@Hooks/useHistoryLeaveGuard'
+import { Alert, Badge, Button, Group, Select, Stack, Text, Textarea, TextInput, Title } from '@mantine/core'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import useSWR from 'swr'
+import { contextualPath, courseContext, workspaceHref, type CourseContext } from '@Utils/courseAuthoring'
+import { courseRequest, CourseRequestError } from '@Hooks/useCourseAuthoring'
 import type { KeyedMutator } from 'swr'
 import { WithNavBar } from '@Components/WithNavbar'
 import { WithRole } from '@Components/WithRole'
@@ -11,7 +15,7 @@ import { LessonMarkdownEditor } from '@Components/admin/library/LessonMarkdownEd
 import { mergeLessonLocalization } from '@Utils/LearningAdmin'
 import { useAdminSkillCategories } from '@Hooks/useSkillTreeAdmin'
 import { useUser } from '@Hooks/useUser'
-import api, { Role, type LessonResponse } from '@Api'
+import api, { fetcher, Role, type LessonResponse } from '@Api'
 
 type Draft = { title: string; body: string }
 type StoredDraft = Draft & { updatedAt: number }
@@ -26,14 +30,17 @@ const LessonEditSession = ({
   data,
   mutate,
   onLocaleChange,
+  context,
 }: {
   id: string
   userId: string
   locale: string
   data: LessonResponse
   mutate: KeyedMutator<LessonResponse>
+  context?: CourseContext
   onLocaleChange: (locale: string) => void
 }) => {
+  const navigate = useNavigate()
   const { t } = useTranslation('lessonWorkspace')
   const { t: tSkillTrees } = useTranslation('skillTrees')
   const { data: categories } = useAdminSkillCategories()
@@ -42,7 +49,7 @@ const LessonEditSession = ({
     title: localization?.title ?? (data.locale?.toLowerCase() === locale.toLowerCase() ? data.title : '') ?? '',
     body: localization?.body ?? (data.locale?.toLowerCase() === locale.toLowerCase() ? data.body : '') ?? '',
   }
-  const draftKey = `lesson-draft:v1:${userId}:${id}:${locale}`
+  const draftKey = `lesson-draft:v1:${userId}:${id}:${locale}${context ? `:course:${context.courseId}` : ''}`
   const [draft, setDraft] = useState<Draft>(serverDraft)
   const [saved, setSaved] = useState<Draft>(serverDraft)
   const [stored] = useState(() => {
@@ -64,10 +71,13 @@ const LessonEditSession = ({
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [saveFailed, setSaveFailed] = useState(false)
+  const [conflict, setConflict] = useState(false)
+  const [serverCompare, setServerCompare] = useState<LessonResponse>()
   const [hasSaved, setHasSaved] = useState(false)
   const [publishOpen, setPublishOpen] = useState(false)
   const [publishRowVersion, setPublishRowVersion] = useState<number>()
   const dirty = !sameDraft(draft, saved)
+  useHistoryLeaveGuard(dirty, '课节有未保存修改，确定离开吗？')
   const saveLock = useRef(false)
   const uploadLock = useRef(false)
   const mounted = useRef(true)
@@ -102,6 +112,7 @@ const LessonEditSession = ({
   }
 
   const save = async (): Promise<number | undefined> => {
+    if (conflict) return undefined
     if (saveLock.current || uploadLock.current || recovery || !draft.title.trim()) return undefined
     saveLock.current = true
     setSaving(true)
@@ -114,10 +125,13 @@ const LessonEditSession = ({
       setStorageFailed(true)
     }
     try {
-      const response = await api.adminLessons.adminLessonsUpdate(id, {
+      const command = {
         locale,
         localizations: mergeLessonLocalization(data.localizations ?? [], { locale, ...snapshot }),
-      })
+      }
+      const response = context
+        ? { data: await courseRequest<LessonResponse>(contextualPath(`/api/admin/lessons/${id}`, context), { ...command, rowVersion: data.publication?.rowVersion }) }
+        : await api.adminLessons.adminLessonsUpdate(id, command)
       // A newer session or another tab may have replaced this draft while the request ran.
       // Remove only the exact stored revision that this save submitted.
       try {
@@ -142,8 +156,9 @@ const LessonEditSession = ({
       }
       await mutate(response.data, { revalidate: false })
       return response.data.publication?.rowVersion
-    } catch {
+    } catch (error) {
       if (mounted.current) {
+        if(error instanceof CourseRequestError && error.status===409)setConflict(true)
         setSaveFailed(true)
         // Edits were already stored synchronously. Never overwrite a newer local draft here.
       }
@@ -252,16 +267,17 @@ const LessonEditSession = ({
             onClick={async () => {
               const version = await save()
               if (version !== undefined && mounted.current) {
-                setPublishRowVersion(version)
-                setPublishOpen(true)
+                if (context) navigate(workspaceHref(context.courseId, {kind:'skill', categoryId:context.categoryId, skillId:context.skillId}))
+                else { setPublishRowVersion(version); setPublishOpen(true) }
               }
             }}
           >
-            {t('publish', { defaultValue: 'Publish lesson' })}
+            {context ? '保存并返回课程' : t('publish', { defaultValue: 'Publish lesson' })}
           </Button>
         </Group>
       </header>
-      {published && (
+      {context && <Alert mb="md">正在编辑课程草稿，保存不会改变学员可见内容。<Button component={Link} to={workspaceHref(context.courseId, {kind:'skill',categoryId:context.categoryId,skillId:context.skillId})} variant="subtle">返回课程编排</Button></Alert>}
+      {published && !context && (
         <Alert color="orange" mb="md">
           {t('publishedWarning', {
             defaultValue: 'This lesson is published. Saving changes updates the content students can see.',
@@ -276,6 +292,7 @@ const LessonEditSession = ({
           })}
         </Alert>
       )}
+      {conflict&&context&&<Alert color="red" title="课节版本冲突" mb="md"><Stack gap="sm"><Text>你的输入已保留。先读取最新服务端内容并核对，再选择采用哪份内容。</Text><Button variant="light" onClick={async()=>{try{setServerCompare(await courseRequest<LessonResponse>(contextualPath(`/api/admin/lessons/${id}?locale=${encodeURIComponent(locale)}`,context),undefined,'GET'))}catch{setSaveFailed(true)}}}>读取最新版本并比较</Button>{serverCompare&&<><TextInput label="服务端最新标题（只读）" readOnly value={serverCompare.localizations?.find(l=>l.locale===locale)?.title??serverCompare.title??''}/><Text fw={600}>服务端最新正文</Text><Textarea label="服务端版本（只读）" value={serverCompare.localizations?.find(l=>l.locale===locale)?.body??serverCompare.body??''} readOnly minRows={4}/><Group><Button variant="default" onClick={()=>{const fresh=serverCompare.localizations?.find(l=>l.locale===locale);const next={title:fresh?.title??serverCompare.title??'',body:fresh?.body??serverCompare.body??''};setDraft(next);setSaved(next);void mutate(serverCompare,{revalidate:false});setConflict(false);setServerCompare(undefined);setSaveFailed(false);removeDraft()}}>采用服务端内容</Button><Button onClick={()=>{void mutate(serverCompare,{revalidate:false});setConflict(false);setServerCompare(undefined);setSaveFailed(false)}}>已比较，保留我的输入继续编辑</Button></Group></>}</Stack></Alert>}
       {saveFailed && (
         <Alert color="red" mb="md" role="alert">
           {t('saveFailed', { defaultValue: 'Could not save. Your edits are still here.' })}
@@ -325,6 +342,8 @@ const LessonEditSession = ({
           <LessonMarkdownEditor
             key={`${userId}:${id}:${locale}`}
             title={draft.title}
+            courseId={context?.courseId}
+            contentId={id}
             value={draft.body}
             onChange={(body) => updateDraft({ ...draft, body })}
             disabled={saving || !!recovery}
@@ -370,7 +389,7 @@ const LessonEditSession = ({
           <Link to="/admin/skill-categories">{t('manageCategories')}</Link>
         </aside>
       </div>
-      <ContentPublishModal
+      {!context && <ContentPublishModal
         opened={publishOpen}
         kind="lesson"
         contentId={id}
@@ -380,19 +399,15 @@ const LessonEditSession = ({
         onPublished={async () => {
           await mutate()
         }}
-      />
+      />}
     </div>
   )
 }
 
-const LessonEditPage = ({ id, userId }: { id: string; userId: string }) => {
+const LessonEditPage = ({ id, userId, context }: { id: string; userId: string; context?: CourseContext }) => {
   const { t } = useTranslation('lessonWorkspace')
-  const [locale, setLocale] = useState('en')
-  const { data, error, mutate } = api.adminLessons.useAdminLessonsGet(
-    id,
-    { locale: 'en' },
-    { revalidateOnFocus: false }
-  )
+  const [locale, setLocale] = useState(context ? 'zh' : 'en')
+  const { data, error, mutate } = useSWR<LessonResponse>([contextualPath(`/api/admin/lessons/${id}?locale=en`, context),userId], ([path]:[string,string])=>fetcher(path), { revalidateOnFocus: false, keepPreviousData: false })
   if (error)
     return (
       <Alert color="red" role="alert">
@@ -412,17 +427,20 @@ const LessonEditPage = ({ id, userId }: { id: string; userId: string }) => {
       data={data}
       mutate={mutate}
       onLocaleChange={setLocale}
+      context={context}
     />
   )
 }
 
 const AdminLessonEdit = () => {
   const { id } = useParams()
+  const [params] = useSearchParams()
+  const context = courseContext(params)
   const { user } = useUser()
   return (
     <WithRole requiredRole={Role.Admin}>
       <WithNavBar minWidth={0}>
-        {id && user?.userId && <LessonEditPage key={`${user.userId}:${id}`} id={id} userId={user.userId} />}
+        {context === 'invalid' ? <Alert color="red">课程编辑上下文无效，请从课程编排重新打开。</Alert> : id && user?.userId && <LessonEditPage key={`${user.userId}:${id}:${context?.courseId ?? 'library'}`} id={id} userId={user.userId} context={context} />}
       </WithNavBar>
     </WithRole>
   )

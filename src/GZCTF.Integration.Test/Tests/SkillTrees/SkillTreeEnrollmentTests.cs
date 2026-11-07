@@ -219,9 +219,13 @@ public class SkillTreeEnrollmentTests(GZCTFApplicationFactory factory)
         return (tree, revision);
     }
 
-    private static async Task SetCurrentAsync(AppDbContext db, Guid treeId, Guid revisionId) =>
+    private static async Task SetCurrentAsync(AppDbContext db, Guid treeId, Guid revisionId)
+    {
         await db.SkillTrees.Where(item => item.Id == treeId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.CurrentPublishedRevisionId, revisionId));
+        await CourseSnapshotBuilder.CaptureCurrentAsync(db, treeId, revisionId, CancellationToken.None);
+        await db.SaveChangesAsync();
+    }
 
     private async Task<(TestDataSeeder.SeededUser User, HttpClient Client)> CreateUserClientAsync()
     {

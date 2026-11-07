@@ -1,3 +1,4 @@
+using GZCTF.Features.ChallengeRuntime.Application;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -50,26 +51,19 @@ public sealed class RankingScoreService(AppDbContext db)
             await transaction.CommitAsync(token);
             return snapshot;
         }
-        var eligibleIds = await db.SkillTreeRevisions.AsNoTracking()
-            .Where(r => r.SkillTree.DeletedAtUtc == null && r.SkillTree.CurrentPublishedRevisionId == r.Id)
-            .SelectMany(r => r.Categories).Where(r => r.Category.DeletedAtUtc == null)
-            .SelectMany(r => r.Category.Skills).Where(r => r.Skill.DeletedAtUtc == null && r.Skill.IsEnabled)
-            .SelectMany(r => r.Skill.Contents)
-            .Where(c => c.ChallengeId != null && c.Challenge!.PublicationState == ChallengePublicationState.Published && c.Challenge.IsEnabled)
-            .Select(c => c.ChallengeId!.Value).Distinct().ToArrayAsync(token);
+        var publishedChallenges = await PublishedCourseContentReader.GetChallengesAsync(db, token);
         var users = await db.Users.AsNoTracking().Select(u => new { u.Id, u.UserName, u.Bio, u.AvatarHash, u.Role }).ToArrayAsync(token);
-        var progress = await db.ChallengeProgress.AsNoTracking().Select(p => new { p.Id, p.UserId, p.ChallengeId, p.SolvedAtUtc, p.ImportedScoreBaselineId, p.Challenge.Score }).ToArrayAsync(token);
+        var progress = await db.ChallengeProgress.AsNoTracking().Select(p => new { p.Id, p.UserId, p.ChallengeId, p.SolvedAtUtc, p.ImportedScoreBaselineId }).ToArrayAsync(token);
         var baselines = await db.PlatformScoreBaselines.AsNoTracking().ToDictionaryAsync(b => b.UserId, token);
         var operations = (await db.RankingOperations.AsNoTracking().ToArrayAsync(token)).ToLookup(o => o.UserId);
         var states = await db.RankingUserStates.AsNoTracking().ToDictionaryAsync(s => s.UserId, token);
         var levels = await LevelsAsync(token);
         var byUser = progress.ToLookup(p => p.UserId);
-        var eligible = eligibleIds.ToHashSet();
         return users.Select(user =>
         {
             var allProgress = byUser[user.Id].OrderBy(p => p.Id).ToArray();
-            var native = allProgress.Where(p => p.ImportedScoreBaselineId == null && eligible.Contains(p.ChallengeId))
-                .Select(p => new RankingNativeSolve(p.ChallengeId, p.SolvedAtUtc, p.Score)).ToArray();
+            var native = allProgress.Where(p => p.ImportedScoreBaselineId == null && publishedChallenges.ContainsKey(p.ChallengeId))
+                .Select(p => new RankingNativeSolve(p.ChallengeId, p.SolvedAtUtc, publishedChallenges[p.ChallengeId].Score)).ToArray();
             baselines.TryGetValue(user.Id, out var baseline);
             states.TryGetValue(user.Id, out var state);
             var journal = operations[user.Id].ToArray();
@@ -85,7 +79,7 @@ public sealed class RankingScoreService(AppDbContext db)
                 user.Role,
                 score,
                 solved,
-                progress = allProgress.Select(p => new { p.Id, p.Score, p.SolvedAtUtc, p.ImportedScoreBaselineId }),
+                progress = allProgress.Select(p => new { p.Id, Score = publishedChallenges.GetValueOrDefault(p.ChallengeId)?.Score, p.SolvedAtUtc, p.ImportedScoreBaselineId }),
                 levels.Version
             }));
             return new RankingSnapshot(new(user.Id, user.UserName ?? "", user.Bio, user.AvatarHash == null ? null : $"/assets/{user.AvatarHash}/avatar", user.Role.ToString(),

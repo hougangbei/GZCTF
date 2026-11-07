@@ -1,11 +1,16 @@
+import { useHistoryLeaveGuard } from '@Hooks/useHistoryLeaveGuard'
 import { Icon } from '@mdi/react'
 import { mdiPlayOutline, mdiStop } from '@mdi/js'
-import { Alert, Badge, Button, Card, Group, Modal, Stack, Text, Title } from '@mantine/core'
+import { Alert, Badge, Button, Card, Code, Group, Modal, Stack, Text, Title } from '@mantine/core'
 import { showNotification } from '@mantine/notifications'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useParams } from 'react-router'
-import api, { ChallengeInstanceStatus, ChallengeType, Role, type ChallengeInstanceResponse } from '@Api'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import useSWR from 'swr'
+import { contextualPath, courseContext, workspaceHref } from '@Utils/courseAuthoring'
+import { courseRequest, CourseRequestError } from '@Hooks/useCourseAuthoring'
+import { useUser } from '@Hooks/useUser'
+import api, { ChallengeInstanceStatus, ChallengeType, Role, type ChallengeInstanceResponse, type ChallengeEditResponse, fetcher } from '@Api'
 import { ChallengeBasicsForm } from '@Components/admin/library/ChallengeBasicsForm'
 import { ChallengeFlagEditor } from '@Components/admin/library/ChallengeFlagEditor'
 import { ChallengeHelpEditor } from '@Components/admin/library/ChallengeHelpEditor'
@@ -23,21 +28,40 @@ import {
   type ChallengeDraft,
 } from '@Utils/challengeEditor'
 
-const AdminChallengeEdit = () => {
+const ChallengeEditSession = () => {
   const categoryIcons = useChallengeCategoryLabelMap()
   const { id } = useParams()
   const navigate = useNavigate()
   const { t } = useTranslation('learning')
   const { t: tDefault } = useTranslation()
   const { t: tSkillTrees } = useTranslation('skillTrees')
-  const { data, error, mutate } = api.adminChallenges.useAdminChallengesGetForEdit(
-    id ?? '', { locale: 'en' }, undefined, Boolean(id)
+  const {user}=useUser()
+  const [params] = useSearchParams()
+  const parsedContext = courseContext(params)
+  const context = parsedContext === 'invalid' ? undefined : parsedContext
+  const { data, error, mutate } = useSWR<ChallengeEditResponse>(
+    id && user?.userId && parsedContext !== 'invalid' ? [contextualPath(`/api/admin/challenges/${id}/edit?locale=en`, context),user.userId] : null,
+    ([path]:[string,string])=>fetcher(path), {keepPreviousData:false}
   )
   const initializedId = useRef<string | undefined>(undefined)
   const saveInFlight = useRef(false)
   const uploadInFlight = useRef(false)
   const testInFlight = useRef(false)
   const [draft, setDraft] = useState<ChallengeDraft>()
+  const [savedDraft, setSavedDraft] = useState('')
+  const dirty = Boolean(draft && JSON.stringify(draft) !== savedDraft)
+  useHistoryLeaveGuard(dirty, '题目有未保存修改，确定离开吗？')
+  useEffect(() => {
+    const unload = (event: BeforeUnloadEvent) => { if(dirty){event.preventDefault();event.returnValue=''} }
+    const leave = (event: MouseEvent) => {
+      if(!dirty || event.defaultPrevented || event.button!==0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)return
+      const link=(event.target as Element).closest('a[href]')
+      if(!(link instanceof HTMLAnchorElement)||link.target==='_blank'||link.hasAttribute('download'))return
+      if(!window.confirm('题目有未保存修改，确定离开吗？')){event.preventDefault();event.stopPropagation()}
+    }
+    window.addEventListener('beforeunload',unload);document.addEventListener('click',leave,true)
+    return()=>{window.removeEventListener('beforeunload',unload);document.removeEventListener('click',leave,true)}
+  },[dirty])
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [testing, setTesting] = useState(false)
@@ -49,18 +73,22 @@ const AdminChallengeEdit = () => {
   const [testInstance, setTestInstance] = useState<ChallengeInstanceResponse>()
   const [formError, setFormError] = useState<string>()
   const [conflict, setConflict] = useState(false)
+  const [serverCompare,setServerCompare]=useState<ChallengeEditResponse>()
   const retired = data?.challenge?.publicationState === 'Retired' || data?.challenge?.publicationState === 'Merged'
 
   useEffect(() => {
     if (!id || !data || initializedId.current === id) return
     initializedId.current = id
-    setDraft(challengeDraftFromResponse(data))
+    const initial = challengeDraftFromResponse(data)
+    setDraft(initial)
+    setSavedDraft(JSON.stringify(initial))
     setPublishVersion(data.publication?.rowVersion)
   }, [data, id])
 
   if (!id) return null
 
   const save = async (): Promise<number | undefined> => {
+    if (conflict) return undefined
     if (!data || !draft || saveInFlight.current || uploadInFlight.current) return
     if (!draft.title.trim()) {
       setFormError(t('adminTitle'))
@@ -70,15 +98,18 @@ const AdminChallengeEdit = () => {
     setSaving(true)
     setFormError(undefined)
     try {
-      const response = await api.adminChallenges.adminChallengesUpdate(
-        id, challengeCommandFromDraft(draft, data, publishVersion)
-      )
+      const command = challengeCommandFromDraft(draft, data, publishVersion)
+      const response = context
+        ? { data: await courseRequest<ChallengeEditResponse>(contextualPath(`/api/admin/challenges/${id}`, context), command) }
+        : await api.adminChallenges.adminChallengesUpdate(id, command)
       setPublishVersion(response.data.publication?.rowVersion)
+      setSavedDraft(JSON.stringify(draft))
       await mutate(response.data, { revalidate: false })
       showNotification({ color: 'green', message: t('editorSaved') })
       return response.data.publication?.rowVersion
     } catch (saveError) {
-      if (getApiErrorCode(saveError) === 'learning.challenge_changed') setConflict(true)
+      if (getApiErrorCode(saveError) === 'learning.challenge_changed' || saveError instanceof CourseRequestError && saveError.status===409) setConflict(true)
+      else if (context) setFormError((saveError as Error).message)
       else showErrorMsg(saveError, tDefault)
       return undefined
     } finally {
@@ -88,6 +119,11 @@ const AdminChallengeEdit = () => {
   }
 
   const publish = async () => {
+    if (context) {
+      const version = await save()
+      if(version !== undefined) navigate(workspaceHref(context.courseId,{kind:'skill',categoryId:context.categoryId,skillId:context.skillId}))
+      return
+    }
     if (!draft?.body.trim()) {
       setFormError(tSkillTrees('errors.challengeBodyRequired'))
       return
@@ -104,7 +140,9 @@ const AdminChallengeEdit = () => {
       const fresh = await mutate()
       if (!fresh) return
       initializedId.current = id
-      setDraft(challengeDraftFromResponse(fresh))
+      const initial = challengeDraftFromResponse(fresh)
+      setDraft(initial)
+      setSavedDraft(JSON.stringify(initial))
       setPublishVersion(fresh.publication?.rowVersion)
       setFormError(undefined)
       setConflict(false)
@@ -118,13 +156,16 @@ const AdminChallengeEdit = () => {
     uploadInFlight.current = true
     setUploading(true)
     try {
-      const response = await api.assets.assetsUpload({ files: [file] })
+      const form=new FormData();form.append('files',file)
+      const response=context
+        ? {data:await courseRequest<{hash:string;name:string;storageKey:string}[]>(`/api/admin/skill-trees/${context.courseId}/workspace/assets`,form,'POST')}
+        : {data:await courseRequest<{hash:string;name:string;storageKey:string}[]>(`/api/admin/content-assets?kind=challenge&contentId=${encodeURIComponent(id)}`,form,'POST')}
       const hash = response.data[0]?.hash
       if (!hash || hash.length !== 64) throw new Error('Attachment upload did not return a SHA-256 hash.')
       const entry = {
         FileName: file.name,
         Sha256: hash,
-        StorageKey: `uploads/${hash.slice(0, 2)}/${hash.slice(2, 4)}/${hash}`,
+        StorageKey: 'storageKey' in response.data[0] ? String(response.data[0].storageKey) : `uploads/${hash.slice(0, 2)}/${hash.slice(2, 4)}/${hash}`,
         Flag: '',
       }
       setDraft((current) => current && ({
@@ -150,7 +191,9 @@ const AdminChallengeEdit = () => {
       } else {
         const version = await save()
         if (version === undefined) return
-        const response = await api.challengeInstances.challengeInstancesStart(id)
+        const response = context
+          ? { data: await courseRequest<ChallengeInstanceResponse>(contextualPath(`/api/challenges/${id}/instances`,context),undefined,'POST') }
+          : await api.challengeInstances.challengeInstancesStart(id)
         setTestInstance(response.data)
       }
     } catch (testError) {
@@ -189,15 +232,17 @@ const AdminChallengeEdit = () => {
                 {draft && <Badge variant="outline">{draft.type}</Badge>}
               </Group>
             </Stack>
-            <Button component={Link} to="/admin/skill-trees?tab=challenges" variant="subtle">
-              {tSkillTrees('workspace.tabs.challenges')}
+            <Button component={Link} to={context ? workspaceHref(context.courseId,{kind:'skill',categoryId:context.categoryId,skillId:context.skillId}) : '/admin/skill-trees?tab=challenges'} variant="subtle">
+              {context ? '返回课程编排' : tSkillTrees('workspace.tabs.challenges')}
             </Button>
           </Group>
 
+          {parsedContext === 'invalid' && <Alert color="red">课程编辑上下文无效，请从课程编排重新打开。</Alert>}
+          {context && <Alert>正在编辑课程草稿，保存后请返回课程统一发布。</Alert>}
           {error && <Alert color="red">{t('loadFailed')}</Alert>}
           {conflict && (
             <Alert color="red" title={t('editorChanged')}>
-              <Button size="compact-sm" onClick={reload}>{t('editorReload')}</Button>
+              {context ? <Stack><Text>你的输入已保留。先核对最新服务端内容，再决定采用哪份。</Text><Button onClick={async()=>{try{setServerCompare(await courseRequest<ChallengeEditResponse>(contextualPath(`/api/admin/challenges/${id}/edit?locale=en`,context),undefined,'GET'))}catch(error){setFormError((error as Error).message)}}}>读取最新版本并比较</Button>{serverCompare&&<><Title order={3}>服务端最新题目</Title><Text>{challengeDraftFromResponse(serverCompare).title}</Text><Markdown source={challengeDraftFromResponse(serverCompare).body}/><Text size="sm">以下只显示发生变化的字段。运行参数与 Flag 仅在管理员比较界面显示，不会出现在学员端。</Text>{Object.entries(challengeDraftFromResponse(serverCompare)).filter(([key,value])=>JSON.stringify(value)!==JSON.stringify(draft?.[key as keyof ChallengeDraft])).map(([key,value])=><Stack key={key} gap={4}><Text fw={600}>{key}</Text><Text size="xs">服务端最新值</Text><Code block style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{JSON.stringify(value,null,2)}</Code><Text size="xs">我的本地值</Text><Code block style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{JSON.stringify(draft?.[key as keyof ChallengeDraft],null,2)}</Code></Stack>)}<Group><Button variant="default" onClick={()=>{const next=challengeDraftFromResponse(serverCompare);setDraft(next);setSavedDraft(JSON.stringify(next));setPublishVersion(serverCompare.publication?.rowVersion);void mutate(serverCompare,{revalidate:false});setConflict(false);setServerCompare(undefined)}}>采用服务端内容</Button><Button onClick={()=>{setPublishVersion(serverCompare.publication?.rowVersion);void mutate(serverCompare,{revalidate:false});setConflict(false);setServerCompare(undefined)}}>已比较，保留我的输入继续编辑</Button></Group></>}</Stack> : <Button size="compact-sm" onClick={reload}>{t('editorReload')}</Button>}
             </Alert>
           )}
           {!draft && !error ? <Text>{t('loading')}</Text> : draft && (
@@ -233,13 +278,13 @@ const AdminChallengeEdit = () => {
                 <ChallengeHelpEditor value={draft} onChange={setDraft} disabled={saving || testing || retired} />
               </Card>
               <Group justify="flex-end">
-                <Button color="red" variant="subtle" disabled={saving || uploading || testing || retired} onClick={() => setRetireOpen(true)}>
+                {!context && <Button color="red" variant="subtle" disabled={saving || uploading || testing || retired} onClick={() => setRetireOpen(true)}>
                   {t('editorRetireChallenge')}
-                </Button>
+                </Button>}
                 <Button variant="light" onClick={() => setPreviewOpen(true)}>{t('editorPreview')}</Button>
                 <Button variant="light" loading={saving} disabled={uploading || testing || retired} onClick={save}>{t('editorSaveDraft')}</Button>
                 <Button color="green" loading={saving} disabled={uploading || testing || retired} onClick={publish}>
-                  {tSkillTrees('publish.challengeTitle')}
+                  {context ? '保存并返回课程' : tSkillTrees('publish.challengeTitle')}
                 </Button>
               </Group>
               <Modal opened={previewOpen} onClose={() => setPreviewOpen(false)} title={t('editorPreview')} size="lg">
@@ -258,7 +303,7 @@ const AdminChallengeEdit = () => {
                   </Group>
                 </Stack>
               </Modal>
-              <ContentPublishModal
+              {!context && <ContentPublishModal
                 opened={publishOpen}
                 kind="challenge"
                 contentId={id}
@@ -269,7 +314,7 @@ const AdminChallengeEdit = () => {
                   await mutate()
                   navigate('/admin/skill-trees?tab=challenges')
                 }}
-              />
+              />}
             </>
           )}
         </Stack>
@@ -278,4 +323,9 @@ const AdminChallengeEdit = () => {
   )
 }
 
+const AdminChallengeEdit = () => {
+  const {id}=useParams(); const [params]=useSearchParams(); const context=courseContext(params); const {user}=useUser()
+  if(context==='invalid')return <WithRole requiredRole={Role.Admin}><WithNavBar minWidth={0}><Alert color="red">课程编辑上下文无效，请从课程编排重新打开。</Alert></WithNavBar></WithRole>
+  return <ChallengeEditSession key={`${user?.userId ?? 'pending'}:${id}:${context?.courseId ?? 'library'}`}/>
+}
 export default AdminChallengeEdit

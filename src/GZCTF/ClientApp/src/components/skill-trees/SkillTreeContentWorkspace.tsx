@@ -77,7 +77,7 @@ export const SkillTreeContentWorkspace = () => {
               : { content: classes.content, body: classes.body }
           }
         >
-          <ChallengeWorkspace challengeId={contentId!} modal />
+          <ChallengeWorkspace challengeId={contentId!} courseId={treeId} modal />
         </Modal>
       </Stack>
     </WithNavBar>

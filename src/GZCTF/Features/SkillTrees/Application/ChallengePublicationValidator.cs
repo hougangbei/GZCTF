@@ -47,6 +47,11 @@ internal static class ChallengePublicationValidator
                 try
                 {
                     exists = await storage.ExistsAsync(key, token);
+                    if (exists)
+                    {
+                        await using var stream = await storage.OpenReadAsync(key, token);
+                        _ = await stream.ReadAsync(new byte[1], token);
+                    }
                 }
                 catch (Exception exception) when (exception is ArgumentException or IOException or InvalidOperationException)
                 {

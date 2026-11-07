@@ -27,7 +27,7 @@ public sealed class ChallengeRuntimeService(
 {
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> StartLocks = new();
     public async Task<UserChallengeInstance> GetOrCreateInstanceAsync(
-        Guid userId, Guid challengeId, CancellationToken token = default)
+        Guid userId, Guid challengeId, CancellationToken token = default, bool allowDraft = false)
     {
         var current = await db.UserChallengeInstances
             .SingleOrDefaultAsync(item => item.UserId == userId && item.ChallengeId == challengeId && item.IsActive,
@@ -35,12 +35,15 @@ public sealed class ChallengeRuntimeService(
         if (current is not null)
             return current;
 
+        var publishedChallenge = await PublishedCourseContentReader.GetChallengeAsync(db, challengeId, token, allowDraft)
+            ?? throw new InvalidOperationException("challenge.not_published");
         var instance = new UserChallengeInstance
         {
             UserId = userId,
             ChallengeId = challengeId,
             Status = ChallengeInstanceStatus.Pending,
-            IsActive = true
+            IsActive = true,
+            PublishedChallengeJson = PublishedCourseContentReader.FreezeChallenge(publishedChallenge)
         };
         db.UserChallengeInstances.Add(instance);
         try
@@ -57,12 +60,15 @@ public sealed class ChallengeRuntimeService(
     }
 
     public async Task<UserChallengeInstance> StartAsync(
-        Guid userId, Guid challengeId, CancellationToken token = default)
+        Guid userId, Guid challengeId, CancellationToken token = default, bool allowDraft = false,
+        CanonicalChallenge? draftOverride = null)
     {
         var gate = StartLocks.GetOrAdd(userId, _ => new SemaphoreSlim(1, 1));
         await gate.WaitAsync(token);
         try
         {
+            var challenge = draftOverride ?? await PublishedCourseContentReader.GetChallengeAsync(db, challengeId, token, allowDraft)
+                ?? throw new InvalidOperationException("challenge.not_published");
             var current = await db.UserChallengeInstances.SingleOrDefaultAsync(item =>
                 item.UserId == userId && item.ChallengeId == challengeId && item.IsActive, token);
             var now = DateTimeOffset.UtcNow;
@@ -72,13 +78,16 @@ public sealed class ChallengeRuntimeService(
                     await db.Containers.AnyAsync(item => item.Id == containerId &&
                         item.Status == ContainerStatus.Running && item.ExpectStopAt > now, token);
                 if (current.ExpiresAtUtc > now && containerRunning)
+                {
+                    if ((allowDraft || draftOverride is not null) && current.PublishedChallengeJson != PublishedCourseContentReader.FreezeChallenge(challenge))
+                        throw new ChallengeRuntimeException("challenge.instance_configuration_changed", StatusCodes.Status409Conflict,
+                            "Stop your running test instance before starting the updated draft configuration.");
                     return current;
+                }
                 await RetireExpiredAsync(current, token);
                 current = null;
             }
 
-            var challenge = await db.Challenges.Include(item => item.Flags)
-                .SingleAsync(item => item.Id == challengeId, token);
             if (!challenge.Type.IsContainer())
                 throw new InvalidOperationException("challenge.container_required");
 
@@ -91,7 +100,7 @@ public sealed class ChallengeRuntimeService(
             if (running >= policy.MaxConcurrentPerUser)
                 throw new ChallengeInstanceLimitException();
 
-            var instance = current ?? await GetOrCreateInstanceAsync(userId, challengeId, token);
+            var instance = current ?? await GetOrCreateInstanceAsync(userId, challengeId, token, allowDraft || draftOverride is not null);
 
             var settings = ReadContainerSettings(challenge.RuntimeConfigurationJson);
             var image = settings.ContainerImage ?? settings.Image;
@@ -113,6 +122,8 @@ public sealed class ChallengeRuntimeService(
             container.ExpectStopAt = expires;
             instance.ContainerId = container.Id;
             instance.AssignedFlag = flag;
+            instance.PublishedChallengeJson = PublishedCourseContentReader.FreezeChallenge(challenge);
+            instance.RuntimeMetadataJson = allowDraft || draftOverride is not null ? "{\"adminTest\":true}" : null;
             instance.Status = ChallengeInstanceStatus.Running;
             instance.StartedAtUtc ??= DateTimeOffset.UtcNow;
             instance.ExpiresAtUtc = expires;

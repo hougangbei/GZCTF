@@ -1,3 +1,4 @@
+using GZCTF.Integration.Test.Tests.Runtime;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -62,7 +63,7 @@ public sealed class AdminRankingTests(GZCTFApplicationFactory factory)
         var baseline=Baseline(db,user.Id,250,2);
         var originalAt=DateTimeOffset.UtcNow.AddDays(-100);
         db.ChallengeProgress.Add(new ChallengeProgress {UserId=user.Id,Challenge=challenge,ImportedScoreBaseline=baseline,ImportedFrozenScore=125,SolvedAtUtc=originalAt});
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         var before=await service.DetailAsync(user.Id,default);
         var revoked=await service.SolveAsync(user.Id,challenge.Id,false,new(Guid.NewGuid(),before.User.Version,"撤销旧题"),user.Id,"admin",default);
         Assert.Equal(125,revoked.User.Score);Assert.Equal(1,revoked.User.SolvedCount);
@@ -92,7 +93,7 @@ public sealed class AdminRankingTests(GZCTFApplicationFactory factory)
         using var scope=factory.Services.CreateScope();var db=scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var service=scope.ServiceProvider.GetRequiredService<AdminRankingService>();
         var user=await TestDataSeeder.CreateUserAsync(factory.Services,TestDataSeeder.RandomName(),"Score!12345");
-        var challenge=PublishedQuestion(db);challenge.Flags.Add(new ChallengeFlag {Kind=ChallengeFlagKind.Static,Value="native-flag"});await db.SaveChangesAsync();
+        var challenge=PublishedQuestion(db);challenge.Flags.Add(new ChallengeFlag {Kind=ChallengeFlagKind.Static,Value="native-flag"});await db.SaveRuntimeFixtureAsync();
         var empty=await service.DetailAsync(user.Id,default);
         var marked=await service.SolveAsync(user.Id,challenge.Id,true,new(Guid.NewGuid(),empty.User.Version,"人工补记"),user.Id,"admin",default);
         Assert.Equal(100,marked.User.Score);Assert.Equal(1,marked.User.SolvedCount);
@@ -100,7 +101,11 @@ public sealed class AdminRankingTests(GZCTFApplicationFactory factory)
         Assert.Equal(0,revoked.User.Score);Assert.Equal(0,revoked.User.SolvedCount);
         Assert.Equal(-100,Assert.Single(revoked.Operations,o=>o.Kind=="revoke_solve").Delta);
         Assert.Equal(-1,Assert.Single(revoked.Operations,o=>o.Kind=="revoke_solve").SolvedDelta);
-        challenge.Score=250;await db.SaveChangesAsync();
+        challenge.Score=250;await db.SaveRuntimeFixtureAsync();
+        Assert.Equal(0, (await service.DetailAsync(user.Id, default)).User.Score);
+        var tree = await db.SkillTrees.SingleAsync(t => t.CurrentPublishedRevision!.Categories.Any(r =>
+            r.Category.Skills.Any(s => s.Skill.Contents.Any(c => c.ChallengeId == challenge.Id))));
+        await PublishedRuntimeSnapshotTests.PublishAsync(db, challenge, tree);
         Assert.True((await scope.ServiceProvider.GetRequiredService<ChallengeSubmissionService>().SubmitAsync(user.Id,challenge.Id,"native-flag")).FirstSolve);
         var restored=await service.DetailAsync(user.Id,default);Assert.Equal(250,restored.User.Score);Assert.Equal(1,restored.User.SolvedCount);
         Assert.Equal(250,Assert.Single(restored.Challenges,c=>c.ChallengeId==challenge.Id).Score);
@@ -132,7 +137,7 @@ public sealed class AdminRankingTests(GZCTFApplicationFactory factory)
         using var scope=factory.Services.CreateScope();var db=scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var service=scope.ServiceProvider.GetRequiredService<AdminRankingService>();
         var user=await TestDataSeeder.CreateUserAsync(factory.Services,TestDataSeeder.RandomName(),"Score!12345");
-        Baseline(db,user.Id,100,1).Hidden=true;await db.SaveChangesAsync();
+        Baseline(db,user.Id,100,1).Hidden=true;await db.SaveRuntimeFixtureAsync();
         var before=await service.DetailAsync(user.Id,default);Assert.True(before.User.Hidden);
         var visible=await service.VisibilityAsync(user.Id,new(Guid.NewGuid(),before.User.Version,false,"恢复显示"),user.Id,"admin",default);
         Assert.False(visible.User.Hidden);Assert.True(visible.User.SourceHidden);
@@ -152,7 +157,7 @@ public sealed class AdminRankingTests(GZCTFApplicationFactory factory)
         using var scope=factory.Services.CreateScope();var db=scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var service=scope.ServiceProvider.GetRequiredService<AdminRankingService>();
         var user=await TestDataSeeder.CreateUserAsync(factory.Services,TestDataSeeder.RandomName(),"Score!12345");
-        Baseline(db,user.Id,int.MaxValue,1);await db.SaveChangesAsync();var before=await service.DetailAsync(user.Id,default);
+        Baseline(db,user.Id,int.MaxValue,1);await db.SaveRuntimeFixtureAsync();var before=await service.DetailAsync(user.Id,default);
         await Assert.ThrowsAsync<RankingValidationException>(()=>service.AdjustAsync(user.Id,new(Guid.NewGuid(),before.User.Version,"delta",1,"溢出"),user.Id,"admin",default));
         var after=await service.DetailAsync(user.Id,default);Assert.Equal(before.User.Score,after.User.Score);Assert.Equal(before.User.Version,after.User.Version);
         Assert.Empty(await db.RankingOperations.Where(o=>o.UserId==user.Id).ToArrayAsync());
@@ -221,7 +226,7 @@ public sealed class AdminRankingTests(GZCTFApplicationFactory factory)
         var duplicate=PublishedQuestion(db);duplicate.Flags.Add(new ChallengeFlag {Kind=ChallengeFlagKind.Static,Value="duplicate"});
         var survivor=PublishedQuestion(db);survivor.Score=999;survivor.Flags.Add(new ChallengeFlag {Kind=ChallengeFlagKind.Static,Value="survivor"});
         var baseline=Baseline(db,user.Id,125,1);
-        db.ChallengeProgress.Add(new ChallengeProgress {UserId=user.Id,Challenge=duplicate,ImportedScoreBaseline=baseline,ImportedFrozenScore=125});await db.SaveChangesAsync();
+        db.ChallengeProgress.Add(new ChallengeProgress {UserId=user.Id,Challenge=duplicate,ImportedScoreBaseline=baseline,ImportedFrozenScore=125});await db.SaveRuntimeFixtureAsync();
         var before=await service.DetailAsync(user.Id,default);
         await service.SolveAsync(user.Id,duplicate.Id,false,new(Guid.NewGuid(),before.User.Version,"合并前撤销"),user.Id,"admin",default);
         await scope.ServiceProvider.GetRequiredService<GZCTF.Features.ChallengeLibrary.Application.ChallengeLibraryService>().MergeChallengesAsync(duplicate.Id,survivor.Id,default);
@@ -246,7 +251,7 @@ public sealed class AdminRankingTests(GZCTFApplicationFactory factory)
         var protector=scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>().CreateProtector("GZCTF.PlatformImport.History.v1");
         batch.ProtectedMetadata=protector.Protect("{\"Source\":{\"challenges\":[{\"id\":\"old1\",\"value\":125}]}}");
         db.PlatformImportMaps.Add(new PlatformImportMap {SourceInstance=baseline.SourceInstance,Kind="challenge",SourceId="old1",TargetId=challenge.Id,BatchId=batch.Id});
-        db.ChallengeProgress.Add(new ChallengeProgress {UserId=user.Id,Challenge=challenge,ImportedScoreBaseline=baseline});await db.SaveChangesAsync();
+        db.ChallengeProgress.Add(new ChallengeProgress {UserId=user.Id,Challenge=challenge,ImportedScoreBaseline=baseline});await db.SaveRuntimeFixtureAsync();
         var before=await service.DetailAsync(user.Id,default);
         Assert.Equal(125,Assert.Single(before.Challenges,c=>c.ChallengeId==challenge.Id).Score);
         Assert.True(Assert.Single(before.Challenges,c=>c.ChallengeId==challenge.Id).FrozenScoreAvailable);
@@ -291,7 +296,7 @@ public sealed class AdminRankingTests(GZCTFApplicationFactory factory)
         var user=await TestDataSeeder.CreateUserAsync(factory.Services,TestDataSeeder.RandomName(),"Score!12345");
         var challenge=PublishedQuestion(db);challenge.Score=999;
         var baseline=Baseline(db,user.Id,125,1);
-        db.ChallengeProgress.Add(new ChallengeProgress {UserId=user.Id,Challenge=challenge,ImportedScoreBaseline=baseline});await db.SaveChangesAsync();
+        db.ChallengeProgress.Add(new ChallengeProgress {UserId=user.Id,Challenge=challenge,ImportedScoreBaseline=baseline});await db.SaveRuntimeFixtureAsync();
         var before=await service.DetailAsync(user.Id,default);
         Assert.False(Assert.Single(before.Challenges,c=>c.ChallengeId==challenge.Id).FrozenScoreAvailable);
         var error=await Assert.ThrowsAsync<RankingValidationException>(()=>service.SolveAsync(user.Id,challenge.Id,false,new(Guid.NewGuid(),before.User.Version,"不能猜测旧分"),user.Id,"admin",default));
@@ -307,7 +312,7 @@ public sealed class AdminRankingTests(GZCTFApplicationFactory factory)
     {
         using var scope=factory.Services.CreateScope();var db=scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var user=await TestDataSeeder.CreateUserAsync(factory.Services,TestDataSeeder.RandomName(),"Score!12345");
-        var duplicate=PublishedQuestion(db);var survivor=PublishedQuestion(db);await db.SaveChangesAsync();
+        var duplicate=PublishedQuestion(db);var survivor=PublishedQuestion(db);await db.SaveRuntimeFixtureAsync();
         await using var transaction=await db.Database.BeginTransactionAsync();
         await RankingScoreService.LockAsync(db,user.Id,default);
         var started=new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -327,10 +332,70 @@ public sealed class AdminRankingTests(GZCTFApplicationFactory factory)
             if(!waiting)await Task.Delay(10);
         }
         Assert.True(waiting,"Merge should wait for the solve/account lock before reading progress.");
-        db.ChallengeProgress.Add(new ChallengeProgress {UserId=user.Id,ChallengeId=duplicate.Id});await db.SaveChangesAsync();
+        db.ChallengeProgress.Add(new ChallengeProgress {UserId=user.Id,ChallengeId=duplicate.Id});await db.SaveRuntimeFixtureAsync();
         await transaction.CommitAsync();await merge;
         var progress=await db.ChallengeProgress.AsNoTracking().SingleAsync(p=>p.UserId==user.Id);
         Assert.Equal(survivor.Id,progress.ChallengeId);
+    }
+
+    [Fact]
+    public async Task A_submission_waiting_behind_identity_merge_cannot_recreate_progress_for_the_old_id()
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await TestDataSeeder.CreateUserAsync(factory.Services, TestDataSeeder.RandomName(), "Score!12345");
+        var duplicate = PublishedQuestion(db);
+        duplicate.Flags.Add(new ChallengeFlag { Kind = ChallengeFlagKind.Static, Value = "old-identity" });
+        var survivor = PublishedQuestion(db);
+        survivor.Flags.Add(new ChallengeFlag { Kind = ChallengeFlagKind.Static, Value = "surviving-identity" });
+        await db.SaveRuntimeFixtureAsync();
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await RankingScoreService.LockAsync(db, user.Id, default);
+        var mergePid = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var submissionPid = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        async Task Merge()
+        {
+            using var merging = factory.Services.CreateScope();
+            var context = merging.ServiceProvider.GetRequiredService<AppDbContext>();
+            await context.Database.OpenConnectionAsync();
+            mergePid.SetResult(((Npgsql.NpgsqlConnection)context.Database.GetDbConnection()).ProcessID);
+            await merging.ServiceProvider.GetRequiredService<GZCTF.Features.ChallengeLibrary.Application.ChallengeLibraryService>()
+                .MergeChallengesAsync(duplicate.Id, survivor.Id, default);
+        }
+        async Task<ChallengeSubmissionResult> Submit()
+        {
+            using var submitting = factory.Services.CreateScope();
+            var context = submitting.ServiceProvider.GetRequiredService<AppDbContext>();
+            await context.Database.OpenConnectionAsync();
+            submissionPid.SetResult(((Npgsql.NpgsqlConnection)context.Database.GetDbConnection()).ProcessID);
+            return await submitting.ServiceProvider.GetRequiredService<ChallengeSubmissionService>()
+                .SubmitAsync(user.Id, duplicate.Id, "old-identity");
+        }
+        async Task WaitUntilLocked(int pid)
+        {
+            await using var observer = new Npgsql.NpgsqlConnection(db.Database.GetConnectionString());
+            await observer.OpenAsync();
+            for (var attempt = 0; attempt < 200; attempt++)
+            {
+                await using var command = new Npgsql.NpgsqlCommand("SELECT wait_event = 'advisory' FROM pg_stat_activity WHERE pid = @pid", observer);
+                command.Parameters.AddWithValue("pid", pid);
+                if (await command.ExecuteScalarAsync() is true) return;
+                await Task.Delay(10);
+            }
+            Assert.Fail("The operation did not reach the shared ranking/merge lock.");
+        }
+        var merge = Merge();
+        await WaitUntilLocked(await mergePid.Task);
+        var submission = Submit();
+        await WaitUntilLocked(await submissionPid.Task);
+        await transaction.CommitAsync();
+        await merge;
+        var result = await submission;
+        Assert.False(result.FirstSolve);
+        Assert.False(await db.ChallengeProgress.AsNoTracking().AnyAsync(p => p.UserId == user.Id && p.ChallengeId == duplicate.Id));
+        Assert.True((await scope.ServiceProvider.GetRequiredService<ChallengeSubmissionService>()
+            .SubmitAsync(user.Id, survivor.Id, "surviving-identity")).FirstSolve);
+        Assert.Equal(1, await db.ChallengeProgress.AsNoTracking().CountAsync(p => p.UserId == user.Id));
     }
 
     private static PlatformScoreBaseline Baseline(AppDbContext db,Guid userId,int score,int solves)

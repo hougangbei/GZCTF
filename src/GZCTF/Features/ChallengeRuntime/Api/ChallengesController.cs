@@ -29,17 +29,12 @@ public sealed class ChallengesController(
 {
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ChallengeRuntimeDetailResponse>> Get(
-        Guid id, [FromQuery] string? locale, CancellationToken token)
+        Guid id, [FromQuery] string? locale, [FromQuery] Guid? course, CancellationToken token)
     {
         var user = await users.GetUserAsync(User);
-        if (!await access.CanReadAsync(id, user, token))
+        if (!await access.CanReadAsync(id, user, token, course))
             return NotFound();
-        var challenge = await db.Challenges.AsNoTracking()
-            .Include(item => item.Localizations)
-            .Include(item => item.Hints)
-            .Include(item => item.Writeups)
-            .Include(item => item.Flags)
-            .SingleOrDefaultAsync(item => item.Id == id, token);
+        var challenge = await ReadChallengeAsync(id, user, token, course);
         if (challenge is null)
             return NotFound();
         var text = challenge.Localizations.FirstOrDefault(item =>
@@ -49,7 +44,7 @@ public sealed class ChallengesController(
             challenge.Id,
             text?.Title ?? string.Empty,
             text?.Summary ?? string.Empty,
-            text?.Body ?? string.Empty,
+            CourseResourceUrls.ForCourse(text?.Body ?? string.Empty, course),
             challenge.Type.ToString(),
             challenge.CtfCategory.ToString(),
             challenge.Hints.Select(item => item.Locale).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
@@ -61,14 +56,17 @@ public sealed class ChallengesController(
 
     [HttpGet("{id:guid}/attachment")]
     [RequireUser]
-    public async Task<IActionResult> DownloadAttachment(Guid id, [FromQuery] bool supplementary, CancellationToken token)
+    public async Task<IActionResult> DownloadAttachment(Guid id, [FromQuery] bool supplementary, [FromQuery] Guid? course, CancellationToken token)
     {
         var user = await users.GetUserAsync(User);
         if (user is null)
             return Unauthorized();
-        if (!await access.CanAccessAsync(id, user, token))
+        if (!await access.CanAccessAsync(id, user, token, course))
             return NotFound();
-        var imported = await db.Challenges.AsNoTracking().SingleAsync(item => item.Id == id, token);
+        var imported = await PublishedCourseContentReader.GetChallengeAsync(db, id, token, courseId: course);
+        var draftPreview = imported is null && course is null && user.Role == Role.Admin;
+        if (draftPreview) imported = await PublishedCourseContentReader.GetChallengeAsync(db, id, token, true);
+        if (imported is null) return NotFound();
         if (imported.SourceType is "GZCTF-GAME" or "CTFd" && (imported.Type != ChallengeType.DynamicAttachment || supplementary))
         {
             var files = ImportedFiles(imported).Where(item => !item.ResourceOnly && (!supplementary || !item.DynamicPool)).ToArray();
@@ -98,8 +96,8 @@ public sealed class ChallengesController(
         }
         if (supplementary)
             return NotFound();
-        var instance = await runtime.GetOrCreateInstanceAsync(user.Id, id, token);
-        var assignment = await attachments.GetOrAllocateAsync(user.Id, id, token);
+        var instance = await runtime.GetOrCreateInstanceAsync(user.Id, id, token, draftPreview);
+        var assignment = await attachments.GetOrAllocateAsync(user.Id, id, token, draftPreview);
         if (!await storage.ExistsAsync(assignment.EffectiveStorageKey, token))
             return NotFound();
         var stream = await storage.OpenReadAsync(assignment.EffectiveStorageKey, token);
@@ -107,12 +105,13 @@ public sealed class ChallengesController(
     }
 
     [HttpGet("{id:guid}/resources/{hash}")]
-    public async Task<IActionResult> Resource(Guid id, string hash, CancellationToken token)
+    public async Task<IActionResult> Resource(Guid id, string hash, [FromQuery] Guid? course, CancellationToken token)
     {
         var user = await users.GetUserAsync(User);
-        if (!await access.CanReadAsync(id, user, token))
+        if (!await access.CanReadAsync(id, user, token, course))
             return NotFound();
-        var challenge = await db.Challenges.AsNoTracking().SingleAsync(item => item.Id == id, token);
+        var challenge = await ReadChallengeAsync(id, user, token, course);
+        if (challenge is null) return NotFound();
         var file = ImportedFiles(challenge).FirstOrDefault(item => !item.DynamicPool && item.Sha256.Equals(hash, StringComparison.OrdinalIgnoreCase));
         if (file is null || !await storage.ExistsAsync(file.StorageKey, token))
             return NotFound();
@@ -120,6 +119,10 @@ public sealed class ChallengesController(
         var contentType = file.ContentType is "image/png" or "image/jpeg" or "image/webp" or "image/gif" ? file.ContentType : MediaTypeNames.Application.Octet;
         return File(await storage.OpenReadAsync(file.StorageKey, token), contentType);
     }
+    private async Task<CanonicalChallenge?> ReadChallengeAsync(Guid id, UserInfo? user, CancellationToken token, Guid? course) =>
+        await PublishedCourseContentReader.GetChallengeAsync(db, id, token, courseId: course) ??
+        (user?.Role == Role.Admin && course is null ? await PublishedCourseContentReader.GetChallengeAsync(db, id, token, true) : null);
+
     private static IReadOnlyList<ImportedFile> ImportedFiles(CanonicalChallenge challenge)
     {
         if (challenge.SourceType is not ("GZCTF-GAME" or "CTFd"))
@@ -139,29 +142,29 @@ public sealed class ChallengesController(
     [HttpGet("{id:guid}/hints/next")]
     [RequireUser]
     public async Task<ActionResult<ChallengeHintResponse>> NextHint(
-        Guid id, [FromQuery] string? locale, CancellationToken token)
+        Guid id, [FromQuery] string? locale, [FromQuery] Guid? course, CancellationToken token)
     {
         var user = await users.GetUserAsync(User);
         if (user is null)
             return Unauthorized();
-        if (!await access.CanAccessAsync(id, user, token))
+        if (!await access.CanAccessAsync(id, user, token, course))
             return NotFound();
-        var response = await help.RevealNextHintAsync(user.Id, id, locale, token);
-        return response is null ? NotFound() : Ok(response);
+        var response = await help.RevealNextHintAsync(user.Id, id, locale, token, course);
+        return response is null ? NotFound() : Ok(response with { Content = CourseResourceUrls.ForCourse(response.Content, course) });
     }
 
     [HttpGet("{id:guid}/writeup")]
     [RequireUser]
     public async Task<ActionResult<ChallengeWriteupResponse>> Writeup(
-        Guid id, [FromQuery] string? locale, CancellationToken token)
+        Guid id, [FromQuery] string? locale, [FromQuery] Guid? course, CancellationToken token)
     {
         var user = await users.GetUserAsync(User);
         if (user is null)
             return Unauthorized();
-        if (!await access.CanAccessAsync(id, user, token))
+        if (!await access.CanAccessAsync(id, user, token, course))
             return NotFound();
-        var response = await help.RevealWriteupAsync(user.Id, id, locale, token);
-        return response is null ? NotFound() : Ok(response);
+        var response = await help.RevealWriteupAsync(user.Id, id, locale, token, course);
+        return response is null ? NotFound() : Ok(response with { Content = CourseResourceUrls.ForCourse(response.Content, course) });
     }
 
     private static bool HasConfiguredAttachments(CanonicalChallenge challenge)

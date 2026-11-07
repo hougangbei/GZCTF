@@ -206,6 +206,7 @@ public sealed class DashboardProjectionTests(GZCTFApplicationFactory factory)
                     setters.SetProperty(item => item.CurrentPublishedRevisionId,
                         trees.Single(tree => tree.Id == treeId).Revisions[0].Id));
 
+        await db.SaveRuntimeFixtureAsync();
         var client = factory.CreateClient();
         var login = await client.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = "S27!SharedSolve" });

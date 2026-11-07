@@ -38,7 +38,7 @@ test('preview saves unsaved category changes before loading the preview', async 
     requests.push('preview')
     return route.fulfill({ json: { categories: draft.categories } })
   })
-  await page.goto(`/admin/skill-trees/${treeId}`)
+  await page.goto(`/admin/skill-trees/${treeId}?legacy=1`)
   await page.getByRole('button', { name: 'Add category', exact: true }).first().click()
   await page.getByRole('button', { name: 'Preview draft', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Preview draft', exact: true })).toBeDisabled()
@@ -60,7 +60,7 @@ test('preview keeps local changes and shows the existing conflict when saving fa
     previews += 1
     return route.fulfill({ json: { categories: [] } })
   })
-  await page.goto(`/admin/skill-trees/${treeId}`)
+  await page.goto(`/admin/skill-trees/${treeId}?legacy=1`)
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('My unsaved route')
   await page.getByRole('button', { name: 'Preview draft', exact: true }).click()
   await expect(page.getByRole('alert', { name: /changed|conflict/i })).toBeVisible()

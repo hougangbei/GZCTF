@@ -50,7 +50,7 @@ export const SkillTreeCoverEditor = ({ id }: { id: string }) => {
         style={{ aspectRatio: '16/9', objectFit: 'cover', background: 'var(--hbc-primary-soft)', borderRadius: 12 }}
       />
       <Text size="sm" c="dimmed">
-        推荐 16:9，支持 JPEG、PNG、WebP，最大 5 MB。修改后会更新已发布路线的封面。
+        推荐 16:9，支持 JPEG、PNG、WebP，最大 5 MB。保存只更新草稿，请在课程编排中统一发布。
       </Text>
       {message && <Alert color="red">{message}</Alert>}
       <Group>

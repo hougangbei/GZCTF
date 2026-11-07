@@ -17,11 +17,11 @@ public sealed class LessonsController(
 {
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<LessonContentResponse>> Get(
-        Guid id, [FromQuery] string? locale, CancellationToken token)
+        Guid id, [FromQuery] string? locale, [FromQuery] Guid? course, CancellationToken token)
     {
         try
         {
-            return Ok(await enrollmentService.GetLessonAsync(id, locale, token));
+            return Ok(await enrollmentService.GetLessonAsync(id, locale, token, course));
         }
         catch (LearningEnrollmentRequiredException)
         {
@@ -35,7 +35,7 @@ public sealed class LessonsController(
 
     [RequireUser]
     [HttpPost("{id:guid}/complete")]
-    public async Task<IActionResult> Complete(Guid id, CancellationToken token)
+    public async Task<IActionResult> Complete(Guid id, [FromQuery] Guid? course, CancellationToken token)
     {
         var user = await userManager.GetUserAsync(User);
         if (user is null)
@@ -43,7 +43,7 @@ public sealed class LessonsController(
 
         try
         {
-            await progressService.CompleteAsync(user.Id, id, token);
+            await progressService.CompleteAsync(user.Id, id, token, course);
             return NoContent();
         }
         catch (LearningEnrollmentRequiredException)

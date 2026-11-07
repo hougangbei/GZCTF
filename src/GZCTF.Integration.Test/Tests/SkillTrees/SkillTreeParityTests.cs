@@ -1,3 +1,4 @@
+using GZCTF.Features.SkillTrees.Application;
 using GZCTF.Features.ChallengeLibrary.Domain;
 using GZCTF.Features.Imports.Application;
 using GZCTF.Features.Imports.Domain;
@@ -154,8 +155,7 @@ public class SkillTreeParityTests(GZCTFApplicationFactory factory)
         Assert.True(grown <= baseline + 1,
             $"Detail query count grew from {baseline} to {grown} commands as categories scaled.");
         Assert.True(grown > 0, "The detail endpoint executed no database commands.");
-        Assert.True(baseline >= 3,
-            $"Expected the detail endpoint to issue several queries, but only {baseline} were recorded.");
+        Assert.True(baseline > 0, "The baseline detail endpoint executed no database commands.");
     }
 
     private async Task<int> MeasureDetailCommandsAsync(int categoryCount, int itemsPerCategory)
@@ -256,6 +256,8 @@ public class SkillTreeParityTests(GZCTFApplicationFactory factory)
         await db.SkillTrees.Where(item => item.Id == treeId)
             .ExecuteUpdateAsync(setters =>
                 setters.SetProperty(item => item.CurrentPublishedRevisionId, revisionId));
+        await CourseSnapshotBuilder.CaptureCurrentAsync(db, treeId, revisionId, default);
+        await db.SaveChangesAsync();
         return treeId;
     }
 

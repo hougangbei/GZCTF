@@ -1,3 +1,5 @@
+using System.Text.Json;
+using GZCTF.Features.SkillTrees.Api;
 using System.Data;
 using GZCTF.Features.ChallengeLibrary.Domain;
 using GZCTF.Features.LearningPaths.Domain;
@@ -14,19 +16,16 @@ public sealed class SkillTreeEnrollmentService(AppDbContext db)
     public async Task<IReadOnlyList<SkillTreeEnrollmentResponse>> ListAsync(
         Guid userId, CancellationToken token)
     {
-        return await db.SkillTreeEnrollments
-            .AsNoTracking()
-            .Where(enrollment => enrollment.UserId == userId &&
-                                 enrollment.SkillTree.DeletedAtUtc == null)
-            .OrderBy(enrollment => enrollment.EnrolledAtUtc)
-            .Select(enrollment => new SkillTreeEnrollmentResponse(
-                enrollment.Id,
-                enrollment.SkillTreeId,
-                enrollment.SkillTree.Name,
-                enrollment.SkillTree.IconKey,
-                enrollment.IsCurrent,
-                enrollment.EnrolledAtUtc))
-            .ToListAsync(token);
+        var enrollments = await db.SkillTreeEnrollments.AsNoTracking().Where(e => e.UserId == userId && e.SkillTree.DeletedAtUtc == null)
+            .OrderBy(e => e.EnrolledAtUtc).ToArrayAsync(token);
+        var query = new SkillTreeQueryService(db);
+        var result = new List<SkillTreeEnrollmentResponse>();
+        foreach (var enrollment in enrollments)
+        {
+            var tree = await query.GetPublishedAsync(enrollment.SkillTreeId, token);
+            if (tree is not null) result.Add(new(enrollment.Id, tree.SkillTreeId, tree.Name, tree.IconKey, enrollment.IsCurrent, enrollment.EnrolledAtUtc));
+        }
+        return result;
     }
 
     public async Task<SkillTreeEnrollmentResponse?> EnrollAsync(
@@ -76,8 +75,9 @@ public sealed class SkillTreeEnrollmentService(AppDbContext db)
             throw new SkillTreeRevisionConflictException();
         }
 
-        return new SkillTreeEnrollmentResponse(
-            enrollment.Id, tree.Id, tree.Name, tree.IconKey, enrollment.IsCurrent, enrollment.EnrolledAtUtc);
+        var publishedTree = await new SkillTreeQueryService(db).GetPublishedAsync(tree.Id, token);
+        return publishedTree is null ? null : new SkillTreeEnrollmentResponse(
+            enrollment.Id, tree.Id, publishedTree.Name, publishedTree.IconKey, enrollment.IsCurrent, enrollment.EnrolledAtUtc);
     }
 
     public async Task<bool> LeaveAsync(Guid userId, Guid skillTreeId, CancellationToken token)
@@ -118,9 +118,10 @@ public sealed class SkillTreeEnrollmentService(AppDbContext db)
             throw new SkillTreeRevisionConflictException();
         }
 
-        return new SkillTreeEnrollmentResponse(
-            enrollment.Id, enrollment.SkillTreeId, enrollment.SkillTree.Name,
-            enrollment.SkillTree.IconKey, enrollment.IsCurrent, enrollment.EnrolledAtUtc);
+        var publishedTree = await new SkillTreeQueryService(db).GetPublishedAsync(enrollment.SkillTreeId, token);
+        return publishedTree is null ? null : new SkillTreeEnrollmentResponse(
+            enrollment.Id, enrollment.SkillTreeId, publishedTree.Name,
+            publishedTree.IconKey, enrollment.IsCurrent, enrollment.EnrolledAtUtc);
     }
 
     /// <summary>
@@ -129,157 +130,36 @@ public sealed class SkillTreeEnrollmentService(AppDbContext db)
     public async Task<LessonAccess> GetLessonAccessAsync(
         Guid lessonId, CancellationToken token)
     {
-        var reachable = await db.SkillTreeRevisions
-            .Where(revision => revision.SkillTree.DeletedAtUtc == null &&
-                               revision.SkillTree.CurrentPublishedRevisionId == revision.Id)
-            .SelectMany(revision => revision.Categories)
-            .AnyAsync(reference => reference.Category.DeletedAtUtc == null &&
-                                   reference.Category.Skills.Any(skill => skill.Skill.DeletedAtUtc == null && skill.Skill.IsEnabled &&
-                                       skill.Skill.Contents.Any(content => content.LessonId == lessonId &&
-                                       content.Lesson!.PublicationState == LessonPublicationState.Published)), token);
+        var reachable = await GZCTF.Features.ChallengeRuntime.Application.PublishedCourseContentReader.ActiveContents(db)
+            .AnyAsync(content => content.Kind == "lesson" && content.ContentId == lessonId, token);
 
         return reachable ? LessonAccess.Allowed : LessonAccess.NotFound;
     }
 
     public async Task<MyLearningResponse> GetMyLearningAsync(Guid userId, CancellationToken token)
     {
-        var publishedTrees = await db.SkillTrees
-            .AsNoTracking()
-            .AsSplitQuery()
-            .Include(tree => tree.Revisions)
-                .ThenInclude(revision => revision.Categories)
-                    .ThenInclude(reference => reference.Category)
-            .Where(tree => tree.DeletedAtUtc == null && tree.CurrentPublishedRevisionId != null)
-            .OrderBy(tree => tree.Name)
-            .ThenBy(tree => tree.Id)
-            .ToListAsync(token);
-
-        var enrollments = await db.SkillTreeEnrollments
-            .AsNoTracking()
-            .AsSplitQuery()
-            .Include(enrollment => enrollment.SkillTree)
-                .ThenInclude(tree => tree.Revisions)
-                    .ThenInclude(revision => revision.Categories)
-                        .ThenInclude(reference => reference.Category)
-            .Where(enrollment => enrollment.UserId == userId)
-            .OrderBy(enrollment => enrollment.EnrolledAtUtc)
-            .ToListAsync(token);
-
-        var enrollmentByTree = enrollments.ToDictionary(enrollment => enrollment.SkillTreeId);
-        var visibleTrees = publishedTrees
-            .Select(tree => (Tree: tree, Enrollment: enrollmentByTree.GetValueOrDefault(tree.Id)))
-            .Concat(enrollments
-                .Where(enrollment => enrollment.SkillTree.DeletedAtUtc != null)
-                .Select(enrollment => (Tree: enrollment.SkillTree, Enrollment: (SkillTreeEnrollment?)enrollment)))
-            .GroupBy(item => item.Tree.Id)
-            .Select(group => group.First())
-            .ToList();
-
-        var revisions = visibleTrees
-            .Select(item => (item.Tree, item.Enrollment, Revision: ResolveRevision(item.Tree)))
-            .ToList();
-
-        var categoryIds = revisions
-            .SelectMany(item => (item.Revision?.Categories ?? [])
-                .Where(reference => reference.Category.DeletedAtUtc == null)
-                .Select(reference => reference.CategoryId))
-            .Distinct()
-            .ToList();
-
-        var contents = await SkillHierarchyReader.CategoryContents(db, categoryIds)
-            .ToListAsync(token);
-
-        var challengeIds = contents
-            .Where(content => content.ChallengeId is not null)
-            .Select(content => content.ChallengeId!.Value).Distinct().ToList();
-        var lessonIds = contents
-            .Where(content => content.LessonId is not null)
-            .Select(content => content.LessonId!.Value).Distinct().ToList();
-
-        var challenges = await db.Challenges
-            .AsNoTracking()
-            .Where(challenge => challengeIds.Contains(challenge.Id))
-            .Select(challenge => new
-            {
-                challenge.Id,
-                challenge.PublicationState,
-                challenge.IsEnabled
-            })
-            .ToDictionaryAsync(item => item.Id, token);
-        var lessons = await db.Lessons
-            .AsNoTracking()
-            .Where(lesson => lessonIds.Contains(lesson.Id))
-            .Select(lesson => new { lesson.Id, lesson.PublicationState })
-            .ToDictionaryAsync(item => item.Id, token);
-
-        var activeContents = contents.Where(content =>
-            content.ChallengeId is { } challengeId &&
-            challenges.TryGetValue(challengeId, out var challenge) &&
-            challenge.PublicationState == ChallengePublicationState.Published && challenge.IsEnabled ||
-            content.LessonId is { } lessonId &&
-            lessons.TryGetValue(lessonId, out var lesson) &&
-            lesson.PublicationState == LessonPublicationState.Published).ToList();
-
-        var completedChallenges = (await db.ChallengeProgress
-            .AsNoTracking()
-            .Where(progress => progress.UserId == userId)
-            .Select(progress => progress.ChallengeId)
-            .ToHashSetAsync(token));
-        var completedLessons = (await db.LessonProgress
-            .AsNoTracking()
-            .Where(progress => progress.UserId == userId)
-            .Select(progress => progress.LessonId)
-            .ToHashSetAsync(token));
-
-        var records = revisions.Select(item =>
+        var rows = await (from tree in db.SkillTrees.AsNoTracking()
+            join version in db.CoursePublishedVersions.AsNoTracking() on tree.CurrentPublishedRevisionId equals version.Id
+            select new { tree.Id, tree.DeletedAtUtc, version.PublicDocumentJson }).ToArrayAsync(token);
+        var enrollments = await db.SkillTreeEnrollments.AsNoTracking().Where(e => e.UserId == userId).ToArrayAsync(token);
+        var enrollmentByTree = enrollments.ToDictionary(e => e.SkillTreeId);
+        var completedChallenges = await db.ChallengeProgress.AsNoTracking().Where(p => p.UserId == userId).Select(p => p.ChallengeId).ToHashSetAsync(token);
+        var completedLessons = await db.LessonProgress.AsNoTracking().Where(p => p.UserId == userId).Select(p => p.LessonId).ToHashSetAsync(token);
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var records = rows.Where(r => r.DeletedAtUtc == null || enrollmentByTree.ContainsKey(r.Id)).Select(row =>
         {
-            var tree = item.Tree;
-            var activeCategories = (item.Revision?.Categories ?? [])
-                .Where(reference => reference.Category.DeletedAtUtc == null)
-                .ToList();
-            var treeContents = activeContents
-                .Where(content => activeCategories.Any(reference => reference.CategoryId == content.CategoryId))
-                .ToList();
-            var treeChallengeIds = treeContents
-                .Where(content => content.ChallengeId is not null)
-                .Select(content => content.ChallengeId!.Value).Distinct().ToList();
-            var treeLessonIds = treeContents
-                .Where(content => content.LessonId is not null)
-                .Select(content => content.LessonId!.Value).Distinct().ToList();
-
-            var completedCategoryCount = activeCategories.Count(reference =>
-            {
-                var categoryContents = treeContents
-                    .Where(content => content.CategoryId == reference.CategoryId)
-                    .ToList();
-                if (categoryContents.Count == 0)
-                    return false;
-                return categoryContents.All(content =>
-                    content.ChallengeId is { } challengeId
-                        ? completedChallenges.Contains(challengeId)
-                        : content.LessonId is { } lessonId && completedLessons.Contains(lessonId));
-            });
-
-            return new MySkillTreeRecordResponse(
-                tree.Id,
-                tree.Name,
-                tree.IconKey,
-                item.Enrollment?.IsCurrent == true && tree.DeletedAtUtc == null,
-                tree.DeletedAtUtc != null,
-                activeCategories.Count,
-                completedCategoryCount,
-                treeChallengeIds.Count,
-                treeChallengeIds.Count(completedChallenges.Contains),
-                treeLessonIds.Count,
-                treeLessonIds.Count(completedLessons.Contains));
-        }).ToArray();
-
-        var currentSkillTreeId = records
-            .FirstOrDefault(record => record.IsCurrent)?.SkillTreeId;
-
-        var recentActivity = await BuildRecentActivityAsync(userId, token);
-
-        return new MyLearningResponse(currentSkillTreeId, records, recentActivity);
+            var doc = JsonSerializer.Deserialize<CourseDocument>(row.PublicDocumentJson, options)!;
+            var detail = SkillTreeQueryService.ToDetail(row.Id, doc);
+            var all = detail.Categories.SelectMany(c => c.Contents).DistinctBy(c => (c.Kind, c.ContentId)).ToArray();
+            bool Completed(SkillTreeContentSummaryResponse content) => content.Kind == "lesson" ? completedLessons.Contains(content.ContentId) : completedChallenges.Contains(content.ContentId);
+            var challenges = all.Where(c => c.Kind == "challenge").ToArray(); var lessons = all.Where(c => c.Kind == "lesson").ToArray();
+            var enrollment = enrollmentByTree.GetValueOrDefault(row.Id);
+            return new MySkillTreeRecordResponse(row.Id, detail.Name, detail.IconKey, enrollment?.IsCurrent == true && row.DeletedAtUtc == null,
+                row.DeletedAtUtc != null, detail.Categories.Count, detail.Categories.Count(c => c.Contents.Count > 0 && c.Contents.All(Completed)),
+                challenges.Length, challenges.Count(Completed), lessons.Length, lessons.Count(Completed));
+        }).OrderBy(r => r.Name).ThenBy(r => r.SkillTreeId).ToArray();
+        var current = records.FirstOrDefault(r => r.IsCurrent)?.SkillTreeId;
+        return new MyLearningResponse(current, records, await BuildRecentActivityAsync(userId, token));
     }
 
     public async Task<SkillTreeProgressResponse?> GetTreeProgressAsync(Guid userId, Guid treeId, CancellationToken token)
@@ -321,18 +201,18 @@ public sealed class SkillTreeEnrollmentService(AppDbContext db)
             .Take(RecentActivityLimit)
             .ToListAsync(token);
 
-        return lessons
-            .Select(progress => new RecentLearningActivityResponse(
-                "lesson", progress.LessonId,
-                PickTitle(progress.Lesson?.Localizations.Select(item => (item.Locale, item.Title))),
-                progress.CompletedAtUtc, null))
-            .Concat(challenges.Select(progress => new RecentLearningActivityResponse(
-                "challenge", progress.ChallengeId,
-                PickTitle(progress.Challenge?.Localizations.Select(item => (item.Locale, item.Title))),
-                progress.SolvedAtUtc, progress.SolveMode.ToString())))
-            .OrderByDescending(item => item.CompletedAtUtc)
-            .Take(RecentActivityLimit)
-            .ToArray();
+        var titles = new Dictionary<(string Kind, Guid Id), string>();
+        foreach (var tree in await new SkillTreeQueryService(db).ListPublishedAsync(token))
+        {
+            var detail = await new SkillTreeQueryService(db).GetPublishedAsync(tree.SkillTreeId, token);
+            if (detail is null) continue;
+            foreach (var content in detail.Categories.SelectMany(c => c.Contents)) titles.TryAdd((content.Kind, content.ContentId), content.Title);
+        }
+        return lessons.Select(p => new RecentLearningActivityResponse("lesson", p.LessonId,
+                titles.GetValueOrDefault(("lesson", p.LessonId), "Lesson"), p.CompletedAtUtc, null))
+            .Concat(challenges.Select(p => new RecentLearningActivityResponse("challenge", p.ChallengeId,
+                titles.GetValueOrDefault(("challenge", p.ChallengeId), "Challenge"), p.SolvedAtUtc, p.SolveMode.ToString())))
+            .OrderByDescending(item => item.CompletedAtUtc).Take(RecentActivityLimit).ToArray();
     }
 
     private static SkillTreeRevision? ResolveRevision(SkillTree tree)

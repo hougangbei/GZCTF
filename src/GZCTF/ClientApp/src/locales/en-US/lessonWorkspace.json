@@ -48,7 +48,7 @@
   "saving": "Saving…",
   "unsaved": "Unsaved changes",
   "publishSettings": "Publication settings",
-  "publishedWarning": "Saving updates the text currently visible to students. Publication settings control category placement, not a separate revision.",
+  "publishedWarning": "Saving updates the library draft. Learners keep the published version until the course adopts and publishes the changes.",
   "storageFailed": "Local draft recovery is unavailable. Save to the server before leaving.",
   "draftFound": "Unsaved local draft found",
   "restoreDraft": "Restore local draft",

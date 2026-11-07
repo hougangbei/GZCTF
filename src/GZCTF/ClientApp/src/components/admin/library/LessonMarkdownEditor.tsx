@@ -3,6 +3,7 @@ import { useDeferredValue, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@Components/MarkdownRenderer'
 import { insertMarkdown } from '@Utils/lessonMarkdown'
+import { courseRequest } from '@Hooks/useCourseAuthoring'
 import api from '@Api'
 import classes from './LessonEditor.module.css'
 
@@ -11,9 +12,19 @@ type Props = {
   value: string
   onChange: (value: string) => void
   disabled: boolean
+  contentId?: string
+  courseId?: string
   onBusyChange?: (busy: boolean) => void
 }
-export const LessonMarkdownEditor = ({ title, value, onChange, disabled, onBusyChange }: Props) => {
+export const LessonMarkdownEditor = ({
+  title,
+  value,
+  onChange,
+  disabled,
+  onBusyChange,
+  courseId,
+  contentId,
+}: Props) => {
   const { t } = useTranslation('lessonWorkspace')
   const previewValue = useDeferredValue(value)
   const [mode, setMode] = useState('split')
@@ -67,13 +78,31 @@ export const LessonMarkdownEditor = ({ title, value, onChange, disabled, onBusyC
     // Keep the insertion point stable while the request is in flight.
     const position = textarea.current?.selectionStart ?? latestValue.current.length
     try {
-      const response = await api.assets.assetsUpload({ files })
+      const form = new FormData()
+      files.forEach((file) => form.append('files', file))
+      const response = courseId
+        ? {
+            data: await courseRequest<{ hash: string; name: string; url: string }[]>(
+              `/api/admin/skill-trees/${courseId}/workspace/assets`,
+              form,
+              'POST'
+            ),
+          }
+        : contentId
+          ? {
+              data: await courseRequest<{ hash: string; name: string; url: string }[]>(
+                `/api/admin/content-assets?kind=lesson&contentId=${encodeURIComponent(contentId)}`,
+                form,
+                'POST'
+              ),
+            }
+          : await api.assets.assetsUpload({ files })
       if (!mounted.current) return
       if (!response.data.length || response.data.some((file) => !file.hash)) throw new Error('Missing upload result')
       const markdown = response.data
         .map(
           (file) =>
-            `![${file.name.replace(/[\[\]\\\r\n]/g, '')}](/assets/${encodeURIComponent(file.hash!)}/${encodeURIComponent(file.name)})`
+            `![${file.name.replace(/[\[\]\\\r\n]/g, '')}](${'url' in file ? file.url : `/assets/${encodeURIComponent(file.hash!)}/${encodeURIComponent(file.name)}`})`
         )
         .join('\n')
       latestChange.current(

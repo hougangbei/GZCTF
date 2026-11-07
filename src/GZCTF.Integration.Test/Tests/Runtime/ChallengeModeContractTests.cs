@@ -600,6 +600,7 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
         await db.SkillTrees.Where(item => item.Id == treeId)
             .ExecuteUpdateAsync(setters =>
                 setters.SetProperty(item => item.CurrentPublishedRevisionId, revisionId));
+        await db.SaveRuntimeFixtureAsync();
 
         return (treeId, challengeId);
     }

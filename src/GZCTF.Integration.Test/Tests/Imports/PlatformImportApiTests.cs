@@ -200,6 +200,11 @@ public class PlatformImportApiTests(GZCTFApplicationFactory factory)
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var id = await db.PlatformImportMaps.Where(item => item.SourceInstance == source && item.Kind == "challenge").Select(item => item.TargetId).SingleAsync();
+        var treeId = await db.SkillTreeCategoryRefs.Where(r => r.Category.Skills.Any(s => s.Skill.Contents.Any(c => c.ChallengeId == id)))
+            .Select(r => r.Revision.SkillTreeId).FirstAsync();
+        var workspace = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/skill-trees/{treeId}/workspace");
+        var publication = await admin.PostAsJsonAsync($"/api/admin/skill-trees/{treeId}/workspace/publish", new { version = workspace.GetProperty("version").GetString() });
+        publication.EnsureSuccessStatusCode();
         using var response = await admin.PostAsJsonAsync($"/api/challenges/{id}/submissions", new { flag = "FLAG{ACCOUNT-FIXTURE}" });
         response.EnsureSuccessStatusCode();
         Assert.True((await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("accepted").GetBoolean());

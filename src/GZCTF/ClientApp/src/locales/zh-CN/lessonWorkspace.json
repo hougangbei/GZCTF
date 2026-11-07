@@ -48,7 +48,7 @@
   "saving": "正在保存…",
   "unsaved": "有未保存的修改",
   "publishSettings": "发布设置",
-  "publishedWarning": "保存会更新学生当前可见的已发布正文。发布设置用于选择所属类别，并不是独立的发布版本。",
+  "publishedWarning": "当前编辑只保存在资源库草稿中，不会立即改变学员可见正文。请在课程编排中更新引用并统一发布。",
   "storageFailed": "本机草稿暂时无法保存，请在离开前手动保存到服务器。",
   "draftFound": "发现本机未保存草稿",
   "restoreDraft": "恢复本机草稿",

@@ -138,7 +138,7 @@ test('static challenge uploads a handout and publishes into a selected tree cate
     route.fulfill({ json: [{ skillId, name: 'Handout analysis', summary: '', iconKey: 'flag',
       isEnabled: true, rowVersion: 1, categories: [{ categoryId, name: 'Web Basics' }], contents: [] }] })
   )
-  await page.route('**/api/assets', (route) => route.fulfill({ json: [{ hash, name: 'handout.txt' }] }))
+  await page.route('**/api/admin/content-assets?kind=challenge&contentId=*', (route) => route.fulfill({ json: [{ hash, name: 'handout.txt',storageKey:`content-assets/challenge/${challengeId.replaceAll('-','')}/${hash}`,url:`/api/admin/content-assets/challenge/${challengeId}/${hash}/handout.txt` }] }))
   await page.route(`**/api/admin/challenges/${challengeId}/edit**`, (route) => route.fulfill({ json: edit }))
   await page.route(`**/api/admin/challenges/${challengeId}`, (route) => {
     saved = route.request().postDataJSON()
@@ -171,7 +171,7 @@ test('static challenge uploads a handout and publishes into a selected tree cate
 
   expect(saved?.flags).toEqual([{ kind: 'Static', value: 'flag{handout}' }])
   expect(JSON.parse(String(saved?.runtimeConfigurationJson))).toMatchObject({
-    Attachments: [{ FileName: 'handout.txt', StorageKey: `uploads/aa/aa/${hash}`, Sha256: hash }],
+    Attachments: [{ FileName: 'handout.txt', StorageKey: `content-assets/challenge/${challengeId.replaceAll('-','')}/${hash}`, Sha256: hash }],
   })
   expect(published).toMatchObject({ rowVersion: 2, categoryIds: [], skillIds: [skillId], inlineSkills: [] })
 })
@@ -263,9 +263,9 @@ test('dynamic attachments keep a separate Flag for each uploaded file', async ({
     localizations: [{ locale: 'en', title: 'Attachment pool', summary: '', body: '' }],
     flags: [], hints: [], writeups: [], publication: { rowVersion: 1, categoryIds: [] },
   } }))
-  await page.route('**/api/assets', (route) => {
+  await page.route('**/api/admin/content-assets?kind=challenge&contentId=*', (route) => {
     uploads += 1
-    return route.fulfill({ json: [{ hash: String(uploads).repeat(64), name: `file-${uploads}.txt` }] })
+    return route.fulfill({ json: [{ hash: String(uploads).repeat(64), name: `file-${uploads}.txt`, storageKey:`content-assets/challenge/${challengeId.replaceAll('-','')}/${String(uploads).repeat(64)}` }] })
   })
   await page.route(`**/api/admin/challenges/${challengeId}`, (route) => {
     saved = route.request().postDataJSON()

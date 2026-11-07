@@ -1,3 +1,4 @@
+using GZCTF.Integration.Test.Tests.Runtime;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
@@ -51,10 +52,14 @@ public sealed class CtfdWhaleRuntimeTests(GZCTFApplicationFactory factory)
         // The recording adapter never resolves Docker/Kubernetes or launches a source image.
         var adapter = new RecordingRuntime();
         var runtime = new ChallengeRuntimeService(db, adapter, services.GetRequiredService<LearningInstanceSettingsService>());
-        var first = await runtime.StartAsync(user.Id, id);
+        var first = await runtime.StartAsync(user.Id, id, allowDraft: true);
         var firstFlag = first.AssignedFlag;
         AssertWhaleRequest(adapter.LastRequest!, firstFlag);
         await runtime.StopAsync(user.Id, id);
+        // End the administrator-only draft test before opening a published learner instance.
+        challenge.PublicationState = ChallengePublicationState.Published;
+        await db.SaveChangesAsync();
+        await PublishedRuntimeSnapshotTests.PublishAsync(db, challenge);
         var second = await runtime.StartAsync(user.Id, id);
         Assert.NotEqual(firstFlag, second.AssignedFlag);
         AssertWhaleRequest(adapter.LastRequest!, second.AssignedFlag);

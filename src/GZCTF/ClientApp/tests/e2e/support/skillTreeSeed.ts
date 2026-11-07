@@ -158,6 +158,14 @@ export async function publishContent(
     data: { rowVersion, skillIds, inlineSkills: [], categoryIds: [], inlineCategories: [] },
   })
   expect(response.ok()).toBeTruthy()
+  // Library publication prepares reusable content; each course snapshot needs an explicit publish.
+  const categoriesResponse=await page.request.get('/api/admin/skill-categories')
+  expect(categoriesResponse.ok()).toBeTruthy()
+  const skillsResponse=await page.request.get('/api/admin/skills')
+  expect(skillsResponse.ok()).toBeTruthy()
+  const skillCategories=new Set((await skillsResponse.json()).filter((skill:{skillId:string})=>skillIds.includes(skill.skillId)).flatMap((skill:{categories:{categoryId:string}[]})=>skill.categories.map(category=>category.categoryId)))
+  const affectedTrees=new Set<string>((await categoriesResponse.json()).filter((category:{categoryId:string})=>skillCategories.has(category.categoryId)).flatMap((category:{trees:{skillTreeId:string}[]})=>category.trees.map(tree=>tree.skillTreeId)))
+  for(const treeId of affectedTrees)await publishTree(page,treeId)
 }
 
 /**

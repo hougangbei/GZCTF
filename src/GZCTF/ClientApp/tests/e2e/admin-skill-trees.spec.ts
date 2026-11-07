@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { createRoleContext } from './support/auth'
-import { attachSkills, createSkill } from './support/skillTreeSeed'
+import { attachSkills, createSkill, publishTree } from './support/skillTreeSeed'
 
 test.describe('skill tree administration', () => {
   test('administrator manages skill trees, categories and shared content', async ({ browser }) => {
@@ -81,14 +81,15 @@ test.describe('skill tree administration', () => {
       expect((await verification.json()).publication).toMatchObject({
         publicationState: 'Published', skillIds: [skillId],
       })
+      await publishTree(page, treeId)
     }
 
-    // 1. Create and publish an empty skill tree through the workspace modal.
-    await page.goto('/admin/skill-trees')
-    await page.getByRole('button', { name: 'Create skill tree' }).first().click()
-    await page.getByRole('textbox', { name: 'Name' }).fill(treeName)
-    await page.getByRole('button', { name: 'Create', exact: true }).click()
-    await expect(page).toHaveURL(/\/admin\/skill-trees\/[0-9a-f-]+/i)
+    // The retained legacy editor has a separate compatibility journey; the new
+    // default course workflow is covered end-to-end by course-authoring-live.spec.ts.
+    const treeResponse=await page.request.post('/api/admin/skill-trees',{data:{name:treeName,summary:'',iconKey:'flag'}})
+    expect(treeResponse.ok()).toBeTruthy()
+    const treeId=(await treeResponse.json()).skillTreeId as string
+    await page.goto(`/admin/skill-trees/${treeId}?legacy=1`)
     await page.getByRole('button', { name: 'Publish', exact: true }).click()
     await expect(page.getByText('Skill tree published')).toBeVisible({ timeout: 10_000 })
 
@@ -101,7 +102,7 @@ test.describe('skill tree administration', () => {
 
     // 3. Add both to the tree, reorder categories and publish.
     await page.goto('/admin/skill-trees')
-    await page.getByText(treeName).first().click()
+    await page.goto(`/admin/skill-trees/${treeId}?legacy=1`)
     await addCategoryToTree(categoryA)
     await addCategoryToTree(categoryB)
     await page.getByRole('button', { name: `Move up: ${categoryB}` }).click()
@@ -141,7 +142,7 @@ test.describe('skill tree administration', () => {
     await expect(page.getByText('保存成功')).toBeVisible({ timeout: 10_000 })
 
     await page.goto('/admin/skill-trees')
-    await page.getByText(treeName).first().click()
+    await page.goto(`/admin/skill-trees/${treeId}?legacy=1`)
     const [previewResponse] = await Promise.all([
       page.waitForResponse((response) => response.url().includes('/draft/preview')),
       page.getByRole('button', { name: 'Preview draft' }).click(),
@@ -184,7 +185,7 @@ test.describe('skill tree administration', () => {
 
     // 9. Delete the skill tree using its typed name.
     await page.goto('/admin/skill-trees')
-    await page.getByText(treeName).first().click()
+    await page.goto(`/admin/skill-trees/${treeId}?legacy=1`)
     await page.getByRole('button', { name: 'Delete skill tree' }).click()
     await page.getByRole('textbox', { name: 'Confirmation name' }).fill(treeName)
     await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click()

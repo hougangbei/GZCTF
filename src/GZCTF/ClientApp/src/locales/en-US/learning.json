@@ -157,5 +157,6 @@
   "addressCopied": "Copied",
   "openChallenge": "Open challenge",
   "copyFailed": "Copy failed. Select the address above and copy it manually.",
-  "tcpConnectionHint": "Connect to this address with a TCP client."
+  "tcpConnectionHint": "Connect to this address with a TCP client.",
+  "testInstanceNoCredit": "Administrator test instances do not award progress or points. Stop the test instance before using the published challenge."
 }

@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GZCTF.Features.SkillTrees.Application;
 
-public sealed class AdminSkillTreeService(AppDbContext db, ISkillTreeCacheInvalidator cacheInvalidator)
+public sealed class AdminSkillTreeService(AppDbContext db, ISkillTreeCacheInvalidator cacheInvalidator,
+    GZCTF.Storage.Interface.IBlobStorage storage, CoursePublicationService publication, CourseAssetRegistry assetRegistry)
 {
     public async Task<AdminSkillTreeResponse> CreateAsync(CreateSkillTreeCommand command, CancellationToken token)
     {
@@ -99,6 +100,8 @@ public sealed class AdminSkillTreeService(AppDbContext db, ISkillTreeCacheInvali
 
         if (command.RowVersion != draft.RowVersion)
             throw new SkillTreeRevisionConflictException();
+        if (await db.CourseAuthoringWorkspaces.AnyAsync(w => w.SkillTreeId == treeId, token))
+            throw new SkillTreeRevisionConflictException();
 
         tree.Name = command.Name.Trim();
         tree.Summary = command.Summary.Trim();
@@ -183,6 +186,40 @@ public sealed class AdminSkillTreeService(AppDbContext db, ISkillTreeCacheInvali
         draft.PublishedAtUtc = DateTimeOffset.UtcNow;
         tree.CurrentPublishedRevisionId = draft.Id;
         tree.CurrentPublishedRevision = draft;
+        if (await db.CourseAuthoringWorkspaces.AnyAsync(w => w.SkillTreeId == treeId, token))
+            throw new SkillTreeRevisionConflictException();
+        var snapshot = await CourseSnapshotBuilder.CaptureCurrentAsync(db, treeId, draft.Id, token);
+        try { await assetRegistry.LockReferencedAssetsAsync(db, string.Join("\n", snapshot.Contents.Select(c => c.PayloadJson)), token); }
+        catch (CourseAssetUnavailableException) { throw new SkillTreeValidationException("A referenced private file is missing."); }
+        foreach (var item in snapshot.Contents)
+        {
+            var issues = new List<CoursePublicationIssue>();
+            if (item.Kind == "lesson")
+            {
+                var lesson = GZCTF.Features.ChallengeRuntime.Application.PublishedCourseContentReader.ReadLesson(item.PayloadJson);
+                if (!lesson.Localizations.Any(l => !string.IsNullOrWhiteSpace(l.Title))) throw new SkillTreeValidationException("A lesson needs a title.");
+                await publication.ValidateBodyAssetsAsync(treeId, "lesson", item.ContentId, lesson.Localizations.Select(l => l.Body), issues, token);
+            }
+            else
+            {
+                var challenge = GZCTF.Features.ChallengeRuntime.Application.PublishedCourseContentReader.ReadChallenge(item.PayloadJson);
+                if (!challenge.Localizations.Any(l => !string.IsNullOrWhiteSpace(l.Title)) || challenge.Localizations.Any(l => string.IsNullOrWhiteSpace(l.Body)))
+                    throw new SkillTreeValidationException("A challenge needs a title and description.");
+                try { await ChallengePublicationValidator.ValidateAsync(challenge, storage, token); }
+                catch (ContentPublicationValidationException ex) { throw new SkillTreeValidationException(ex.Message); }
+                await publication.ValidateBodyAssetsAsync(treeId, "challenge", item.ContentId, challenge.Localizations.Select(l => l.Body), issues, token);
+            }
+            if (issues.Count != 0) throw new SkillTreeValidationException(issues[0].Message);
+        }
+        foreach (var item in snapshot.Contents.Where(c => c.Kind == "challenge"))
+        {
+            var fingerprint = CoursePublicationService.RuntimeFingerprint(GZCTF.Features.ChallengeRuntime.Application.PublishedCourseContentReader.ReadChallenge(item.PayloadJson));
+            var otherPayloads = await GZCTF.Features.ChallengeRuntime.Application.PublishedCourseContentReader.ActiveContents(db)
+                .Where(c => c.Kind == "challenge" && c.ContentId == item.ContentId && c.Version.SkillTreeId != treeId)
+                .Select(c => c.PayloadJson).ToArrayAsync(token);
+            if (otherPayloads.Any(payload => CoursePublicationService.RuntimeFingerprint(GZCTF.Features.ChallengeRuntime.Application.PublishedCourseContentReader.ReadChallenge(payload)) != fingerprint))
+                throw new SkillTreeValidationException("A shared challenge conflicts with another published course.");
+        }
 
         try
         {

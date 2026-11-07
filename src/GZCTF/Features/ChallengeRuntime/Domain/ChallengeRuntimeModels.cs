@@ -32,6 +32,7 @@ public sealed class UserChallengeInstance
     public string? AssignedAttachmentSha256 { get; set; }
     public string? AssignedFlag { get; set; }
     public string? RuntimeMetadataJson { get; set; }
+    public string? PublishedChallengeJson { get; set; }
     public List<ChallengeSubmission> Submissions { get; set; } = [];
     public List<ChallengeHelpUsage> HelpUsages { get; set; } = [];
 }

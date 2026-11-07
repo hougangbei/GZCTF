@@ -15,7 +15,8 @@ using CanonicalChallenge = GZCTF.Features.ChallengeLibrary.Domain.Challenge;
 namespace GZCTF.Features.ChallengeLibrary.Application;
 
 public sealed class ChallengeLibraryService(
-    AppDbContext db, IChallengeMergeConflictChecker conflictChecker, QqBotNotifier qqBot)
+    AppDbContext db, IChallengeMergeConflictChecker conflictChecker, QqBotNotifier qqBot,
+    CourseAssetRegistry assetRegistry)
 {
     public async Task<ChallengeEditResponse> CreateChallengeAsync(
         ChallengeCommand command, CancellationToken token)
@@ -68,6 +69,8 @@ public sealed class ChallengeLibraryService(
     public async Task<ChallengeEditResponse?> UpdateChallengeAsync(
         Guid id, ChallengeCommand command, CancellationToken token)
     {
+        await using var transaction = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(token) : null;
+        await assetRegistry.LockReferencedAssetsAsync(db, JsonSerializer.Serialize(command), token);
         var challenge = await db.Challenges
             .Include(item => item.Localizations)
             .Include(item => item.Flags)
@@ -97,6 +100,7 @@ public sealed class ChallengeLibraryService(
         try
         {
             await db.SaveChangesAsync(token);
+            if (transaction is not null) await transaction.CommitAsync(token);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -168,6 +172,8 @@ public sealed class ChallengeLibraryService(
     public async Task<LessonResponse?> UpdateLessonAsync(
         Guid id, LessonCommand command, CancellationToken token)
     {
+        await using var transaction = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(token) : null;
+        await assetRegistry.LockReferencedAssetsAsync(db, JsonSerializer.Serialize(command), token);
         var lesson = await db.Lessons
             .Include(item => item.Localizations)
             .SingleOrDefaultAsync(item => item.Id == id, token);
@@ -176,6 +182,7 @@ public sealed class ChallengeLibraryService(
 
         ApplyLessonCommand(lesson, command, isCreate: false);
         await db.SaveChangesAsync(token);
+        if (transaction is not null) await transaction.CommitAsync(token);
         var categoryIds = await LoadCategoryIdsAsync(null, id, token);
         return ToLessonResponse(lesson, command.Locale, categoryIds);
     }
@@ -297,7 +304,7 @@ public sealed class ChallengeLibraryService(
         await db.LearnerDailySolveStats.AddRangeAsync(rebuilt, token);
     }
 
-    private static void ApplyChallengeCommand(CanonicalChallenge challenge, ChallengeCommand command, bool isCreate)
+    internal static void ApplyChallengeCommand(CanonicalChallenge challenge, ChallengeCommand command, bool isCreate)
     {
         if (command.Type is { } type)
             challenge.Type = type;
@@ -379,7 +386,7 @@ public sealed class ChallengeLibraryService(
         }
     }
 
-    private static void ApplyLessonCommand(Lesson lesson, LessonCommand command, bool isCreate)
+    internal static void ApplyLessonCommand(Lesson lesson, LessonCommand command, bool isCreate)
     {
         if (command.Localizations is not null)
         {
@@ -414,7 +421,7 @@ public sealed class ChallengeLibraryService(
             challenge.SourceName);
     }
 
-    private static ChallengeEditResponse ToEditResponse(
+    internal static ChallengeEditResponse ToEditResponse(
         CanonicalChallenge challenge, string? locale, IReadOnlyList<Guid> categoryIds)
     {
         var summary = ToSummaryResponse(challenge, locale);
@@ -433,7 +440,7 @@ public sealed class ChallengeLibraryService(
                 challenge.RowVersion, challenge.PublicationState.ToString(), categoryIds));
     }
 
-    private static LessonResponse ToLessonResponse(
+    internal static LessonResponse ToLessonResponse(
         Lesson lesson, string? locale, IReadOnlyList<Guid> categoryIds)
     {
         var localization = SelectLocalization(lesson.Localizations, locale, item => item.Locale);
@@ -559,6 +566,7 @@ public sealed class ChallengeWriteupCommand
 
 public sealed class LessonCommand
 {
+    public uint? RowVersion { get; set; }
     public string? Locale { get; set; }
     public List<LessonLocalizationCommand>? Localizations { get; set; }
 }

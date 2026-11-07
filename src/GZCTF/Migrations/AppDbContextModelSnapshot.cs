@@ -441,8 +441,6 @@ namespace GZCTF.Migrations
 
                     b.HasIndex("ChallengeId");
 
-                    b.HasIndex("HintId");
-
                     b.HasIndex("InstanceId");
 
                     b.HasIndex("UserId", "ChallengeId")
@@ -578,6 +576,8 @@ namespace GZCTF.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("PublishedChallengeJson").HasColumnType("text");
 
                     b.Property<string>("RuntimeMetadataJson")
                         .HasColumnType("jsonb");
@@ -1942,6 +1942,70 @@ namespace GZCTF.Migrations
 
                             t.HasCheckConstraint("CK_SkillContents_Order", "\"SortOrder\" >= 0");
                         });
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CoursePublishedVersion", b =>
+                {
+                    b.Property<Guid>("Id").HasColumnType("uuid");
+                    b.Property<Guid>("SkillTreeId").HasColumnType("uuid");
+                    b.Property<string>("PublicDocumentJson").IsRequired().HasColumnType("text");
+                    b.Property<string>("CoverStorageKey").HasColumnType("text");
+                    b.Property<DateTimeOffset>("PublishedAtUtc").HasColumnType("timestamp with time zone");
+                    b.HasKey("Id");
+                    b.HasIndex("SkillTreeId");
+                    b.ToTable("CoursePublishedVersions");
+                });
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CoursePublishedContent", b =>
+                {
+                    b.Property<Guid>("Id").HasColumnType("uuid");
+                    b.Property<Guid>("VersionId").HasColumnType("uuid");
+                    b.Property<Guid>("ContentId").HasColumnType("uuid");
+                    b.Property<string>("Kind").IsRequired().HasMaxLength(16).HasColumnType("character varying(16)");
+                    b.Property<string>("PayloadJson").IsRequired().HasColumnType("text");
+                    b.HasKey("Id");
+                    b.HasIndex("VersionId", "Kind", "ContentId").IsUnique();
+                    b.ToTable("CoursePublishedContents");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseWorkspaceContent", b =>
+                {
+                    b.Property<Guid>("SkillTreeId").HasColumnType("uuid");
+                    b.Property<string>("Kind").HasMaxLength(16).HasColumnType("character varying(16)");
+                    b.Property<Guid>("ContentId").HasColumnType("uuid");
+                    b.Property<int>("Version").IsConcurrencyToken().HasColumnType("integer");
+                    b.Property<string>("PayloadJson").IsRequired().HasColumnType("text");
+                    b.HasKey("SkillTreeId", "Kind", "ContentId");
+                    b.ToTable("CourseWorkspaceContents");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseNodeOperation", b =>
+                {
+                    b.Property<Guid>("SkillTreeId").HasColumnType("uuid");
+                    b.Property<Guid>("OperationId").HasColumnType("uuid");
+                    b.Property<string>("RequestHash").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)");
+                    b.Property<string>("ResponseJson").IsRequired().HasColumnType("text");
+                    b.HasKey("SkillTreeId", "OperationId");
+                    b.ToTable("CourseNodeOperations");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseStoredAsset", b =>
+                {
+                    b.Property<string>("StorageKey").HasMaxLength(512).HasColumnType("character varying(512)");
+                    b.Property<string>("ReferenceToken").IsRequired().HasMaxLength(512).HasColumnType("character varying(512)");
+                    b.Property<DateTimeOffset>("LastTouchedUtc").HasColumnType("timestamp with time zone");
+                    b.HasKey("StorageKey");
+                    b.HasIndex("LastTouchedUtc");
+                    b.ToTable("CourseStoredAssets");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseAuthoringWorkspace", b =>
+                {
+                    b.Property<Guid>("SkillTreeId").HasColumnType("uuid");
+                    b.Property<string>("DocumentJson").IsRequired().HasColumnType("text");
+                    b.Property<string>("CoverStorageKey").HasColumnType("text");
+                    b.Property<Guid>("Version").IsConcurrencyToken().HasColumnType("uuid");
+                    b.HasKey("SkillTreeId");
+                    b.ToTable("CourseAuthoringWorkspaces");
                 });
 
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillTree", b =>
@@ -3400,11 +3464,6 @@ namespace GZCTF.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("GZCTF.Features.ChallengeLibrary.Domain.ChallengeHint", "Hint")
-                        .WithMany()
-                        .HasForeignKey("HintId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("GZCTF.Features.ChallengeRuntime.Domain.UserChallengeInstance", "Instance")
                         .WithMany("HelpUsages")
                         .HasForeignKey("InstanceId")
@@ -3417,8 +3476,6 @@ namespace GZCTF.Migrations
                         .IsRequired();
 
                     b.Navigation("Challenge");
-
-                    b.Navigation("Hint");
 
                     b.Navigation("Instance");
 
@@ -3869,6 +3926,45 @@ namespace GZCTF.Migrations
                     b.Navigation("Lesson");
 
                     b.Navigation("Skill");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CoursePublishedVersion", b =>
+                {
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.SkillTree", "SkillTree").WithMany()
+                        .HasForeignKey("SkillTreeId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                    b.Navigation("SkillTree");
+                });
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CoursePublishedContent", b =>
+                {
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.CoursePublishedVersion", "Version").WithMany("Contents")
+                        .HasForeignKey("VersionId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                    b.Navigation("Version");
+                });
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CoursePublishedVersion", b =>
+                {
+                    b.Navigation("Contents");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseWorkspaceContent", b =>
+                {
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.CourseAuthoringWorkspace", "Workspace").WithMany()
+                        .HasForeignKey("SkillTreeId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                    b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseNodeOperation", b =>
+                {
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.CourseAuthoringWorkspace", "Workspace").WithMany()
+                        .HasForeignKey("SkillTreeId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                    b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseAuthoringWorkspace", b =>
+                {
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.SkillTree", "SkillTree")
+                        .WithOne().HasForeignKey("GZCTF.Features.SkillTrees.Domain.CourseAuthoringWorkspace", "SkillTreeId")
+                        .OnDelete(DeleteBehavior.Cascade).IsRequired();
+                    b.Navigation("SkillTree");
                 });
 
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillTree", b =>

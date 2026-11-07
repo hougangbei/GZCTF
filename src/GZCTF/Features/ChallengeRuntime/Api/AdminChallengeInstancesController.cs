@@ -58,11 +58,13 @@ public sealed class AdminChallengeInstancesController(
         {
             var container = item.ContainerId is { } id && containers.TryGetValue(id, out var found)
                 ? found : null;
+            var challenge = item.PublishedChallengeJson is { } payload
+                ? PublishedCourseContentReader.ReadChallenge(payload) : item.Challenge;
             return new AdminChallengeInstanceResponse(
                 item.Id, item.UserId, item.User.UserName ?? item.UserId.ToString(),
                 item.ChallengeId,
-                item.Challenge.Localizations.FirstOrDefault(text => text.Locale == "en")?.Title ??
-                item.Challenge.Localizations.FirstOrDefault()?.Title ?? item.ChallengeId.ToString(),
+                challenge.Localizations.FirstOrDefault(text => text.Locale == "en")?.Title ??
+                challenge.Localizations.FirstOrDefault()?.Title ?? item.ChallengeId.ToString(),
                 item.Status, item.StartedAtUtc, item.ExpiresAtUtc, item.ContainerId,
                 container?.IsProxy == true ? container.Entry : container?.PublicIP ?? container?.IP,
                 container is null || container.IsProxy ? null : container.PublicPort ?? container.Port);

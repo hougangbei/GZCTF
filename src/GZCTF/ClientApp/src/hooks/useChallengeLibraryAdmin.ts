@@ -8,14 +8,15 @@ import api, {
 } from '@Api'
 
 const localeQuery = (locale: string) => encodeURIComponent(locale || 'en')
+const courseQuery = (id?: string) => id ? `&course=${encodeURIComponent(id)}` : ''
 
-export const useLesson = (id: string | undefined, locale: string, enabled: boolean) =>
+export const useLesson = (id: string | undefined, locale: string, enabled: boolean, courseId?: string) =>
   useSWR<{ lessonId: string; locale: string; title: string; body: string }>(
-    id && enabled ? `/api/learning-lessons/${id}?locale=${localeQuery(locale)}` : null,
+    id && enabled ? `/api/learning-lessons/${id}?locale=${localeQuery(locale)}${courseQuery(courseId)}` : null,
     fetcher
   )
 
-export const useChallenge = (id: string | undefined, locale: string, enabled: boolean) =>
+export const useChallenge = (id: string | undefined, locale: string, enabled: boolean, courseId?: string) =>
   useSWR<{
     id: string
     title: string
@@ -28,7 +29,7 @@ export const useChallenge = (id: string | undefined, locale: string, enabled: bo
     hasAttachment: boolean
     hasSupplementaryAttachment?: boolean
     hasContainer: boolean
-  }>(id && enabled ? `/api/challenges/${id}?locale=${localeQuery(locale)}` : null, fetcher)
+  }>(id && enabled ? `/api/challenges/${id}?locale=${localeQuery(locale)}${courseQuery(courseId)}` : null, fetcher)
 
 export const useChallengeInstance = (id: string | undefined, enabled: boolean) =>
   useSWR<ChallengeInstanceResponse | null>(
@@ -44,11 +45,11 @@ export const useChallengeInstance = (id: string | undefined, enabled: boolean) =
     { refreshInterval: 15000 }
   )
 
-export const useLearningMutations = () => {
+export const useLearningMutations = (courseId?: string) => {
   const { mutate } = useSWRConfig()
 
   const completeLesson = async (lessonId: string) => {
-    await api.lessons.lessonsComplete(lessonId)
+    await api.request({path:`/api/learning-lessons/${lessonId}/complete`,method:'POST',query:courseId?{course:courseId}:undefined})
     // The generated hook keys the record as `[path, query]`, so match both key forms.
     await mutate((key) => {
       const path = Array.isArray(key) ? key[0] : key
@@ -91,7 +92,7 @@ export const useLearningMutations = () => {
   }
 
   const nextHint = async (challengeId: string, locale: string) =>
-    (await api.challenges.challengesNextHint(challengeId, { locale })).data as {
+    (await api.challenges.challengesNextHint(challengeId, { locale, ...(courseId ? {course:courseId} : {}) })).data as {
       hintId: string
       sortOrder: number
       locale: string
@@ -99,7 +100,7 @@ export const useLearningMutations = () => {
     } | null
 
   const revealWriteup = async (challengeId: string, locale: string) =>
-    (await api.challenges.challengesWriteup(challengeId, { locale })).data as {
+    (await api.challenges.challengesWriteup(challengeId, { locale, ...(courseId ? {course:courseId} : {}) })).data as {
       locale: string
       content: string
       firstViewedAtUtc: number

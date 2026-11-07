@@ -72,6 +72,8 @@ public class SkillHierarchyTests(GZCTFApplicationFactory factory)
         db.LessonProgress.Add(new LessonProgress { UserId = user.Id, LessonId = lesson.Id });
         db.ChallengeProgress.Add(new ChallengeProgress { UserId = other.Id, ChallengeId = challenge.Id });
         await db.SaveChangesAsync();
+        await CourseSnapshotBuilder.CaptureCurrentAsync(db, tree.Id, revision.Id, default);
+        await db.SaveChangesAsync();
         var query = scope.ServiceProvider.GetRequiredService<SkillTreeQueryService>();
         var detail = (await query.GetPublishedAsync(tree.Id, default))!;
         Assert.Equal(1, detail.SkillCount);
@@ -110,6 +112,10 @@ public class SkillHierarchyTests(GZCTFApplicationFactory factory)
         await skills.UpdateCategorySkillsAsync(first.Id, new(first.RowVersion, []), default);
         Assert.True(await access.CanReadAsync(challenge.Id, learner, default));
         await skills.UpdateCategorySkillsAsync(second.Id, new(second.RowVersion, []), default);
+        Assert.True(await access.CanReadAsync(challenge.Id, learner, default));
+        var treeAdmin = scope.ServiceProvider.GetRequiredService<AdminSkillTreeService>();
+        var treeDraft = (await treeAdmin.GetDraftAsync(tree.Id, default))!;
+        await treeAdmin.PublishAsync(tree.Id, treeDraft.RowVersion, default);
         Assert.False(await access.CanReadAsync(challenge.Id, learner, default));
         Assert.Equal(LessonAccess.NotFound, await enrollment.GetLessonAccessAsync(lesson.Id, default));
         Assert.Equal(4, await db.SkillContents.CountAsync(content => content.SkillId == skill.Id));

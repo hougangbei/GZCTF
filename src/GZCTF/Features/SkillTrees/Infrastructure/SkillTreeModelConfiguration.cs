@@ -7,6 +7,53 @@ internal static class SkillTreeModelConfiguration
 {
     internal static void Configure(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<CourseStoredAsset>(entity =>
+        {
+            entity.HasKey(x => x.StorageKey);
+            entity.Property(x => x.StorageKey).HasMaxLength(512);
+            entity.Property(x => x.ReferenceToken).HasMaxLength(512).IsRequired();
+            entity.HasIndex(x => x.LastTouchedUtc);
+        });
+        modelBuilder.Entity<CourseNodeOperation>(entity =>
+        {
+            entity.HasKey(x => new { x.SkillTreeId, x.OperationId });
+            entity.Property(x => x.RequestHash).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.ResponseJson).IsRequired();
+            entity.HasOne(x => x.Workspace).WithMany().HasForeignKey(x => x.SkillTreeId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<CourseWorkspaceContent>(entity =>
+        {
+            entity.HasKey(x => new { x.SkillTreeId, x.Kind, x.ContentId });
+            entity.Property(x => x.Kind).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.PayloadJson).IsRequired();
+            entity.Property(x => x.Version).IsConcurrencyToken();
+            entity.HasOne(x => x.Workspace).WithMany().HasForeignKey(x => x.SkillTreeId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<CoursePublishedVersion>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
+            entity.Property(x => x.PublicDocumentJson).IsRequired();
+            entity.HasOne(x => x.SkillTree).WithMany().HasForeignKey(x => x.SkillTreeId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<CoursePublishedContent>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
+            entity.Property(x => x.Kind).IsRequired().HasMaxLength(16);
+            entity.Property(x => x.PayloadJson).IsRequired();
+            entity.HasIndex(x => new { x.VersionId, x.Kind, x.ContentId }).IsUnique();
+            entity.HasOne(x => x.Version).WithMany(x => x.Contents).HasForeignKey(x => x.VersionId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<CourseAuthoringWorkspace>(entity =>
+        {
+            entity.HasKey(x => x.SkillTreeId);
+            entity.Property(x => x.Version).IsConcurrencyToken();
+            entity.Property(x => x.DocumentJson).IsRequired();
+            entity.HasOne(x => x.SkillTree).WithOne().HasForeignKey<CourseAuthoringWorkspace>(x => x.SkillTreeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<SkillTree>(entity =>
         {
             entity.HasKey(x => x.Id);

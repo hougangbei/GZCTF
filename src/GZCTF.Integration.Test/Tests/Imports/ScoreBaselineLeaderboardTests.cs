@@ -1,3 +1,4 @@
+using GZCTF.Integration.Test.Tests.Runtime;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
@@ -33,7 +34,7 @@ public sealed class ScoreBaselineLeaderboardTests(GZCTFApplicationFactory factor
         var baseline = Baseline(db, user.Id, 250, 2);
         db.ChallengeProgress.Add(new ChallengeProgress { UserId = user.Id, Challenge = imported, ImportedScoreBaseline = baseline, SolvedAtUtc = DateTimeOffset.Parse("2020-01-01T00:00:00Z") });
         db.ChallengeProgress.Add(new ChallengeProgress { UserId = user.Id, Challenge = native, SolvedAtUtc = baseline.CreatedAtUtc.AddDays(1) });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var service = new LearningLeaderboardService(db, cache);
         var board = await service.GetAsync("score", default);
@@ -52,17 +53,18 @@ public sealed class ScoreBaselineLeaderboardTests(GZCTFApplicationFactory factor
         imported.Score = 5;
         imported.IsEnabled = true;
         imported.PublicationState = ChallengePublicationState.Published;
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         cache.Remove("learning-leaderboard:score");
         Assert.Equal(350, Assert.Single((await service.GetAsync("score", default)).Entries, e => e.UserName == user.UserName).Score);
         Assert.Equal(350, Assert.Single((await service.GetAsync("solves", default)).Entries, e => e.UserName == user.UserName).Score);
+        await PublishedRuntimeSnapshotTests.PublishAsync(db, imported);
         var submissions = scope.ServiceProvider.GetRequiredService<ChallengeSubmissionService>();
         var repeated = await submissions.SubmitAsync(user.Id, imported.Id, "fixture-old");
         Assert.True(repeated.Accepted);
         Assert.False(repeated.FirstSolve);
         var fresh = PublishedQuestion(db); fresh.Score = 75;
         fresh.Flags.Add(new ChallengeFlag { Kind = ChallengeFlagKind.Static, Value = "fixture-new" });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         var first = await submissions.SubmitAsync(user.Id, fresh.Id, "fixture-new");
         Assert.True(first.Accepted); Assert.True(first.FirstSolve);
         cache.Remove("learning-leaderboard:score");
@@ -86,7 +88,7 @@ public sealed class ScoreBaselineLeaderboardTests(GZCTFApplicationFactory factor
         Baseline(db, negative.Id, -50, 0);
         var native = PublishedQuestion(db);
         db.ChallengeProgress.AddRange(new ChallengeProgress { UserId = hidden.Id, Challenge = native }, new ChallengeProgress { UserId = banned.Id, Challenge = native });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var board = await new LearningLeaderboardService(db, cache).GetAsync("score", default);
         Assert.DoesNotContain(board.Entries, e => e.UserName == hidden.UserName || e.UserName == banned.UserName || e.UserName == idle.UserName);
@@ -101,7 +103,7 @@ public sealed class ScoreBaselineLeaderboardTests(GZCTFApplicationFactory factor
         var user = await TestDataSeeder.CreateUserAsync(factory.Services, TestDataSeeder.RandomName(), "Score!12345");
         Baseline(db, user.Id, int.MaxValue, 10);
         db.ChallengeProgress.Add(new ChallengeProgress { UserId = user.Id, Challenge = PublishedQuestion(db) });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var board = await new LearningLeaderboardService(db, cache).GetAsync("score", default);
         Assert.Equal((long)int.MaxValue + 100, Assert.Single(board.Entries, e => e.UserName == user.UserName).Score);
@@ -125,7 +127,7 @@ public sealed class ScoreBaselineLeaderboardTests(GZCTFApplicationFactory factor
         var baseline = await db.PlatformScoreBaselines.SingleAsync(b => b.SourceInstance == options.SourceInstance);
         var native = PublishedQuestion(db); native.Score = 75;
         db.ChallengeProgress.Add(new ChallengeProgress { UserId = baseline.UserId, Challenge = native, SolvedAtUtc = DateTimeOffset.Parse("2026-01-02T00:00:00Z") });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var service = new LearningLeaderboardService(db, cache,
             new ImportedScoreTimelineService(db, cache, services.GetRequiredService<IDataProtectionProvider>()));
@@ -139,7 +141,7 @@ public sealed class ScoreBaselineLeaderboardTests(GZCTFApplicationFactory factor
         Assert.Equal(325, Assert.Single(board.Entries, e => e.UserName == name).Score);
         var importedIds = await db.PlatformImportMaps.Where(m => m.SourceInstance == options.SourceInstance && m.Kind == "challenge").Select(m => m.TargetId).ToArrayAsync();
         foreach (var question in await db.Challenges.Where(c => importedIds.Contains(c.Id)).ToArrayAsync()) question.Score = 9999;
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         cache.Remove("learning-leaderboard:score");
         var again = await service.GetAsync("score", default);
         Assert.Equal(points, Assert.Single(again.Series, s => s.UserName == name).Points);
@@ -171,7 +173,7 @@ public sealed class ScoreBaselineLeaderboardTests(GZCTFApplicationFactory factor
             db.PlatformHistorySubmissions.Add(new PlatformHistorySubmission { BatchId = batch.Id, SourceId = "s1", SourceUserId = "1", SourceChallengeId = "1", Result = "correct", SubmittedAtUtc = failure == "missing-date" ? null : DateTimeOffset.Parse("2021-01-01T00:00:00Z") });
         if (failure == "score-mismatch") baseline.Score = 251;
         if (failure == "solve-mismatch") baseline.SolvedCount = 2;
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var timeline = new ImportedScoreTimelineService(db, cache, services.GetRequiredService<IDataProtectionProvider>());
         var board = await new LearningLeaderboardService(db, cache, timeline).GetAsync("score", default);
@@ -200,7 +202,7 @@ public sealed class ScoreBaselineLeaderboardTests(GZCTFApplicationFactory factor
         db.PlatformHistorySubmissions.AddRange(
             new PlatformHistorySubmission { BatchId = selected.BatchId, SourceId = "own", SourceUserId = "1", SourceChallengeId = "1", Result = "correct", SubmittedAtUtc = DateTimeOffset.Parse("2021-01-01T00:00:00Z") },
             new PlatformHistorySubmission { BatchId = selected.BatchId, SourceId = "other", SourceUserId = "private-user", SourceChallengeId = "missing-private-key", Result = "correct", SubmittedAtUtc = DateTimeOffset.Parse("2010-01-01T00:00:00Z") });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var timeline = new ImportedScoreTimelineService(db, cache, services.GetRequiredService<IDataProtectionProvider>());
         var board = await new LearningLeaderboardService(db, cache, timeline).GetAsync("score", default);

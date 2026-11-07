@@ -180,17 +180,10 @@ public sealed class ContentPublicationService(
                     SortOrder = draft.Categories.Count
                 });
 
-                if (tree.CurrentPublishedRevisionId is null)
-                {
-                    draft.Status = SkillTreeRevisionStatus.Published;
-                    draft.PublishedAtUtc = DateTimeOffset.UtcNow;
-                    tree.CurrentPublishedRevisionId = draft.Id;
-                    tree.CurrentPublishedRevision = draft;
-                }
-                else
-                {
+                // Inline library publication only edits the course draft. A tree becomes
+                // visible only when an explicit tree/workspace publication freezes it.
+                if (db.Entry(draft).State != EntityState.Added)
                     db.Entry(draft).Property(revision => revision.Status).IsModified = true;
-                }
 
                 if (!orderedCategoryIds.Contains(category.Id))
                     orderedCategoryIds.Add(category.Id);

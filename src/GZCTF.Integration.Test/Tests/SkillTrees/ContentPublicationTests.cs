@@ -49,7 +49,11 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
         using var anon = factory.CreateClient();
         var detail = await anon.GetFromJsonAsync<SkillTreeDetailResponse>($"/api/skill-trees/{treeId}");
         var category = Assert.Single(detail!.Categories);
-        Assert.Contains(category.Contents, item => item.ContentId == challenge.Id && item.Kind == "challenge");
+        Assert.DoesNotContain(category.Contents, item => item.ContentId == challenge.Id);
+        var draft = (await admin.GetFromJsonAsync<SkillTreeDraftResponse>($"/api/admin/skill-trees/{treeId}/draft"))!;
+        (await admin.PostAsJsonAsync($"/api/admin/skill-trees/{treeId}/publish", new PublishSkillTreeCommand(draft.RowVersion))).EnsureSuccessStatusCode();
+        detail = await anon.GetFromJsonAsync<SkillTreeDetailResponse>($"/api/skill-trees/{treeId}");
+        Assert.Contains(detail!.Categories.Single().Contents, item => item.ContentId == challenge.Id && item.Kind == "challenge");
     }
 
     [Fact]
@@ -144,6 +148,9 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
         publish.EnsureSuccessStatusCode();
 
         using var anon = factory.CreateClient();
+        Assert.Equal(HttpStatusCode.NotFound, (await anon.GetAsync($"/api/skill-trees/{treeId}")).StatusCode);
+        var draft = (await admin.GetFromJsonAsync<SkillTreeDraftResponse>($"/api/admin/skill-trees/{treeId}/draft"))!;
+        (await admin.PostAsJsonAsync($"/api/admin/skill-trees/{treeId}/publish", new PublishSkillTreeCommand(draft.RowVersion))).EnsureSuccessStatusCode();
         var detail = await anon.GetFromJsonAsync<SkillTreeDetailResponse>($"/api/skill-trees/{treeId}");
         var category = Assert.Single(detail!.Categories);
         Assert.Equal("Inline", category.Name);
@@ -283,6 +290,8 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
         await db.SkillTrees.Where(item => item.Id == tree.Id)
             .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.CurrentPublishedRevisionId, revision.Id));
 
+        await CourseSnapshotBuilder.CaptureCurrentAsync(db, tree.Id, revision.Id, default);
+        await db.SaveChangesAsync();
         return (tree.Id, category.Id);
     }
 

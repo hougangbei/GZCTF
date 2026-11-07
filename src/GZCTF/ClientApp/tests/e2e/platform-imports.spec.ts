@@ -42,8 +42,8 @@ test('imported challenge exposes pool and supplementary download links separatel
  await page.route('**/api/my-learning/skill-trees/tree',route=>route.fulfill({json:{totalCount:1,completedCount:0,completedLessonIds:[],solvedChallengeIds:[],categories:[],skills:[]}}))
  await page.route('**/api/challenges/challenge?*',route=>route.fulfill({json:{id:'challenge',title:'导入动态附件',body:'内容',type:'DynamicAttachment',ctfCategory:'Misc',hasAttachment:true,hasSupplementaryAttachment:true,hasContainer:false,hintLocaleCount:0}}))
  await page.goto('/skill-trees/tree/category/skills/skill/challenge/challenge')
- await expect(page.getByRole('link',{name:'补充附件',exact:true})).toHaveAttribute('href','/api/challenges/challenge/attachment?supplementary=true')
- await expect(page.getByRole('link',{name:'下载附件',exact:true})).toHaveAttribute('href','/api/challenges/challenge/attachment')
+ await expect(page.getByRole('link',{name:'补充附件',exact:true})).toHaveAttribute('href','/api/challenges/challenge/attachment?supplementary=true&course=tree')
+ await expect(page.getByRole('link',{name:'下载附件',exact:true})).toHaveAttribute('href','/api/challenges/challenge/attachment?course=tree')
 })
 test('account conflict is only skipped after explicit choice and a fresh preview',async({page})=>{
  await setup(page);let skipped=false;let executed=false

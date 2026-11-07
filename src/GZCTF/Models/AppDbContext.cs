@@ -89,6 +89,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<ChallengeSubmission> ChallengeSubmissions { get; set; } = null!;
     public DbSet<ChallengeHelpUsage> ChallengeHelpUsages { get; set; } = null!;
     public DbSet<CommunityWriteup> CommunityWriteups { get; set; } = null!;
+    public DbSet<CourseStoredAsset> CourseStoredAssets { get; set; } = null!;
+    public DbSet<CourseNodeOperation> CourseNodeOperations { get; set; } = null!;
+    public DbSet<CourseWorkspaceContent> CourseWorkspaceContents { get; set; } = null!;
+    public DbSet<CoursePublishedVersion> CoursePublishedVersions { get; set; } = null!;
+    public DbSet<CoursePublishedContent> CoursePublishedContents { get; set; } = null!;
+    public DbSet<CourseAuthoringWorkspace> CourseAuthoringWorkspaces { get; set; } = null!;
     public DbSet<SkillTree> SkillTrees { get; set; } = null!;
     public DbSet<SkillTreeRevision> SkillTreeRevisions { get; set; } = null!;
     public DbSet<SkillCategory> SkillCategories { get; set; } = null!;

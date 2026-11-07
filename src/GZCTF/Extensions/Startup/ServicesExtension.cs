@@ -91,6 +91,10 @@ internal static class ServicesExtension
             builder.Services.AddScoped<LessonProgressService>();
             builder.Services.AddScoped<LearningRecordService>();
             builder.Services.AddScoped<SkillTreeQueryService>();
+            builder.Services.AddScoped<CourseAssetRegistry>();
+            builder.Services.AddHostedService<CourseAssetCleanupService>();
+            builder.Services.AddScoped<CourseWorkspaceContentService>();
+            builder.Services.AddScoped<CoursePublicationService>();
             builder.Services.AddScoped<AdminSkillTreeService>();
             builder.Services.AddScoped<SkillCategoryService>();
             builder.Services.AddScoped<SkillService>();

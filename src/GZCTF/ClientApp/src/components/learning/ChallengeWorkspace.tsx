@@ -14,6 +14,7 @@ import { CommunityWriteups } from './CommunityWriteups'
 import { InstanceConnection } from './InstanceConnection'
 
 export type ChallengeWorkspaceProps = {
+  courseId?: string
   challengeId: string
   backHref?: string
   previousHref?: string
@@ -23,6 +24,7 @@ export type ChallengeWorkspaceProps = {
 
 export const ChallengeWorkspace = ({
   challengeId,
+  courseId,
   backHref,
   previousHref,
   nextHref,
@@ -33,11 +35,11 @@ export const ChallengeWorkspace = ({
   const { t } = useTranslation('learning')
   const { t: tChallenge } = useTranslation('challenge')
   const { t: tSkillTrees } = useTranslation('skillTrees')
-  const { data: challenge, error } = useChallenge(challengeId, locale, true)
+  const { data: challenge, error } = useChallenge(challengeId, locale, true, courseId)
   const { data: instance, mutate: mutateInstance } = useChallengeInstance(challengeId, !!user)
   const { mutate } = useSWRConfig()
   const { startInstance, extendInstance, stopInstance, submitChallenge, nextHint, revealWriteup } =
-    useLearningMutations()
+    useLearningMutations(courseId)
   const official = useRef<HTMLDivElement>(null)
   const [flag, setFlag] = useState('')
   const [hints, setHints] = useState<string[]>([])
@@ -89,7 +91,9 @@ export const ChallengeWorkspace = ({
       setMessage(
         result.accepted
           ? t('accepted')
-          : result.rejectionCode === 'challenge.submission_limit_exhausted'
+          : result.rejectionCode === 'challenge.test_instance'
+            ? t('testInstanceNoCredit')
+            : result.rejectionCode === 'challenge.submission_limit_exhausted'
             ? t('submissionLimitExhausted')
             : t('rejected')
       )
@@ -230,7 +234,7 @@ export const ChallengeWorkspace = ({
                 {t('start')}
               </Button>
             ) : (
-              <Button component="a" variant="light" href={`/api/challenges/${challengeId}/attachment`}>
+              <Button component="a" variant="light" href={`/api/challenges/${challengeId}/attachment${courseId ? `?course=${encodeURIComponent(courseId)}` : ''}`}>
                 {t('downloadAttachment')}
               </Button>
             )}
@@ -238,13 +242,13 @@ export const ChallengeWorkspace = ({
               <Button
                 component="a"
                 variant="default"
-                href={`/api/challenges/${challengeId}/attachment?supplementary=true`}
+                href={`/api/challenges/${challengeId}/attachment?supplementary=true${courseId ? `&course=${encodeURIComponent(courseId)}` : ''}`}
               >
                 补充附件
               </Button>
             )}
             {challenge!.hasContainer && challenge!.hasAttachment && (
-              <Button component="a" variant="light" href={`/api/challenges/${challengeId}/attachment`}>
+              <Button component="a" variant="light" href={`/api/challenges/${challengeId}/attachment${courseId ? `?course=${encodeURIComponent(courseId)}` : ''}`}>
                 {t('downloadAttachment')}
               </Button>
             )}
