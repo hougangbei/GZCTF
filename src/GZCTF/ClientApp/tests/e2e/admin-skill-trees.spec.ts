@@ -50,7 +50,9 @@ test.describe('skill tree administration', () => {
 
     const publishIntoSkill = async (kind: 'challenge' | 'lesson', contentId: string) => {
       await page.goto(`/admin/library/${kind}s/${contentId}`)
-      await page.getByRole('button', { name: kind === 'challenge' ? 'Publish challenge' : 'Publish lesson' }).click()
+      await page.getByRole('button', {
+        name: kind === 'challenge' ? 'Publish challenge' : /^(Publish lesson|Publication settings)$/,
+      }).click()
       const dialog = page.getByRole('dialog')
       await dialog.getByRole('combobox', { name: '选择路线', exact: true }).click()
       await page.getByRole('option', { name: treeName, exact: true }).click()
@@ -58,12 +60,27 @@ test.describe('skill tree administration', () => {
       await page.getByRole('option', { name: categoryA, exact: true }).click()
       await dialog.getByLabel('关联技能', { exact: true }).click()
       await page.getByRole('option', { name: skillName, exact: true }).click()
+      await page.keyboard.press('Escape')
       const publishPromise = page.waitForResponse((response) => response.url().includes('/publish') && response.request().method() === 'POST')
       await dialog.getByRole('button', { name: '发布', exact: true }).click()
-      await publishPromise
-      await expect(
-        page.getByText(kind === 'challenge' ? 'Challenge published' : 'Lesson published')
-      ).toBeVisible({ timeout: 10_000 })
+      const response = await publishPromise
+      expect(response.ok(), `Publishing ${kind} failed with HTTP ${response.status()}`).toBeTruthy()
+      await expect(dialog).toHaveCount(0)
+      if (kind === 'challenge') {
+        await expect(page).toHaveURL(/\/admin\/skill-trees\?tab=challenges$/)
+        await expect(page.getByRole('link', { name: challengeTitle, exact: true }).locator('..'))
+          .toContainText('Published')
+      } else {
+        await expect(page).toHaveURL(new RegExp(`/admin/library/lessons/${contentId}$`))
+        await expect(page.getByText('Published', { exact: true })).toBeVisible()
+      }
+      const verification = await page.request.get(
+        `/api/admin/${kind}s/${contentId}${kind === 'challenge' ? '/edit' : ''}?locale=en`
+      )
+      expect(verification.ok()).toBeTruthy()
+      expect((await verification.json()).publication).toMatchObject({
+        publicationState: 'Published', skillIds: [skillId],
+      })
     }
 
     // 1. Create and publish an empty skill tree through the workspace modal.

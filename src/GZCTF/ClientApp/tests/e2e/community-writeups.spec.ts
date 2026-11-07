@@ -20,6 +20,7 @@ async function setup(
   const treeId = '01990000-0000-7000-8000-000000000001'
   const categoryId = '01990000-0000-7000-8000-000000000002'
   const challengeId = '01990000-0000-7000-8000-000000000003'
+  const skillId = '01990000-0000-7000-8000-000000000004'
   await page.route(`**/api/skill-trees/${treeId}`, (route) =>
     route.fulfill({
       contentType: 'application/json',
@@ -35,15 +36,26 @@ async function setup(
             summary: '从 HTTP 开始',
             iconKey: 'web',
             sortOrder: 0,
-            contents: [
+            skills: [
               {
-                contentId: challengeId,
-                kind: 'challenge',
+                skillId,
+                name: 'HTTP 基础',
+                summary: '',
+                iconKey: 'web',
                 sortOrder: 0,
-                title: '第一道题',
-                summary: '题目摘要',
-                expectedMinutes: 30,
-                difficulty: 'Normal',
+                challengeCount: 1,
+                lessonCount: 0,
+                contents: [
+                  {
+                    contentId: challengeId,
+                    kind: 'challenge',
+                    sortOrder: 0,
+                    title: '第一道题',
+                    summary: '题目摘要',
+                    expectedMinutes: 30,
+                    difficulty: 'Normal',
+                  },
+                ],
               },
             ],
           },
@@ -109,7 +121,7 @@ async function setup(
       json: { locale: 'zh', content: '官方解题步骤：先分析 HTTP 请求。', firstViewedAtUtc: new Date().toISOString() },
     })
   )
-  await page.goto(`/skill-trees/${treeId}/${categoryId}/challenge/${challengeId}`)
+  await page.goto(`/skill-trees/${treeId}/${categoryId}/skills/${skillId}/challenge/${challengeId}`)
   return submissions
 }
 

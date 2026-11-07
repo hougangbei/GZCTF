@@ -123,12 +123,18 @@ const AdminSkillTreeEdit = () => {
   }
 
   const openPreview = async () => {
+    if (saving) return
+    setSaving(true)
     try {
+      if (dirty) await saveDraft()
       const response = await api.adminSkillTrees.adminSkillTreesPreviewDraft(id)
       setPreview(response.data.categories ?? [])
       setPreviewOpen(true)
     } catch (error) {
+      if (getApiErrorCode(error) === 'skill_tree_revision_conflict') setConflict(true)
       showSkillTreeError(error, t)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -230,6 +236,7 @@ const AdminSkillTreeEdit = () => {
                 }}
                 onSubmit={save}
                 submitting={saving}
+                disabled={saving}
                 submitLabel={t('editor.save')}
               />
 

@@ -119,10 +119,13 @@ async function insertRedirectAsync(slug: string, treeId: string): Promise<boolea
     `VALUES (gen_random_uuid(), '${treeId}', '${slug}', '${treeId}') ON CONFLICT DO NOTHING;`
   try {
     await execFileAsync('docker', [
-      'exec', 'gzctf-demo-db', 'psql', '-U', 'gzctf', '-d', 'gzctf_demo', '-c', sql,
+      'exec', process.env.E2E_DB_CONTAINER ?? 'gzctf-demo-db', 'psql',
+      '-U', process.env.E2E_DB_USER ?? 'gzctf', '-d', process.env.E2E_DB_NAME ?? 'gzctf_demo', '-c', sql,
     ])
     return true
-  } catch {
+  } catch (error) {
+    // An explicitly configured database is a required fixture, not optional coverage.
+    if (process.env.E2E_DB_CONTAINER) throw error
     return false
   }
 }

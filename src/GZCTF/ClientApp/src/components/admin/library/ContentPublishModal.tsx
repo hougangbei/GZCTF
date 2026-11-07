@@ -99,6 +99,7 @@ export const ContentPublishModal = ({ opened, kind, contentId, rowVersion, onClo
           onChange={(value) => {
             setTreeId(value)
             setCategoryId(null)
+            setInline({ name: '', summary: '', iconKey: 'flag' })
           }}
         />
         <Select
@@ -106,7 +107,10 @@ export const ContentPublishModal = ({ opened, kind, contentId, rowVersion, onClo
           disabled={!treeId}
           data={availableCategories.map((category) => ({ value: category.categoryId!, label: category.name! }))}
           value={categoryId}
-          onChange={setCategoryId}
+          onChange={(value) => {
+            setCategoryId(value)
+            setInline({ name: '', summary: '', iconKey: 'flag' })
+          }}
         />
         <MultiSelect
           searchable
