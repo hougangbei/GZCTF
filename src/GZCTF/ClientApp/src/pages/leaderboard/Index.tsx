@@ -2,7 +2,7 @@ import { Modal, Text, Button, SegmentedControl, Skeleton, useComputedColorScheme
 import { useReducedMotion } from '@mantine/hooks'
 import { mdiArrowRight, mdiChartLine, mdiReload, mdiTrophyOutline } from '@mdi/js'
 import { Icon } from '@mdi/react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import useSWR from 'swr'
@@ -13,6 +13,8 @@ import { usePageTitle } from '@Hooks/usePageTitle'
 import { useUser } from '@Hooks/useUser'
 import { fetcher } from '@Api'
 import classes from './Leaderboard.module.css'
+import { bindLeaderboardHover } from './LeaderboardHover'
+import type { ECharts } from 'echarts'
 import { buildLeaderboardChart, type Metric, type LeaderboardSeries } from './LeaderboardChart'
 
 type Entry = { rank: number; userName: string; solvedCount: number; score: number; level?: number; bio?: string }
@@ -69,6 +71,11 @@ const LearningLeaderboard = () => {
         chartPalette
       ),
     [visibleSeries, metric, isMobile, i18n.language, reducedMotion, currentUserName, chartPalette]
+  )
+
+  const bindChartHover = useCallback(
+    (chart: ECharts) => bindLeaderboardHover(chart, visibleSeries, metric),
+    [visibleSeries, metric]
   )
 
   const retry = () => {
@@ -168,6 +175,7 @@ const LearningLeaderboard = () => {
                 <EchartsContainer
                   key={isMobile ? 'mobile' : 'desktop'}
                   option={chart}
+                  onReady={bindChartHover}
                   preserveDataZoom
                   style={{ height: isMobile ? 280 : 390, width: '100%' }}
                   role="img"

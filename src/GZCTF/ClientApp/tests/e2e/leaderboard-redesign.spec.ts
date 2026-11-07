@@ -169,3 +169,32 @@ test('approved Figma table has distinct neutral stripes and identifies the signe
   await expect(rows.nth(3)).toContainText('9 题')
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
 })
+
+test('hover follows the pointed curve despite different historical event dates', async ({ page }) => {
+  await page.route('**/api/learning-leaderboard?*', route => route.fulfill({ json: score }))
+  await page.goto('/leaderboard')
+  const chartElement = page.locator('[role=img][_echarts_instance_]')
+  await expect(chartElement.locator('canvas')).toBeVisible()
+  const targets = await chartElement.evaluate(async element => {
+    const source = await (await fetch('/src/components/charts/EchartsContainer.tsx')).text()
+    const modulePath = source.match(/from "([^" ]*\/echarts\.js[^" ]*)"/)![1]
+    const echarts = await import(/* @vite-ignore */ modulePath)
+    const chart = echarts.getInstanceByDom(element)
+    chart.setOption({ animation: false })
+    return [
+      chart.convertToPixel({ gridIndex: 0 }, [Date.parse('2026-10-09T12:00:00Z'), 760]),
+      chart.convertToPixel({ gridIndex: 0 }, [Date.parse('2026-10-09T12:00:00Z'), 480]),
+    ] as number[][]
+  })
+  const box = await chartElement.boundingBox()
+  for (const [index, expected] of ['long_username_sample', 'cipher'].entries()) {
+    await page.mouse.move(box!.x + targets[index][0], box!.y + targets[index][1])
+    await expect.poll(() => chartElement.evaluate(async element => {
+      const source = await (await fetch('/src/components/charts/EchartsContainer.tsx')).text()
+    const modulePath = source.match(/from "([^" ]*\/echarts\.js[^" ]*)"/)![1]
+      const echarts = await import(/* @vite-ignore */ modulePath)
+      const chart = echarts.getInstanceByDom(element)
+      return chart.getZr().storage.getDisplayList().map((item: { style?: { text?: string } }) => item.style?.text ?? '').join('\n')
+    })).toContain(expected === 'cipher' ? '480' : '760')
+  }
+})

@@ -1,4 +1,5 @@
 import { App } from '@App'
+import { installChunkRecovery } from '@Utils/ChunkRecovery'
 import i18n from 'i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import resourcesToBackend from 'i18next-resources-to-backend'
@@ -7,6 +8,8 @@ import { initReactI18next } from 'react-i18next'
 import { BrowserRouter } from 'react-router'
 import manifest from 'virtual:i18n-manifest'
 import { convertLanguage, LanguageProvider } from '@Utils/I18n'
+
+installChunkRecovery()
 
 i18n
   .use(LanguageDetector)

@@ -4,6 +4,7 @@ import * as echarts from 'echarts'
 import { FC, useEffect, useRef } from 'react'
 
 export interface EchartsContainerProps extends React.ComponentPropsWithoutRef<'div'> {
+  onReady?: (chart: echarts.ECharts) => void | (() => void)
   option: EChartsOption
   opts?: echarts.EChartsInitOpts
   preserveDataZoom?: boolean
@@ -14,7 +15,7 @@ export const EchartsContainer: FC<EchartsContainerProps> = (props) => {
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstance = useRef<echarts.ECharts | null>(null)
   const zoom = useRef<{ start?: number; end?: number }[]>([])
-  const { option, opts, style, preserveDataZoom = false, ...rest } = props
+  const { option, opts, style, preserveDataZoom = false, onReady, ...rest } = props
   const rememberZoom = () => {
     if (!preserveDataZoom || !chartInstance.current) return
     const current = chartInstance.current.getOption().dataZoom as { start?: number; end?: number }[] | undefined
@@ -58,6 +59,10 @@ export const EchartsContainer: FC<EchartsContainerProps> = (props) => {
       chartInstance.current.setOption(currentOption(), true)
     }
   }, [option])
+
+  useEffect(() => {
+    if (chartInstance.current) return onReady?.(chartInstance.current)
+  }, [option, colorScheme, onReady])
 
   useEffect(() => {
     const handleResize = () => {

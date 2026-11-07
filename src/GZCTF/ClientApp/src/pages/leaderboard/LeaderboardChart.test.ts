@@ -1,3 +1,4 @@
+import chroma from 'chroma-js'
 import { describe, expect, it } from 'vitest'
 import { buildLeaderboardChart } from './LeaderboardChart'
 
@@ -31,7 +32,7 @@ describe('competition scoreboard chart', () => {
 it('uses the default accent line for the signed-in learner and keeps that learner visible on mobile', () => {
   const option = buildLeaderboardChart(series, 'score', true, 'zh-CN', true, 'learner-7')
   const lines = Array.isArray(option.series) ? option.series : [option.series]
-  expect(lines[7]).toMatchObject({ itemStyle: { color: '#5558E8' }, lineStyle: { color: '#5558E8', width: 2.3 } })
+  expect(lines[7]).toMatchObject({ itemStyle: { color: '#5558E8' }, lineStyle: { color: '#5558E8', width: 3 } })
   expect((option.legend as { selected: Record<string, boolean> }).selected['learner-7']).toBe(true)
 })
 
@@ -49,30 +50,66 @@ it('applies the provided theme to highlighted lines and chart labels', () => {
 })
 
 it('keeps negative imported scores visible while solve counts start at zero', () => {
-  const members = [{ userName: 'learner', points: [
-    { date: '2026-11-04', score: -150, solvedCount: 0 },
-    { date: '2026-11-05', score: 50, solvedCount: 1 },
-  ] }]
+  const members = [
+    {
+      userName: 'learner',
+      points: [
+        { date: '2026-11-04', score: -150, solvedCount: 0 },
+        { date: '2026-11-05', score: 50, solvedCount: 1 },
+      ],
+    },
+  ]
   expect(buildLeaderboardChart(members, 'score', false, 'zh-CN', true).yAxis).toMatchObject({ min: -150 })
   expect(buildLeaderboardChart(members, 'solves', false, 'zh-CN', true).yAxis).toMatchObject({ min: 0 })
   expect(buildLeaderboardChart(series, 'score', false, 'zh-CN', true).yAxis).toMatchObject({ min: 0 })
 })
 
 it('shows years on multi-year timelines and starts with the complete zoom range', () => {
-  const members = [{ userName: 'learner', points: [
-    { date: '2021-08-25', score: 100, solvedCount: 1 },
-    { date: '2024-05-02', score: 250, solvedCount: 2 },
-    { date: '2026-11-04', score: 350, solvedCount: 3 },
-  ] }]
+  const members = [
+    {
+      userName: 'learner',
+      points: [
+        { date: '2021-08-25', score: 100, solvedCount: 1 },
+        { date: '2024-05-02', score: 250, solvedCount: 2 },
+        { date: '2026-11-04', score: 350, solvedCount: 3 },
+      ],
+    },
+  ]
   const option = buildLeaderboardChart(members, 'score', false, 'zh-CN', true)
   const axis = option.xAxis as { axisLabel: { formatter: (value: number) => string } }
   expect(axis.axisLabel.formatter(Date.parse('2024-05-02T00:00:00Z'))).toContain('2024')
-  expect(option.dataZoom).toEqual(expect.arrayContaining([
-    expect.objectContaining({ type: 'inside', start: 0, end: 100 }),
-    expect.objectContaining({ type: 'slider', start: 0, end: 100 }),
-  ]))
+  expect(option.dataZoom).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ type: 'inside', start: 0, end: 100 }),
+      expect.objectContaining({ type: 'slider', start: 0, end: 100 }),
+    ])
+  )
   const lines = Array.isArray(option.series) ? option.series : [option.series]
-  expect(lines[0]).toMatchObject({ step: 'end', data: [
-    ['2021-08-25T00:00:00Z', 100], ['2024-05-02T00:00:00Z', 250], ['2026-11-04T00:00:00Z', 350],
-  ] })
+  expect(lines[0]).toMatchObject({
+    step: 'end',
+    data: [
+      ['2021-08-25T00:00:00Z', 100],
+      ['2024-05-02T00:00:00Z', 250],
+      ['2026-11-04T00:00:00Z', 350],
+    ],
+  })
+})
+
+it('keeps curves readable on both surfaces, including pale personal accents', () => {
+  for (const surface of ['#ffffff', '#25262b']) {
+    const option = buildLeaderboardChart(series, 'score', false, 'zh-CN', true, 'learner-7', {
+      accent: '#e9edff',
+      surface,
+      border: '#cccccc',
+      ink: '#333333',
+      muted: '#777777',
+    })
+    const lines = option.series as { lineStyle: { color: string; width: number }; itemStyle: { color: string } }[]
+    for (const line of lines) {
+      expect(chroma.contrast(line.lineStyle.color, surface)).toBeGreaterThanOrEqual(3)
+      expect(line.lineStyle.width).toBeGreaterThanOrEqual(2)
+      expect(line.itemStyle.color).toBe(line.lineStyle.color)
+    }
+    expect(new Set(lines.map((line) => line.lineStyle.color)).size).toBe(10)
+  }
 })
