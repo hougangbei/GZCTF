@@ -23,6 +23,8 @@ GZ::CTF is an open source CTF platform based on ASP.NET Core.
 >
 > **To save your effort, please read the documentation carefully before using: [https://gzctf.gzti.me/](https://gzctf.gzti.me/)**
 
+For this training-platform fork, see the [offline course-authoring update guide](deploy/offline/COURSE_AUTHORING_UPDATE.zh-CN.md), [course-authoring workflow](docs/superpowers/specs/2026-11-07-course-authoring-operations.zh-CN.md), [platform import guide](docs/superpowers/specs/2026-11-02-platform-import-operations.zh-CN.md), [ranking administration guide](docs/superpowers/specs/2026-11-04-admin-ranking-management-operations.zh-CN.md), and [amd64 release verification](docs/qa/2026-11-08-amd64-release-verification.md) (Simplified Chinese).
+
 > [!WARNING]
 >
 > **Upgrade and migration considerations:**
