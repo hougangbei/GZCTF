@@ -1,4 +1,5 @@
 const runtimeErrorKeys: Record<string, string> = {
+  'challenge.instance_configuration_changed': 'translation:common.error.challenge_instance_configuration_changed',
   'challenge.runtime_unavailable': 'translation:common.error.challenge_runtime_unavailable',
   'challenge.container_start_failed': 'translation:common.error.challenge_container_start_failed',
   'challenge.container_stop_failed': 'translation:common.error.challenge_container_stop_failed',

@@ -29,6 +29,10 @@ public sealed class AdminSkillCategoriesController(SkillCategoryService service)
         {
             return InvalidIcon();
         }
+        catch (SkillSelectionRequiredException)
+        {
+            return Conflict(ApiError.Conflict("skill_selection_required", "Select a skill explicitly for this category.", HttpContext.TraceIdentifier));
+        }
         catch (SkillCategoryValidationException exception)
         {
             return Invalid(exception.Message);
@@ -53,6 +57,10 @@ public sealed class AdminSkillCategoriesController(SkillCategoryService service)
         {
             return InvalidIcon();
         }
+        catch (SkillSelectionRequiredException)
+        {
+            return Conflict(ApiError.Conflict("skill_selection_required", "Select a skill explicitly for this category.", HttpContext.TraceIdentifier));
+        }
         catch (SkillCategoryValidationException exception)
         {
             return Invalid(exception.Message);
@@ -76,6 +84,10 @@ public sealed class AdminSkillCategoriesController(SkillCategoryService service)
             var result = await service.UpdateContentsAsync(id, command, token);
             return result is null ? NotFound() : Ok(result);
         }
+        catch (SkillSelectionRequiredException)
+        {
+            return Conflict(ApiError.Conflict("skill_selection_required", "Select a skill explicitly for this category.", HttpContext.TraceIdentifier));
+        }
         catch (SkillCategoryValidationException exception)
         {
             return Invalid(exception.Message);
@@ -98,6 +110,10 @@ public sealed class AdminSkillCategoriesController(SkillCategoryService service)
         {
             var result = await service.UpdateTreeMembershipsAsync(id, command, token);
             return result is null ? NotFound() : Ok(result);
+        }
+        catch (SkillSelectionRequiredException)
+        {
+            return Conflict(ApiError.Conflict("skill_selection_required", "Select a skill explicitly for this category.", HttpContext.TraceIdentifier));
         }
         catch (SkillCategoryValidationException exception)
         {
@@ -168,6 +184,10 @@ public sealed class AdminSkillCategoriesController(SkillCategoryService service)
                 SkillTreeProblemCodes.MergeConflict,
                 exception.Message,
                 HttpContext.TraceIdentifier));
+        }
+        catch (SkillSelectionRequiredException)
+        {
+            return Conflict(ApiError.Conflict("skill_selection_required", "Select a skill explicitly for this category.", HttpContext.TraceIdentifier));
         }
         catch (SkillCategoryValidationException exception)
         {

@@ -41,7 +41,7 @@ public sealed class ChallengeRuntimeHostTests(GZCTFApplicationFactory factory)
                 Localizations = [new ChallengeLocalization { Locale = "en", Title = "Runtime test" }],
                 Flags = [new ChallengeFlag { Kind = ChallengeFlagKind.Static, Value = "flag{runtime}" }],
                 RuntimeConfigurationJson = "{\"Image\":\"nginx:1.27\",\"ExposedPort\":80,\"Cpu\":1,\"MemoryMb\":64,\"StorageMb\":256,\"NetworkMode\":\"Open\"}" });
-            await db.SaveChangesAsync();
+            await db.SaveRuntimeFixtureAsync();
         }
         var resolutions = 0;
         using var unavailable = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
@@ -68,7 +68,7 @@ public sealed class ChallengeRuntimeHostTests(GZCTFApplicationFactory factory)
             { UserId = user.Id, ChallengeId = id, ContainerId = container.Id,
                 Status = GZCTF.Features.ChallengeRuntime.Domain.ChallengeInstanceStatus.Running,
                 ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(-1) });
-            await db.SaveChangesAsync();
+            await db.SaveRuntimeFixtureAsync();
         }
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/challenges/{id}/instances")).StatusCode);
         Assert.Equal(0, resolutions);
@@ -99,7 +99,7 @@ public sealed class ChallengeRuntimeHostTests(GZCTFApplicationFactory factory)
                 Flags = [new ChallengeFlag { Kind = ChallengeFlagKind.Static, Value = "flag{http-runtime}" }],
                 RuntimeConfigurationJson = JsonSerializer.Serialize(new { Image = "nginx:1.27", ExposedPort = 80,
                     Cpu = 10, MemoryMb = 64, StorageMb = 256, NetworkMode = "Open" }) });
-            await db.SaveChangesAsync();
+            await db.SaveRuntimeFixtureAsync();
         }
         using var client = factory.CreateClient();
         (await client.PostAsJsonAsync("/api/Account/LogIn", new LoginModel

@@ -49,7 +49,7 @@ public sealed class AdminChallengeInstancesTests(GZCTFApplicationFactory factory
                 StartedAtUtc = DateTimeOffset.UtcNow,
                 ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2), ContainerId = containerId
             });
-            await db.SaveChangesAsync();
+            await db.SaveRuntimeFixtureAsync();
         }
 
         using var visitor = factory.CreateClient();

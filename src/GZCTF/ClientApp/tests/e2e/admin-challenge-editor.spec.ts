@@ -108,10 +108,11 @@ test('administrator can take a published challenge off the skill tree without de
   expect(update).toMatchObject({ isEnabled: false })
 })
 
-test('static challenge uploads a handout and publishes into a selected tree category', async ({ page }) => {
+test('static challenge uploads a handout and publishes into a selected tree category skill', async ({ page }) => {
   const challengeId = '10000000-0000-0000-0000-000000000004'
   const treeId = '30000000-0000-0000-0000-000000000001'
   const categoryId = '40000000-0000-0000-0000-000000000001'
+  const skillId = '50000000-0000-0000-0000-000000000001'
   const hash = 'a'.repeat(64)
   let saved: Record<string, unknown> | undefined
   let published: Record<string, unknown> | undefined
@@ -133,7 +134,11 @@ test('static challenge uploads a handout and publishes into a selected tree cate
   await page.route('**/api/admin/skill-categories', (route) =>
     route.fulfill({ json: [{ categoryId, name: 'Web Basics', trees: [{ skillTreeId: treeId }] }] })
   )
-  await page.route('**/api/assets', (route) => route.fulfill({ json: [{ hash, name: 'handout.txt' }] }))
+  await page.route('**/api/admin/skills', (route) =>
+    route.fulfill({ json: [{ skillId, name: 'Handout analysis', summary: '', iconKey: 'flag',
+      isEnabled: true, rowVersion: 1, categories: [{ categoryId, name: 'Web Basics' }], contents: [] }] })
+  )
+  await page.route('**/api/admin/content-assets?kind=challenge&contentId=*', (route) => route.fulfill({ json: [{ hash, name: 'handout.txt',storageKey:`content-assets/challenge/${challengeId.replaceAll('-','')}/${hash}`,url:`/api/admin/content-assets/challenge/${challengeId}/${hash}/handout.txt` }] }))
   await page.route(`**/api/admin/challenges/${challengeId}/edit**`, (route) => route.fulfill({ json: edit }))
   await page.route(`**/api/admin/challenges/${challengeId}`, (route) => {
     saved = route.request().postDataJSON()
@@ -155,15 +160,20 @@ test('static challenge uploads a handout and publishes into a selected tree cate
   await expect(page.getByText('handout.txt')).toBeVisible()
   await page.getByRole('button', { name: 'Publish challenge' }).click()
   const modal = page.getByRole('dialog')
-  await modal.getByText('Intro Tree').click()
-  await modal.getByText('Web Basics').click()
-  await modal.getByRole('button', { name: 'Publish', exact: true }).click()
+  await modal.getByRole('combobox', { name: '选择路线', exact: true }).click()
+  await page.getByRole('option', { name: 'Intro Tree', exact: true }).click()
+  await modal.getByRole('combobox', { name: '选择类别', exact: true }).click()
+  await page.getByRole('option', { name: 'Web Basics', exact: true }).click()
+  await modal.getByRole('combobox', { name: '关联技能', exact: true }).click()
+  await page.getByRole('option', { name: 'Handout analysis', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await modal.getByRole('button', { name: '发布', exact: true }).click()
 
   expect(saved?.flags).toEqual([{ kind: 'Static', value: 'flag{handout}' }])
   expect(JSON.parse(String(saved?.runtimeConfigurationJson))).toMatchObject({
-    Attachments: [{ FileName: 'handout.txt', StorageKey: `uploads/aa/aa/${hash}`, Sha256: hash }],
+    Attachments: [{ FileName: 'handout.txt', StorageKey: `content-assets/challenge/${challengeId.replaceAll('-','')}/${hash}`, Sha256: hash }],
   })
-  expect(published).toMatchObject({ rowVersion: 2, categoryIds: [categoryId] })
+  expect(published).toMatchObject({ rowVersion: 2, categoryIds: [], skillIds: [skillId], inlineSkills: [] })
 })
 
 test('challenge library filters independently by CTF category', async ({ page }) => {
@@ -253,9 +263,9 @@ test('dynamic attachments keep a separate Flag for each uploaded file', async ({
     localizations: [{ locale: 'en', title: 'Attachment pool', summary: '', body: '' }],
     flags: [], hints: [], writeups: [], publication: { rowVersion: 1, categoryIds: [] },
   } }))
-  await page.route('**/api/assets', (route) => {
+  await page.route('**/api/admin/content-assets?kind=challenge&contentId=*', (route) => {
     uploads += 1
-    return route.fulfill({ json: [{ hash: String(uploads).repeat(64), name: `file-${uploads}.txt` }] })
+    return route.fulfill({ json: [{ hash: String(uploads).repeat(64), name: `file-${uploads}.txt`, storageKey:`content-assets/challenge/${challengeId.replaceAll('-','')}/${String(uploads).repeat(64)}` }] })
   })
   await page.route(`**/api/admin/challenges/${challengeId}`, (route) => {
     saved = route.request().postDataJSON()

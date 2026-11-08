@@ -29,7 +29,7 @@ public sealed class ChallengeConcurrencyTests(GZCTFApplicationFactory factory)
             Status = ChallengeInstanceStatus.Running,
             IsActive = true
         });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
 
         db.UserChallengeInstances.Add(new UserChallengeInstance
         {
@@ -56,7 +56,7 @@ public sealed class ChallengeConcurrencyTests(GZCTFApplicationFactory factory)
             UserId = user.Id,
             ChallengeId = challengeId
         });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
 
         db.ChallengeProgress.Add(new ChallengeProgress
         {
@@ -90,7 +90,7 @@ public sealed class ChallengeConcurrencyTests(GZCTFApplicationFactory factory)
                 }
             ]
         });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         return challengeId;
     }
 }

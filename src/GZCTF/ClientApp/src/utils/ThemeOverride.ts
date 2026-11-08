@@ -18,8 +18,8 @@ import {
 import { createStyles } from '@mantine/emotion'
 import { useLocalStorage, useMediaQuery } from '@mantine/hooks'
 import { useMemo } from 'react'
-import { useConfig } from '@Hooks/useConfig'
 import { resolveThemePalette } from '@Utils/ThemePalette'
+import { useConfig } from '@Hooks/useConfig'
 import tooltipClasses from '@Styles/Tooltip.module.css'
 
 const CustomTheme: MantineThemeOverride = {
@@ -88,8 +88,7 @@ const CustomTheme: MantineThemeOverride = {
   primaryColor: 'brand',
   primaryShade: { light: 6, dark: 3 },
   autoContrast: true,
-  fontFamily:
-    'Roboto, -apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif',
+  fontFamily: 'Roboto, -apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif',
   fontFamilyMonospace:
     'JetBrains Mono, ui-monospace, SFMono-Regular, Monaco, Consolas, Courier New, monospace, sans-serif',
   headings: {
@@ -188,6 +187,7 @@ const CustomTheme: MantineThemeOverride = {
 export const themeCssVariablesResolver: CSSVariablesResolver = () => ({
   variables: {
     '--hbc-primary': 'var(--mantine-primary-color-filled)',
+    '--hbc-accent': 'var(--mantine-primary-color-filled)',
     '--hbc-primary-hover': 'var(--mantine-primary-color-filled-hover)',
     '--hbc-primary-foreground': 'var(--mantine-primary-color-contrast)',
     '--hbc-primary-soft': 'var(--mantine-primary-color-light)',
@@ -264,29 +264,34 @@ export const useCustomTheme = () => {
   const { config } = useConfig()
   const { customColor } = useCustomColor()
 
-  const resolvedColor = customColor.provider === ColorProvider.Custom
-    ? customColor.color
-    : customColor.provider === ColorProvider.Managed ? config.customTheme : null
+  const resolvedColor =
+    customColor.provider === ColorProvider.Custom
+      ? customColor.color
+      : customColor.provider === ColorProvider.Managed
+        ? config.customTheme
+        : null
 
   const theme = useMemo<MantineThemeOverride>(() => {
     const palette = resolveThemePalette(resolvedColor)
-    return palette ? {
-        ...CustomTheme,
-        colors: {
-          ...CustomTheme.colors,
-          custom: palette.colors,
-        },
-        components: {
-          ...CustomTheme.components,
-          Avatar: Avatar.extend({
-            defaultProps: {
-              color: 'custom',
-            },
-          }),
-        },
-        primaryColor: 'custom',
-        primaryShade: { light: palette.lightShade, dark: palette.darkShade },
-    } : CustomTheme
+    return palette
+      ? {
+          ...CustomTheme,
+          colors: {
+            ...CustomTheme.colors,
+            custom: palette.colors,
+          },
+          components: {
+            ...CustomTheme.components,
+            Avatar: Avatar.extend({
+              defaultProps: {
+                color: 'custom',
+              },
+            }),
+          },
+          primaryColor: 'custom',
+          primaryShade: { light: palette.lightShade, dark: palette.darkShade },
+        }
+      : CustomTheme
   }, [resolvedColor])
 
   return { theme }

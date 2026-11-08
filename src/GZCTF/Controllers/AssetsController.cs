@@ -133,7 +133,14 @@ public class AssetsController(
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Delete(string hash, CancellationToken token)
     {
-        if (await db.AboutPageStates.AsNoTracking().AnyAsync(state => state.DraftJson.Contains(hash), token) ||
+        if (await db.SkillTrees.AsNoTracking().AnyAsync(tree => tree.CoverHash == hash, token) ||
+            await db.CourseAuthoringWorkspaces.AsNoTracking().AnyAsync(workspace => workspace.DocumentJson.Contains(hash), token) ||
+            await db.CourseWorkspaceContents.AsNoTracking().AnyAsync(content => content.PayloadJson.Contains(hash), token) ||
+            await db.CoursePublishedVersions.AsNoTracking().AnyAsync(version => version.PublicDocumentJson.Contains(hash), token) ||
+            await db.CoursePublishedContents.AsNoTracking().AnyAsync(content => content.PayloadJson.Contains(hash), token) ||
+            await db.Set<GZCTF.Features.ChallengeRuntime.Domain.UserChallengeInstance>().AsNoTracking()
+                .AnyAsync(instance => instance.PublishedChallengeJson != null && instance.PublishedChallengeJson.Contains(hash), token) ||
+            await db.AboutPageStates.AsNoTracking().AnyAsync(state => state.DraftJson.Contains(hash), token) ||
             await db.AboutPageVersions.AsNoTracking().AnyAsync(version => version.DocumentJson.Contains(hash), token))
             return Conflict(new RequestResponse("This image is referenced by an about page draft or published history."));
 

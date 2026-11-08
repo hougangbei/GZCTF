@@ -1,3 +1,4 @@
+using GZCTF.Features.ChallengeRuntime.Application;
 using System.Data;
 using GZCTF.Features.LearningPaths.Domain;
 using GZCTF.Features.SkillTrees.Application;
@@ -8,8 +9,10 @@ namespace GZCTF.Features.LearningPaths.Application;
 
 public sealed class LessonProgressService(AppDbContext db, SkillTreeEnrollmentService enrollments)
 {
-    public async Task CompleteAsync(Guid userId, Guid lessonId, CancellationToken token)
+    public async Task CompleteAsync(Guid userId, Guid lessonId, CancellationToken token, Guid? courseId = null)
     {
+        if (courseId is not null && await PublishedCourseContentReader.GetLessonAsync(db, lessonId, token, courseId) is null)
+            throw new LearningLessonNotFoundException();
         var access = await enrollments.GetLessonAccessAsync(lessonId, token);
         if (access == LessonAccess.NotFound)
             throw new LearningLessonNotFoundException();

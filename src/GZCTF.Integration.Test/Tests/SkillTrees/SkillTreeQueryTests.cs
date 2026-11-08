@@ -173,7 +173,7 @@ public class SkillTreeQueryTests(GZCTFApplicationFactory factory)
         db.SkillTrees.AddRange(emptyTree, populatedTree, draftTree, deletedTree);
         db.Challenges.Add(publishedChallenge);
         db.Lessons.AddRange(draftLesson, publishedLesson);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
 
         await using var scope2 = factory.Services.CreateAsyncScope();
         var db2 = scope2.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -184,6 +184,9 @@ public class SkillTreeQueryTests(GZCTFApplicationFactory factory)
         await db2.SkillTrees.Where(t => t.Id == deletedTree.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.CurrentPublishedRevisionId, deletedTree.Revisions[0].Id));
 
+        await CourseSnapshotBuilder.CaptureCurrentAsync(db2, emptyTree.Id, emptyRevision.Id, default);
+        await CourseSnapshotBuilder.CaptureCurrentAsync(db2, populatedTree.Id, populatedRevision.Id, default);
+        await db2.SaveChangesAsync();
         return populatedTree.Id;
     }
 }

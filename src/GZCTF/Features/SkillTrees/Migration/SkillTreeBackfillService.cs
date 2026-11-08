@@ -107,15 +107,28 @@ public sealed class SkillTreeBackfillService(
                         });
                     }
 
+                    if (module.Items.Count > 0 && !await db.Skills.AnyAsync(skill => skill.Id == module.Id, token))
+                    {
+                        db.Skills.Add(new Skill { Id = module.Id, Name = moduleText?.Title ?? string.Empty, Summary = moduleText?.Summary ?? string.Empty });
+                        db.CategorySkillRefs.Add(new CategorySkillRef { Id = module.Id, CategoryId = module.Id, SkillId = module.Id, SortOrder = 0 });
+                        var category = await db.SkillCategories.FindAsync(new object[] { module.Id }, token);
+                        if (category is not null)
+                        {
+                            category.UpdatedAtUtc = DateTimeOffset.UtcNow;
+                            if (db.Entry(category).State != EntityState.Added)
+                                db.Entry(category).Property(item => item.UpdatedAtUtc).IsModified = true;
+                        }
+                    }
+
                     foreach (var item in module.Items)
                     {
-                        if (await db.CategoryContents.AnyAsync(content => content.Id == item.Id, token))
+                        if (await db.SkillContents.AnyAsync(content => content.Id == item.Id, token))
                             continue;
 
-                        db.CategoryContents.Add(new CategoryContent
+                        db.SkillContents.Add(new SkillContent
                         {
                             Id = item.Id,
-                            CategoryId = module.Id,
+                            SkillId = module.Id,
                             SortOrder = item.SortOrder,
                             LessonId = item.LessonId,
                             ChallengeId = item.ChallengeId,

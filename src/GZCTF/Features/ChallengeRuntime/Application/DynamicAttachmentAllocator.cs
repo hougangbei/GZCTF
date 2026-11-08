@@ -28,31 +28,38 @@ public sealed class DynamicAttachmentExhaustedException : Exception
 public sealed class DynamicAttachmentAllocator(AppDbContext db)
 {
     public async Task<AttachmentAssignment> GetOrAllocateAsync(
-        Guid userId, Guid challengeId, CancellationToken token = default)
+        Guid userId, Guid challengeId, CancellationToken token = default, bool allowDraft = false)
     {
         var current = await db.UserChallengeInstances
             .SingleOrDefaultAsync(instance => instance.UserId == userId &&
                                               instance.ChallengeId == challengeId && instance.IsActive, token)
                       ?? throw new InvalidOperationException("An active challenge instance is required.");
 
-        var challenge = await db.Challenges
-            .Include(item => item.Flags)
-            .SingleAsync(item => item.Id == challengeId, token);
+        var hasAssignment = !string.IsNullOrWhiteSpace(current.AssignedAttachmentKey);
+        var challenge = hasAssignment && current.PublishedChallengeJson is { } payload
+            ? PublishedCourseContentReader.ReadChallenge(payload)
+            : await PublishedCourseContentReader.GetChallengeAsync(db, challengeId, token, allowDraft)
+                ?? throw new InvalidOperationException("challenge.not_published");
         var candidates = ReadCandidates(challenge);
 
         if (!string.IsNullOrWhiteSpace(current.AssignedAttachmentKey) &&
             !string.IsNullOrWhiteSpace(current.AssignedAttachmentSha256) &&
             !string.IsNullOrWhiteSpace(current.AssignedFlag))
-            return candidates.FirstOrDefault(item =>
-                       item.EffectiveStorageKey == current.AssignedAttachmentKey &&
-                       item.Sha256 == current.AssignedAttachmentSha256)
-                   ?? new AttachmentAssignment(current.AssignedAttachmentKey,
-                       current.AssignedAttachmentSha256, current.AssignedFlag);
+        {
+            var assigned = candidates.FirstOrDefault(item =>
+                item.EffectiveStorageKey == current.AssignedAttachmentKey && item.Sha256 == current.AssignedAttachmentSha256);
+            return new AttachmentAssignment(assigned?.FileName ?? current.AssignedAttachmentKey,
+                current.AssignedAttachmentSha256, current.AssignedFlag, current.AssignedAttachmentKey);
+        }
         if (candidates.Count == 0)
             throw new InvalidOperationException("challenge.attachment_pool_missing");
 
         if (challenge.Type == ChallengeType.StaticAttachment)
+        {
+            current.PublishedChallengeJson = PublishedCourseContentReader.FreezeChallenge(challenge);
+            if (allowDraft) current.RuntimeMetadataJson = "{\"adminTest\":true}";
             return await AssignAsync(current, candidates[0], token);
+        }
 
         for (var attempt = 0; attempt < 3; attempt++)
         {
@@ -80,6 +87,8 @@ public sealed class DynamicAttachmentAllocator(AppDbContext db)
                 if (candidate is null)
                     throw new DynamicAttachmentExhaustedException();
 
+                instance.PublishedChallengeJson = PublishedCourseContentReader.FreezeChallenge(challenge);
+                if (allowDraft) instance.RuntimeMetadataJson = "{\"adminTest\":true}";
                 instance.AssignedAttachmentKey = candidate.EffectiveStorageKey;
                 instance.AssignedAttachmentSha256 = candidate.Sha256;
                 instance.AssignedFlag = candidate.Flag;

@@ -45,7 +45,8 @@ public sealed class DockerPortRangeTests(GZCTFApplicationFactory factory)
         var configs = Enumerable.Range(1, 4).Select(i => new ContainerConfig
         {
             Image = "nginx:1.27", TeamId = prefix, UserId = Guid.NewGuid(), ChallengeId = i,
-            ExposedPort = 80, MemoryLimit = 64, CPUCount = 1, Flag = "flag{port-pool}"
+            ExposedPort = 80, MemoryLimit = i == 1 ? 4096 : 64, CPUCount = 1, Flag = "flag{port-pool}",
+            UseWhaleFlagEnvironment = i == 1
         }).ToArray();
         try
         {
@@ -58,6 +59,12 @@ public sealed class DockerPortRangeTests(GZCTFApplicationFactory factory)
                 Assert.Equal("campus-entry.example", instance.PublicIP);
             }
             Assert.NotEqual(instances[0]!.PublicPort, instances[1]!.PublicPort);
+            var whale = await client.Containers.InspectContainerAsync(instances[0]!.ContainerId);
+            Assert.Equal(4096L * 1024 * 1024, whale.HostConfig.Memory);
+            Assert.Contains("FLAG=flag{port-pool}", whale.Config.Env);
+            var native = await client.Containers.InspectContainerAsync(instances[1]!.ContainerId);
+            Assert.DoesNotContain("FLAG=flag{port-pool}", native.Config.Env);
+            Assert.Contains("GZCTF_FLAG=flag{port-pool}", native.Config.Env);
             var failedName = DockerMetadata.GetName(configs[2]);
             await Assert.ThrowsAnyAsync<Exception>(() => manager.CreateContainerAsync(configs[2]));
             await Assert.ThrowsAsync<DockerContainerNotFoundException>(() => client.Containers.InspectContainerAsync(failedName));

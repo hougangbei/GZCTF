@@ -13,7 +13,8 @@ namespace GZCTF.Features.ChallengeLibrary.Api;
 [Produces(MediaTypeNames.Application.Json)]
 public sealed class AdminChallengesController(
     ChallengeLibraryService service,
-    ContentPublicationService publicationService) : ControllerBase
+    ContentPublicationService publicationService,
+    CourseWorkspaceContentService workspaceContent) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<ChallengeSummaryResponse>>> List(
@@ -47,21 +48,35 @@ public sealed class AdminChallengesController(
     [HttpGet("{id:guid}/edit")]
     [ResponseCache(Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<ActionResult<ChallengeEditResponse>> GetForEdit(
-        Guid id, [FromQuery] string? locale, CancellationToken token)
+        Guid id, [FromQuery] string? locale, [FromQuery] Guid? course, CancellationToken token)
     {
-        var response = await service.GetChallengeForEditAsync(id, locale, token);
+        var response = course is { } treeId
+            ? await workspaceContent.GetChallengeAsync(treeId, id, locale, token)
+            : await service.GetChallengeForEditAsync(id, locale, token);
         return response is null ? NotFound() : Ok(response);
     }
 
     [HttpPut("{id:guid}")]
     [AuditAction("challenges.update")]
     public async Task<ActionResult<ChallengeEditResponse>> Update(
-        Guid id, [FromBody] ChallengeCommand command, CancellationToken token)
+        Guid id, [FromBody] ChallengeCommand command, [FromQuery] Guid? course, CancellationToken token)
     {
         try
         {
-            var response = await service.UpdateChallengeAsync(id, command, token);
+            var response = course is { } treeId
+                ? await workspaceContent.UpdateChallengeAsync(treeId, id, command, token)
+                : await service.UpdateChallengeAsync(id, command, token);
+            if (response is null && course is not null)
+                return Conflict(ApiError.Conflict("course_content_not_in_workspace", "Content is not in this workspace.", HttpContext.TraceIdentifier));
             return response is null ? NotFound() : Ok(response);
+        }
+        catch (SkillTreeRevisionConflictException)
+        {
+            return Conflict(ApiError.Conflict(SkillTreeProblemCodes.RevisionConflict, "The course content changed since it was loaded.", HttpContext.TraceIdentifier));
+        }
+        catch (CourseAssetUnavailableException)
+        {
+            return BadRequest(ApiError.Validation("content_asset_unreadable", "A referenced private file is missing.", HttpContext.TraceIdentifier, null));
         }
         catch (ChallengeTypeImmutableException)
         {
@@ -98,6 +113,18 @@ public sealed class AdminChallengesController(
         {
             await publicationService.PublishChallengeAsync(id, command, token);
             return NoContent();
+        }
+        catch (SkillSelectionRequiredException)
+        {
+            return Conflict(ApiError.Conflict("skill_selection_required", "Select a skill explicitly for this category.", HttpContext.TraceIdentifier));
+        }
+        catch (SkillCategoryValidationException exception)
+        {
+            return BadRequest(ApiError.Validation("skill_invalid", exception.Message, HttpContext.TraceIdentifier, null));
+        }
+        catch (SkillTreeInvalidIconException)
+        {
+            return BadRequest(ApiError.Validation("skill_tree_invalid_icon", "The icon is not supported.", HttpContext.TraceIdentifier, null));
         }
         catch (ContentCategoryRequiredException)
         {

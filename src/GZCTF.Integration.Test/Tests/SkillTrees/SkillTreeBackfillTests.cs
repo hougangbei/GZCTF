@@ -29,7 +29,7 @@ public class SkillTreeBackfillTests(GZCTFApplicationFactory factory)
 
         Assert.Equal(seed.PathIds.Count, await db.SkillTrees.CountAsync(x => seed.PathIds.Contains(x.Id)));
         Assert.Equal(seed.ModuleIds.Count, await db.SkillCategories.CountAsync(x => seed.ModuleIds.Contains(x.Id)));
-        Assert.Equal(seed.ItemIds.Count, await db.CategoryContents.CountAsync(x => seed.ModuleIds.Contains(x.CategoryId)));
+        Assert.Equal(seed.ItemIds.Count, await db.SkillContents.CountAsync(x => seed.ModuleIds.Contains(x.SkillId)));
         Assert.Equal(seed.EnrollmentIds.Count,
             await db.SkillTreeEnrollments.CountAsync(x => seed.PathIds.Contains(x.SkillTreeId)));
         Assert.Equal(seed.PathIds.Count,
@@ -62,8 +62,8 @@ public class SkillTreeBackfillTests(GZCTFApplicationFactory factory)
         {
             var sourceItems = await db.ModuleItems
                 .Where(x => x.ModuleId == moduleId).OrderBy(x => x.SortOrder).ToListAsync();
-            var copiedContents = await db.CategoryContents
-                .Where(x => x.CategoryId == moduleId).OrderBy(x => x.SortOrder).ToListAsync();
+            var copiedContents = await db.SkillContents
+                .Where(x => x.SkillId == moduleId).OrderBy(x => x.SortOrder).ToListAsync();
             Assert.Equal(sourceItems.Count, copiedContents.Count);
             for (var i = 0; i < sourceItems.Count; i++)
             {
@@ -113,7 +113,7 @@ public class SkillTreeBackfillTests(GZCTFApplicationFactory factory)
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             Assert.Equal(seed.PathIds.Count, await db.SkillTrees.CountAsync(x => seed.PathIds.Contains(x.Id)));
             Assert.Equal(seed.ModuleIds.Count, await db.SkillCategories.CountAsync(x => seed.ModuleIds.Contains(x.Id)));
-            Assert.Equal(seed.ItemIds.Count, await db.CategoryContents.CountAsync(x => seed.ModuleIds.Contains(x.CategoryId)));
+            Assert.Equal(seed.ItemIds.Count, await db.SkillContents.CountAsync(x => seed.ModuleIds.Contains(x.SkillId)));
             Assert.Equal(seed.EnrollmentIds.Count,
                 await db.SkillTreeEnrollments.CountAsync(x => seed.PathIds.Contains(x.SkillTreeId)));
             Assert.Equal(seed.PathIds.Count,
@@ -127,7 +127,7 @@ public class SkillTreeBackfillTests(GZCTFApplicationFactory factory)
 
         Assert.Equal(seed.PathIds.Count, await verifyDb.SkillTrees.CountAsync(x => seed.PathIds.Contains(x.Id)));
         Assert.Equal(seed.ModuleIds.Count, await verifyDb.SkillCategories.CountAsync(x => seed.ModuleIds.Contains(x.Id)));
-        Assert.Equal(seed.ItemIds.Count, await verifyDb.CategoryContents.CountAsync(x => seed.ModuleIds.Contains(x.CategoryId)));
+        Assert.Equal(seed.ItemIds.Count, await verifyDb.SkillContents.CountAsync(x => seed.ModuleIds.Contains(x.SkillId)));
         Assert.Equal(seed.EnrollmentIds.Count,
             await verifyDb.SkillTreeEnrollments.CountAsync(x => seed.PathIds.Contains(x.SkillTreeId)));
         Assert.Equal(seed.PathIds.Count,
@@ -142,7 +142,7 @@ public class SkillTreeBackfillTests(GZCTFApplicationFactory factory)
         foreach (var moduleId in seed.ModuleIds)
         {
             var sourceCount = await verifyDb.ModuleItems.CountAsync(x => x.ModuleId == moduleId);
-            var copiedCount = await verifyDb.CategoryContents.CountAsync(x => x.CategoryId == moduleId);
+            var copiedCount = await verifyDb.SkillContents.CountAsync(x => x.SkillId == moduleId);
             Assert.Equal(sourceCount, copiedCount);
         }
     }
@@ -298,13 +298,13 @@ public class SkillTreeBackfillTests(GZCTFApplicationFactory factory)
                 Challenge = challenge,
                 SolvedAtUtc = DateTimeOffset.UtcNow
             });
-            await db.SaveChangesAsync();
+            await db.SaveSkillTreeFixtureAsync();
 
             // Set the published revision pointers in a second save to avoid a circular
             // dependency between LearningPath and LearningPathRevision inserts.
             path.CurrentPublishedRevisionId = published.Id;
             secondPath.CurrentPublishedRevisionId = secondPublished.Id;
-            await db.SaveChangesAsync();
+            await db.SaveSkillTreeFixtureAsync();
         }
 
         return new SeedGraph(

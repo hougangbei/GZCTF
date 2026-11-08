@@ -49,7 +49,11 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
         using var anon = factory.CreateClient();
         var detail = await anon.GetFromJsonAsync<SkillTreeDetailResponse>($"/api/skill-trees/{treeId}");
         var category = Assert.Single(detail!.Categories);
-        Assert.Contains(category.Contents, item => item.ContentId == challenge.Id && item.Kind == "challenge");
+        Assert.DoesNotContain(category.Contents, item => item.ContentId == challenge.Id);
+        var draft = (await admin.GetFromJsonAsync<SkillTreeDraftResponse>($"/api/admin/skill-trees/{treeId}/draft"))!;
+        (await admin.PostAsJsonAsync($"/api/admin/skill-trees/{treeId}/publish", new PublishSkillTreeCommand(draft.RowVersion))).EnsureSuccessStatusCode();
+        detail = await anon.GetFromJsonAsync<SkillTreeDetailResponse>($"/api/skill-trees/{treeId}");
+        Assert.Contains(detail!.Categories.Single().Contents, item => item.ContentId == challenge.Id && item.Kind == "challenge");
     }
 
     [Fact]
@@ -84,7 +88,7 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var localization = await db.ChallengeLocalizations.SingleAsync(item => item.ChallengeId == challenge.Id);
             localization.Body = "  ";
-            await db.SaveChangesAsync();
+            await db.SaveSkillTreeFixtureAsync();
         }
 
         using var admin = await CreateAdminClientAsync();
@@ -122,7 +126,7 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
                 }]
             };
             db.Challenges.Add(challenge);
-            await db.SaveChangesAsync();
+            await db.SaveSkillTreeFixtureAsync();
             rowVersion = challenge.RowVersion;
         }
 
@@ -144,6 +148,9 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
         publish.EnsureSuccessStatusCode();
 
         using var anon = factory.CreateClient();
+        Assert.Equal(HttpStatusCode.NotFound, (await anon.GetAsync($"/api/skill-trees/{treeId}")).StatusCode);
+        var draft = (await admin.GetFromJsonAsync<SkillTreeDraftResponse>($"/api/admin/skill-trees/{treeId}/draft"))!;
+        (await admin.PostAsJsonAsync($"/api/admin/skill-trees/{treeId}/publish", new PublishSkillTreeCommand(draft.RowVersion))).EnsureSuccessStatusCode();
         var detail = await anon.GetFromJsonAsync<SkillTreeDetailResponse>($"/api/skill-trees/{treeId}");
         var category = Assert.Single(detail!.Categories);
         Assert.Equal("Inline", category.Name);
@@ -203,7 +210,7 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
                 } : []
             };
             db.Challenges.Add(challenge);
-            await db.SaveChangesAsync();
+            await db.SaveSkillTreeFixtureAsync();
             return (challenge.Id, challenge.RowVersion);
         }
         else
@@ -215,7 +222,7 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
                 Localizations = [new LessonLocalization { Locale = "en", Title = "Draft lesson", Body = "Body" }]
             };
             db.Lessons.Add(lesson);
-            await db.SaveChangesAsync();
+            await db.SaveSkillTreeFixtureAsync();
             return (lesson.Id, lesson.RowVersion);
         }
     }
@@ -226,7 +233,7 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var category = new SkillCategory { Id = Guid.CreateVersion7(), Name = "Orphan", Summary = "", IconKey = "flag" };
         db.SkillCategories.Add(category);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
         return category.Id;
     }
 
@@ -251,7 +258,7 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
             ]
         };
         db.SkillTrees.Add(tree);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
         return tree.Id;
     }
 
@@ -260,7 +267,8 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var category = new SkillCategory { Id = Guid.CreateVersion7(), Name = "Shared", Summary = "", IconKey = "web" };
+        var category = new SkillCategory { Id = Guid.CreateVersion7(), Name = "Shared", Summary = "", IconKey = "web",
+            Skills = [new CategorySkillRef { Skill = new Skill { Name = "Shared skill", IconKey = "web" }, SortOrder = 0 }] };
         var revision = new SkillTreeRevision
         {
             Id = Guid.CreateVersion7(),
@@ -278,10 +286,12 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
             Revisions = [revision]
         };
         db.SkillTrees.Add(tree);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
         await db.SkillTrees.Where(item => item.Id == tree.Id)
             .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.CurrentPublishedRevisionId, revision.Id));
 
+        await CourseSnapshotBuilder.CaptureCurrentAsync(db, tree.Id, revision.Id, default);
+        await db.SaveChangesAsync();
         return (tree.Id, category.Id);
     }
 

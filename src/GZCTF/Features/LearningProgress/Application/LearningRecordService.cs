@@ -1,3 +1,4 @@
+using GZCTF.Features.ChallengeRuntime.Application;
 using GZCTF.Features.LearningPaths.Domain;
 using GZCTF.Features.LearningProgress.Domain;
 using GZCTF.Features.ChallengeLibrary.Domain;
@@ -38,20 +39,19 @@ public sealed class LearningRecordService(AppDbContext db, SkillTreeEnrollmentSe
             .OrderBy(item => item.EnrolledAtUtc)
             .ToListAsync(token);
 
-        var lessonProgress = await db.LessonProgress
-            .AsNoTracking()
-            .Include(item => item.Lesson)
-                .ThenInclude(item => item.Localizations)
-            .Where(item => item.UserId == userId)
-            .OrderByDescending(item => item.CompletedAtUtc)
-            .ToListAsync(token);
-        var challengeProgress = await db.ChallengeProgress
-            .AsNoTracking()
-            .Include(item => item.Challenge)
-                .ThenInclude(item => item.Localizations)
-            .Where(item => item.UserId == userId)
-            .OrderByDescending(item => item.SolvedAtUtc)
-            .ToListAsync(token);
+        var publishedChallenges = await PublishedCourseContentReader.GetChallengesAsync(db, token);
+        var publishedLessonRows = await PublishedCourseContentReader.ActiveContents(db).Where(c => c.Kind == "lesson")
+            .OrderBy(c => c.VersionId).Select(c => new { c.ContentId, c.PayloadJson }).ToArrayAsync(token);
+        var publishedLessons = publishedLessonRows.GroupBy(c => c.ContentId)
+            .ToDictionary(g => g.Key, g => PublishedCourseContentReader.ReadLesson(g.First().PayloadJson));
+        var lessonProgress = (await db.LessonProgress.AsNoTracking()
+            .Where(item => item.UserId == userId).OrderByDescending(item => item.CompletedAtUtc).ToListAsync(token))
+            .Where(item => publishedLessons.ContainsKey(item.LessonId)).ToList();
+        var challengeProgress = (await db.ChallengeProgress.AsNoTracking()
+            .Where(item => item.UserId == userId).OrderByDescending(item => item.SolvedAtUtc).ToListAsync(token))
+            .Where(item => publishedChallenges.ContainsKey(item.ChallengeId)).ToList();
+        foreach (var item in lessonProgress) item.Lesson = publishedLessons[item.LessonId];
+        foreach (var item in challengeProgress) item.Challenge = publishedChallenges[item.ChallengeId];
 
         var completedLessons = lessonProgress.Select(item => item.LessonId).ToHashSet();
         var solvedChallenges = challengeProgress.Select(item => item.ChallengeId).ToHashSet();

@@ -1,23 +1,15 @@
-import { Alert, Badge, Button, Chip, Group, Modal, Stack, Text, TextInput } from '@mantine/core'
-import { showNotification } from '@mantine/notifications'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Alert, Badge, Button, Group, Modal, MultiSelect, Select, Stack, Text, TextInput } from '@mantine/core'
+import { useEffect, useRef, useState } from 'react'
 import { PresetIconPicker } from '@Components/admin/skill-trees/PresetIconPicker'
-import { useAdminSkillCategories, useAdminSkillTrees, useSkillTreeAdminMutations } from '@Hooks/useSkillTreeAdmin'
-import { getApiErrorCode, type SkillTreeIconKey } from '@Utils/skillTreeAdmin'
-import { showSkillTreeError } from '@Utils/skillTreeAdminFeedback'
+import type { SkillTreeIconKey } from '@Utils/skillTreeAdmin'
+import { useAdminSkills, useHierarchyMutations } from '@Hooks/useSkillHierarchy'
+import { useAdminSkillCategories, useAdminSkillTrees } from '@Hooks/useSkillTreeAdmin'
 
 export type ContentPublishSelection = {
   categoryIds: string[]
-  inlineCategories: Array<{
-    skillTreeId: string
-    name: string
-    summary: string
-    iconKey: SkillTreeIconKey
-  }>
+  inlineCategories: Array<{ skillTreeId: string; name: string; summary: string; iconKey: SkillTreeIconKey }>
 }
-
-type ContentPublishModalProps = {
+type Props = {
   opened: boolean
   kind: 'challenge' | 'lesson'
   contentId: string
@@ -26,183 +18,163 @@ type ContentPublishModalProps = {
   onClose: () => void
   onPublished: () => void | Promise<void>
 }
-
-export const ContentPublishModal = ({
-  opened,
-  kind,
-  contentId,
-  rowVersion,
-  initialCategoryIds,
-  onClose,
-  onPublished,
-}: ContentPublishModalProps) => {
-  const { t } = useTranslation('skillTrees')
+export const ContentPublishModal = ({ opened, kind, contentId, rowVersion, onClose, onPublished }: Props) => {
   const { data: trees } = useAdminSkillTrees()
   const { data: categories } = useAdminSkillCategories()
-  const { publishChallenge, publishLesson } = useSkillTreeAdminMutations()
-
-  const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null)
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
-  const [inline, setInline] = useState<{ name: string; summary: string; iconKey: SkillTreeIconKey }>({
-    name: '',
-    summary: '',
-    iconKey: 'flag',
-  })
-  const [error, setError] = useState<string>()
-  const [submitting, setSubmitting] = useState(false)
-
+  const { data: skills, error: skillsError } = useAdminSkills()
+  const { request } = useHierarchyMutations()
+  const [treeId, setTreeId] = useState<string | null>(null)
+  const [categoryId, setCategoryId] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string[]>([])
+  const [inline, setInline] = useState({ name: '', summary: '', iconKey: 'flag' as SkillTreeIconKey })
+  const [message, setMessage] = useState('')
+  const [pending, setPending] = useState(false)
+  const initialized = useRef(false)
   useEffect(() => {
-    if (!opened) return
-    setSelectedCategoryIds(initialCategoryIds ?? [])
-    setSelectedTreeId(null)
-    setInline({ name: '', summary: '', iconKey: 'flag' })
-    setError(undefined)
-  }, [opened, initialCategoryIds])
-
-  const treeCategories = (categories ?? []).filter((category) =>
-    category.trees?.some((reference) => reference.skillTreeId === selectedTreeId)
-  )
-  const selectedTree = (trees ?? []).find((tree) => tree.skillTreeId === selectedTreeId)
-  const selectedCategories = (categories ?? []).filter((category) =>
-    selectedCategoryIds.includes(category.categoryId ?? '')
-  )
-  const sharedCategorySelected = selectedCategories.some((category) => (category.trees?.length ?? 0) > 1)
-  const emptyTree = Boolean(selectedTreeId) && treeCategories.length === 0
-
-  const toggleCategory = (categoryId: string, checked: boolean) => {
-    setSelectedCategoryIds((current) =>
-      checked ? [...current, categoryId] : current.filter((id) => id !== categoryId)
-    )
-  }
-
-  const publish = async () => {
-    const inlineCategories = emptyTree && selectedTreeId && inline.name.trim()
-      ? [{ skillTreeId: selectedTreeId, name: inline.name.trim(), summary: inline.summary.trim(), iconKey: inline.iconKey }]
-      : []
-
-    if (selectedCategoryIds.length === 0 && inlineCategories.length === 0) {
-      setError(t('publish.categoryRequired'))
+    if (!opened) {
+      initialized.current = false
       return
     }
-
-    setSubmitting(true)
-    setError(undefined)
+    if (skills && !initialized.current) {
+      initialized.current = true
+      setTreeId(null)
+      setCategoryId(null)
+      setSelected(
+        skills
+          .filter((skill) =>
+            skill.contents?.some((content) => content.kind === kind && content.contentId === contentId)
+          )
+          .map((skill) => skill.skillId)
+      )
+      setInline({ name: '', summary: '', iconKey: 'flag' })
+      setMessage('')
+    }
+  }, [opened, skills, contentId, kind])
+  const availableCategories = (categories ?? []).filter((category) =>
+    category.trees?.some((ref) => ref.skillTreeId === treeId)
+  )
+  const availableSkills = (skills ?? []).filter(
+    (skill) => skill.categories?.some((category) => category.categoryId === categoryId) && skill.isEnabled
+  )
+  const publish = async () => {
+    if (!selected.length && !(categoryId && inline.name.trim())) {
+      setMessage('请选择技能或在类别下新建技能')
+      return
+    }
+    setPending(true)
+    setMessage('')
     try {
-      const command = { rowVersion, categoryIds: selectedCategoryIds, inlineCategories }
-      if (kind === 'challenge') await publishChallenge(contentId, command)
-      else await publishLesson(contentId, command)
-      showNotification({
-        color: 'green',
-        message: kind === 'challenge' ? t('publish.successChallenge') : t('publish.successLesson'),
-      })
+      await request(
+        `/api/admin/${kind === 'challenge' ? 'challenges' : 'lessons'}/${contentId}/publish`,
+        {
+          rowVersion,
+          categoryIds: [],
+          inlineCategories: [],
+          skillIds: selected,
+          inlineSkills: categoryId && inline.name.trim() ? [{ ...inline, name: inline.name.trim(), categoryId }] : [],
+        },
+        'POST'
+      )
       await onPublished()
       onClose()
-    } catch (publishError) {
-      const code = getApiErrorCode(publishError)
-      if (code === 'content_category_required') setError(t('publish.categoryRequired'))
-      else if (code === 'content_category_has_no_active_tree') setError(t('publish.categoryHasNoTree'))
-      else showSkillTreeError(publishError, t)
+    } catch (error) {
+      setMessage((error as Error).message)
     } finally {
-      setSubmitting(false)
+      setPending(false)
     }
   }
-
   return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      title={kind === 'challenge' ? t('publish.challengeTitle') : t('publish.lessonTitle')}
-      size="lg"
-    >
+    <Modal opened={opened} onClose={onClose} title={kind === 'challenge' ? '发布题目' : '发布课节'} size="lg">
       <Stack>
-        <Stack gap={4}>
-          <Text size="sm" fw={500}>
-            {t('publish.selectTree')}
-          </Text>
-          <Group gap="xs">
-            {(trees ?? []).map((tree) => (
-              <Chip
-                key={tree.skillTreeId}
-                checked={selectedTreeId === tree.skillTreeId}
-                onChange={() => setSelectedTreeId(tree.skillTreeId ?? null)}
-              >
-                {tree.name}
-              </Chip>
-            ))}
-          </Group>
-        </Stack>
-
-        {selectedTreeId && (
-          <Stack gap={4}>
-            <Text size="sm" fw={500}>
-              {t('publish.selectCategories')}
-            </Text>
-            {emptyTree ? (
-              <Alert color="yellow">{t('publish.emptyTreeHint')}</Alert>
-            ) : (
-              <Group gap="xs">
-                {treeCategories.map((category) => (
-                  <Chip
-                    key={category.categoryId}
-                    checked={selectedCategoryIds.includes(category.categoryId ?? '')}
-                    onChange={(checked) => toggleCategory(category.categoryId ?? '', checked)}
-                  >
-                    {category.name}
-                  </Chip>
-                ))}
-              </Group>
-            )}
-          </Stack>
+        <Text size="sm" c="dimmed">
+          选择路线 → 类别 → 技能。内容和完成记录可在多个技能间共用。
+        </Text>
+        {(message || skillsError) && (
+          <Alert color="red">{skillsError ? '技能列表加载失败，请重新打开后重试' : message}</Alert>
         )}
-
-        {selectedTree && !selectedTree.isPublished && (
-          <Alert color="yellow">{t('publish.treeNeedsPublish')}</Alert>
-        )}
-
-        {emptyTree && (
-          <Stack>
+        <Select
+          label="选择路线"
+          data={(trees ?? []).map((tree) => ({ value: tree.skillTreeId!, label: tree.name! }))}
+          value={treeId}
+          onChange={(value) => {
+            setTreeId(value)
+            setCategoryId(null)
+            setInline({ name: '', summary: '', iconKey: 'flag' })
+          }}
+        />
+        <Select
+          label="选择类别"
+          disabled={!treeId}
+          data={availableCategories.map((category) => ({ value: category.categoryId!, label: category.name! }))}
+          value={categoryId}
+          onChange={(value) => {
+            setCategoryId(value)
+            setInline({ name: '', summary: '', iconKey: 'flag' })
+          }}
+        />
+        <MultiSelect
+          searchable
+          label="关联技能"
+          disabled={!skills}
+          data={(skills ?? [])
+            .filter(
+              (skill) =>
+                selected.includes(skill.skillId) || availableSkills.some((item) => item.skillId === skill.skillId)
+            )
+            .map((skill) => ({ value: skill.skillId, label: skill.name }))}
+          value={selected}
+          onChange={setSelected}
+          description="已关联的其他位置也会保留；取消选择会解除该关联。"
+        />
+        {categoryId && (
+          <Stack gap="xs">
+            <Text fw={600}>或在当前类别中新建技能</Text>
             <TextInput
-              label={t('publish.inlineName')}
+              label="新技能名称"
               value={inline.name}
               onChange={(event) => setInline({ ...inline, name: event.currentTarget.value })}
             />
             <TextInput
-              label={t('publish.inlineSummary')}
+              label="新技能简介"
               value={inline.summary}
               onChange={(event) => setInline({ ...inline, summary: event.currentTarget.value })}
             />
-            <PresetIconPicker
-              value={inline.iconKey}
-              onChange={(iconKey) => setInline({ ...inline, iconKey })}
-            />
+            <PresetIconPicker value={inline.iconKey} onChange={(iconKey) => setInline({ ...inline, iconKey })} />
           </Stack>
         )}
-
-        {selectedCategories.length > 0 && (
-          <Stack gap={4}>
-            <Text size="sm" fw={500}>
-              {t('publish.selectedCategories')}
-            </Text>
-            <Group gap="xs">
-              {selectedCategories.map((category) => (
-                <Badge key={category.categoryId} variant="light">
-                  {category.name}
-                </Badge>
-              ))}
-            </Group>
-          </Stack>
+        <Stack gap={4}>
+          {(skills ?? [])
+            .filter((skill) => selected.includes(skill.skillId))
+            .flatMap((skill) =>
+              skill.categories.flatMap((category) => {
+                const parents = (categories ?? []).find((item) => item.categoryId === category.categoryId)?.trees ?? []
+                return parents.map((parent) => (
+                  <Text size="sm" key={`${skill.skillId}-${category.categoryId}-${parent.skillTreeId}`}>
+                    {(trees ?? []).find((tree) => tree.skillTreeId === parent.skillTreeId)?.name ?? '路线'} →{' '}
+                    {category.name} → {skill.name}
+                  </Text>
+                ))
+              })
+            )}
+        </Stack>
+        <Group>
+          {(skills ?? [])
+            .filter((skill) => selected.includes(skill.skillId))
+            .map((skill) => (
+              <Badge key={skill.skillId}>
+                {skill.name} · {skill.categories.length} 个类别
+              </Badge>
+            ))}
+        </Group>
+        {selected.some((id) => (skills ?? []).find((skill) => skill.skillId === id)?.categories.length! > 1) && (
+          <Alert>包含共享技能，发布将同步影响所有引用位置。</Alert>
         )}
-
-        {sharedCategorySelected && <Alert color="blue">{t('publish.sharedCategoryHint')}</Alert>}
-
-        {error && <Alert color="red">{error}</Alert>}
-
         <Group justify="flex-end">
-          <Button variant="default" onClick={onClose} disabled={submitting}>
-            {t('publish.cancel')}
+          <Button variant="default" onClick={onClose} disabled={pending}>
+            取消
           </Button>
-          <Button loading={submitting} onClick={publish}>
-            {t('publish.publish')}
+          <Button loading={pending} disabled={!skills || Boolean(skillsError)} onClick={publish}>
+            发布
           </Button>
         </Group>
       </Stack>

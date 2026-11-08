@@ -63,7 +63,10 @@ public sealed class AuditActionFilter : IAsyncActionFilter, IOrderedFilter
         if (value is null) return null;
         var type = value.GetType();
         var idValue = type.GetProperty("Id", BindingFlags.Public | BindingFlags.Instance)?.GetValue(value)
-                      ?? type.GetProperty("TokenId", BindingFlags.Public | BindingFlags.Instance)?.GetValue(value);
+                      ?? type.GetProperty("TokenId", BindingFlags.Public | BindingFlags.Instance)?.GetValue(value)
+                      ?? type.GetProperty("SkillId", BindingFlags.Public | BindingFlags.Instance)?.GetValue(value)
+                      ?? type.GetProperty("SkillTreeId", BindingFlags.Public | BindingFlags.Instance)?.GetValue(value)
+                      ?? type.GetProperty("CategoryId", BindingFlags.Public | BindingFlags.Instance)?.GetValue(value);
         if (idValue is not null) return idValue.ToString();
         var info = type.GetProperty("Info", BindingFlags.Public | BindingFlags.Instance)?.GetValue(value);
         return info?.GetType().GetProperty("Id", BindingFlags.Public | BindingFlags.Instance)?.GetValue(info)?.ToString();

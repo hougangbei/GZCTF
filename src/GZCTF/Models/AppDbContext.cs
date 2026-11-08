@@ -5,6 +5,7 @@ using GZCTF.Features.AboutPage.Domain;
 using GZCTF.Features.ChallengeRuntime.Domain;
 using GZCTF.Features.Dashboard.Domain;
 using GZCTF.Features.Imports.Domain;
+using GZCTF.Features.Imports.Infrastructure;
 using GZCTF.Features.LearningPaths.Domain;
 using GZCTF.Features.LearningPaths.Infrastructure;
 using GZCTF.Features.LearningProgress.Domain;
@@ -74,6 +75,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<Dashboard> Dashboards { get; set; } = null!;
     public DbSet<DashboardToken> DashboardTokens { get; set; } = null!;
     public DbSet<LearnerDailySolveStat> LearnerDailySolveStats { get; set; } = null!;
+    public DbSet<PlatformScoreBaseline> PlatformScoreBaselines { get; set; } = null!;
+    public DbSet<PlatformScoreMigration> PlatformScoreMigrations { get; set; } = null!;
+    public DbSet<PlatformImportBatch> PlatformImportBatches { get; set; } = null!;
+    public DbSet<PlatformImportMap> PlatformImportMaps { get; set; } = null!;
+    public DbSet<PlatformHistoryMember> PlatformHistoryMembers { get; set; } = null!;
+    public DbSet<PlatformHistorySubmission> PlatformHistorySubmissions { get; set; } = null!;
+    public DbSet<PlatformHistoryAward> PlatformHistoryAwards { get; set; } = null!;
     public DbSet<MigrationBatch> MigrationBatches { get; set; } = null!;
     public DbSet<LegacyChallengeMap> LegacyChallengeMaps { get; set; } = null!;
     public DbSet<LegacyPathMap> LegacyPathMaps { get; set; } = null!;
@@ -81,10 +89,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<ChallengeSubmission> ChallengeSubmissions { get; set; } = null!;
     public DbSet<ChallengeHelpUsage> ChallengeHelpUsages { get; set; } = null!;
     public DbSet<CommunityWriteup> CommunityWriteups { get; set; } = null!;
+    public DbSet<CourseStoredAsset> CourseStoredAssets { get; set; } = null!;
+    public DbSet<CourseNodeOperation> CourseNodeOperations { get; set; } = null!;
+    public DbSet<CourseWorkspaceContent> CourseWorkspaceContents { get; set; } = null!;
+    public DbSet<CoursePublishedVersion> CoursePublishedVersions { get; set; } = null!;
+    public DbSet<CoursePublishedContent> CoursePublishedContents { get; set; } = null!;
+    public DbSet<CourseAuthoringWorkspace> CourseAuthoringWorkspaces { get; set; } = null!;
     public DbSet<SkillTree> SkillTrees { get; set; } = null!;
     public DbSet<SkillTreeRevision> SkillTreeRevisions { get; set; } = null!;
     public DbSet<SkillCategory> SkillCategories { get; set; } = null!;
     public DbSet<SkillTreeCategoryRef> SkillTreeCategoryRefs { get; set; } = null!;
+    public DbSet<Skill> Skills { get; set; } = null!;
+    public DbSet<CategorySkillRef> CategorySkillRefs { get; set; } = null!;
+    public DbSet<SkillContent> SkillContents { get; set; } = null!;
     public DbSet<CategoryContent> CategoryContents { get; set; } = null!;
     public DbSet<SkillTreeEnrollment> SkillTreeEnrollments { get; set; } = null!;
     public DbSet<LearningPathRedirect> LearningPathRedirects { get; set; } = null!;
@@ -92,6 +109,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<FlagAttemptLog> FlagAttemptLogs { get; set; } = null!;
     public DbSet<AboutPageState> AboutPageStates { get; set; } = null!;
     public DbSet<AboutPageVersion> AboutPageVersions { get; set; } = null!;
+
+    public DbSet<GZCTF.Features.Leaderboard.Domain.RankingScoreEvent> RankingScoreEvents { get; set; } = null!;
+    public DbSet<GZCTF.Features.Leaderboard.Domain.RankingOperation> RankingOperations { get; set; } = null!;
+    public DbSet<GZCTF.Features.Leaderboard.Domain.RankingUserState> RankingUserStates { get; set; } = null!;
+    public DbSet<GZCTF.Features.Leaderboard.Domain.RankingSolveCorrection> RankingSolveCorrections { get; set; } = null!;
+    public DbSet<GZCTF.Features.Leaderboard.Domain.RankingLevelSettings> RankingLevelSettings { get; set; } = null!;
 
     private static ValueConverter<T?, string> GetJsonConverter<T>() where T : class, new() =>
         new(
@@ -555,6 +578,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
                 .HasMaxLength(Limits.MaxLogStatusLength);
         });
 
+        builder.Entity<GZCTF.Features.Leaderboard.Domain.RankingOperation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.OperationId).IsUnique();
+            entity.HasIndex(e => e.ReversesId).IsUnique();
+            entity.HasIndex(e => new { e.UserId, e.CreatedAtUtc });
+            entity.Property(e => e.PayloadHash).HasMaxLength(64);
+            entity.Property(e => e.ActorName).HasMaxLength(80);
+            entity.Property(e => e.Kind).HasMaxLength(32);
+            entity.Property(e => e.Reason).HasMaxLength(1000);
+        });
+        builder.Entity<GZCTF.Features.Leaderboard.Domain.RankingUserState>().HasKey(e => e.UserId);
+        builder.Entity<GZCTF.Features.Leaderboard.Domain.RankingSolveCorrection>().HasKey(e => new { e.UserId, e.ChallengeId });
+        builder.Entity<GZCTF.Features.Leaderboard.Domain.RankingLevelSettings>().HasKey(e => e.Id);
         LearningModelConfiguration.Configure(builder);
         builder.Entity<CommunityWriteup>(entity =>
         {
@@ -570,5 +607,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
                 .HasForeignKey(item => item.ChallengeId).OnDelete(DeleteBehavior.Cascade);
         });
         SkillTreeModelConfiguration.Configure(builder);
+        PlatformImportModelConfiguration.Configure(builder);
     }
 }

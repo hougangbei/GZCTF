@@ -11,6 +11,7 @@ async function setup(page: Page, options: { category?: string; expired?: boolean
     localStorage.setItem('mantine-color-scheme-value', dark ? 'dark' : 'light')
   }, options.dark ?? true)
   await page.route('**/api/**', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/my-learning/skill-trees/*',route=>route.fulfill({json:{totalCount:1,completedCount:0,completedLessonIds:[],solvedChallengeIds:[],categories:[],skills:[]}}))
   await page.route('**/api/account/profile', (route) =>
     route.fulfill({ json: { userId: 'learner', userName: 'Learner', role: 'User' } })
   )
@@ -40,6 +41,7 @@ async function setup(page: Page, options: { category?: string; expired?: boolean
       },
     ],
   }
+  for (const category of tree.categories) Object.assign(category, {skills:[{skillId:'default-skill',name:'入门技能',summary:'',iconKey:'web',sortOrder:0,challengeCount:category.contents.length,lessonCount:0,contents:category.contents}]})
   await page.route('**/api/skill-trees', (route) => route.fulfill({ json: [tree] }))
   await page.route(`**/api/skill-trees/${treeId}`, (route) => route.fulfill({ json: tree }))
   await page.route(`**/api/challenges/${challengeId}?locale=*`, (route) =>
@@ -109,7 +111,7 @@ test('running instance counts down, extends and survives modal reopen; copy and 
   await page.getByRole('button', { name: '延长', exact: true }).click()
   await expect(timer).toContainText('01:58:59')
   await page.keyboard.press('Escape')
-  await page.getByRole('link', { name: /HTTP 请求与身份验证/ }).click()
+  await page.getByRole('region', {name:'技能内容'}).getByRole('link', { name: /HTTP 请求与身份验证/ }).click()
   await expect(timer).toHaveText('01:58:59')
   await page.getByRole('button', { name: '停止', exact: true }).click()
   await expect(page.getByRole('button', { name: '启动', exact: true })).toBeVisible()
@@ -152,7 +154,8 @@ for (const dark of [true, false]) {
     const category = page.getByRole('link', { name: /Web 漏洞入门/ })
     expect((await category.boundingBox())!.width).toBeLessThan(450)
     await category.click()
-    const challenge = page.getByRole('link', { name: /HTTP 请求与身份验证/ })
+    await page.getByRole('link', {name:/入门技能/}).click()
+    const challenge = page.getByRole('region', {name:'技能内容'}).getByRole('link', { name: /HTTP 请求与身份验证/ })
     expect((await challenge.boundingBox())!.width).toBeLessThan(450)
     await page.screenshot({ path: testInfo.outputPath('tiles-desktop.png'), fullPage: true })
     await challenge.click()
@@ -224,8 +227,9 @@ test('maximum-length unbroken titles stay inside compact phone cards', async ({ 
     categories: [{ categoryId, name: title, summary, iconKey: 'web',
       contents: [{ contentId: challengeId, kind: 'challenge', title, summary, difficulty: 'Normal', expectedMinutes: 1440 }] }] }
   await page.route('**/api/skill-trees', route => route.fulfill({ json: [tree] }))
+  for (const category of tree.categories) Object.assign(category, {skills:[{skillId:'default-skill',name:title,summary:'',iconKey:'web',sortOrder:0,challengeCount:category.contents.length,lessonCount:0,contents:category.contents}]})
   await page.route(`**/api/skill-trees/${treeId}`, route => route.fulfill({ json: tree }))
-  for (const url of ['/skill-trees', `/skill-trees/${treeId}`, `/skill-trees/${treeId}?category=${categoryId}`]) {
+  for (const url of ['/skill-trees', `/skill-trees/${treeId}`, `/skill-trees/${treeId}?category=${categoryId}`, `/skill-trees/${treeId}/${categoryId}/skills/default-skill`]) {
     await page.goto(url)
     const card = page.getByRole('link', { name: new RegExp(title) }).last()
     await expect(card).toBeVisible()

@@ -17,7 +17,8 @@ public sealed record CanonicalContainerRequest(
     int MemoryMb,
     int StorageMb,
     string NetworkMode,
-    string? Flag);
+    string? Flag,
+    bool UseWhaleFlagEnvironment = false);
 
 public interface ILegacyContainerRuntimeAdapter
 {
@@ -43,6 +44,7 @@ public sealed class LegacyContainerRuntimeAdapter(IServiceProvider services) : I
                 UserId = request.UserId,
                 ExposedPort = request.ExposedPort,
                 Flag = request.Flag,
+                UseWhaleFlagEnvironment = request.UseWhaleFlagEnvironment,
                 CPUCount = request.Cpu,
                 MemoryLimit = request.MemoryMb,
                 StorageLimit = request.StorageMb,

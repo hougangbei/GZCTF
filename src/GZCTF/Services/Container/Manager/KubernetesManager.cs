@@ -261,7 +261,11 @@ public class KubernetesManager : IContainerManager
             envs.Add(new V1EnvVar { Name = "GZCTF_GAME_ID", Value = gameId.ToString() });
 
         if (!string.IsNullOrWhiteSpace(config.Flag))
+        {
             envs.Add(new V1EnvVar { Name = "GZCTF_FLAG", Value = config.Flag });
+            if (config.UseWhaleFlagEnvironment)
+                envs.Add(new V1EnvVar { Name = "FLAG", Value = config.Flag });
+        }
 
         return envs;
     }

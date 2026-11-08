@@ -146,7 +146,7 @@ public sealed class CommunityWriteupTests(GZCTFApplicationFactory factory)
             Localizations = [new ChallengeLocalization { Locale = "en", Title = "WP challenge", Body = "Solve me" }]
         };
         db.Challenges.Add(challenge);
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         return challenge.Id;
     }
 

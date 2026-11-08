@@ -37,6 +37,9 @@ public class ContainerConfig
     /// </summary>
     public string? Flag { get; set; } = string.Empty;
 
+    /// <summary>Provide the FLAG compatibility alias required by imported CTFd-Whale images.</summary>
+    public bool UseWhaleFlagEnvironment { get; set; }
+
     /// <summary>
     /// Whether to record traffic
     /// </summary>

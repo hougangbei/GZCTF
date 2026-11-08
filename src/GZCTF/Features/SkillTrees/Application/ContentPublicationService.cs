@@ -38,24 +38,21 @@ public sealed class ContentPublicationService(
                 "content_challenge_body_required");
         await ChallengePublicationValidator.ValidateAsync(challenge, storage, token);
 
-        var categoryIds = await ResolveCategoriesAsync(command, token);
+        var skillIds = await ResolveSkillsAsync(command, token);
+        var categoryIds = await db.CategorySkillRefs.Where(reference => skillIds.Contains(reference.SkillId) ||
+            reference.Skill.Contents.Any(content => content.ChallengeId == challengeId)).Select(reference => reference.CategoryId).Distinct().ToListAsync(token);
 
-        await db.CategoryContents
-            .Where(item => item.ChallengeId == challengeId)
-            .ExecuteDeleteAsync(token);
+        var affectedSkillIds = await db.SkillContents.Where(content => content.ChallengeId == challengeId).Select(content => content.SkillId).ToListAsync(token);
+        affectedSkillIds.AddRange(skillIds);
+        var existingMemberships = await db.SkillContents.AsNoTracking().Where(content => content.ChallengeId == challengeId).ToListAsync(token);
+        await db.SkillContents.Where(content => content.ChallengeId == challengeId && !skillIds.Contains(content.SkillId)).ExecuteDeleteAsync(token);
+        var nextOrders = await LoadNextOrdersAsync(skillIds, token);
+        foreach (var skillId in skillIds.Where(id => existingMemberships.All(content => content.SkillId != id)))
+            db.SkillContents.Add(new SkillContent { SkillId = skillId, SortOrder = nextOrders[skillId]++, ChallengeId = challengeId });
 
-        var nextOrders = await LoadNextOrdersAsync(categoryIds, token);
-        foreach (var categoryId in categoryIds)
-        {
-            db.CategoryContents.Add(new CategoryContent
-            {
-                CategoryId = categoryId,
-                SortOrder = nextOrders[categoryId]++,
-                ChallengeId = challengeId
-            });
-        }
-
+        await db.Skills.Where(skill => affectedSkillIds.Contains(skill.Id)).ExecuteUpdateAsync(setters => setters.SetProperty(skill => skill.UpdatedAtUtc, DateTimeOffset.UtcNow), token);
         challenge.PublicationState = ChallengePublicationState.Published;
+        db.Entry(challenge).Property(item => item.PublicationState).IsModified = true;
 
         try
         {
@@ -96,24 +93,21 @@ public sealed class ContentPublicationService(
         if (!HasPublishableText(lesson.Localizations.Select(item => item.Title)))
             throw new ContentPublicationValidationException("The lesson needs a localized title before publication.");
 
-        var categoryIds = await ResolveCategoriesAsync(command, token);
+        var skillIds = await ResolveSkillsAsync(command, token);
+        var categoryIds = await db.CategorySkillRefs.Where(reference => skillIds.Contains(reference.SkillId) ||
+            reference.Skill.Contents.Any(content => content.LessonId == lessonId)).Select(reference => reference.CategoryId).Distinct().ToListAsync(token);
 
-        await db.CategoryContents
-            .Where(item => item.LessonId == lessonId)
-            .ExecuteDeleteAsync(token);
+        var affectedSkillIds = await db.SkillContents.Where(content => content.LessonId == lessonId).Select(content => content.SkillId).ToListAsync(token);
+        affectedSkillIds.AddRange(skillIds);
+        var existingMemberships = await db.SkillContents.AsNoTracking().Where(content => content.LessonId == lessonId).ToListAsync(token);
+        await db.SkillContents.Where(content => content.LessonId == lessonId && !skillIds.Contains(content.SkillId)).ExecuteDeleteAsync(token);
+        var nextOrders = await LoadNextOrdersAsync(skillIds, token);
+        foreach (var skillId in skillIds.Where(id => existingMemberships.All(content => content.SkillId != id)))
+            db.SkillContents.Add(new SkillContent { SkillId = skillId, SortOrder = nextOrders[skillId]++, LessonId = lessonId });
 
-        var nextOrders = await LoadNextOrdersAsync(categoryIds, token);
-        foreach (var categoryId in categoryIds)
-        {
-            db.CategoryContents.Add(new CategoryContent
-            {
-                CategoryId = categoryId,
-                SortOrder = nextOrders[categoryId]++,
-                LessonId = lessonId
-            });
-        }
-
+        await db.Skills.Where(skill => affectedSkillIds.Contains(skill.Id)).ExecuteUpdateAsync(setters => setters.SetProperty(skill => skill.UpdatedAtUtc, DateTimeOffset.UtcNow), token);
         lesson.PublicationState = LessonPublicationState.Published;
+        db.Entry(lesson).Property(item => item.PublicationState).IsModified = true;
 
         try
         {
@@ -174,6 +168,9 @@ public sealed class ContentPublicationService(
                         : SkillTreeIconCatalog.Default
                 };
                 db.SkillCategories.Add(category);
+                var defaultSkill = new Skill { Name = category.Name, Summary = category.Summary, IconKey = category.IconKey };
+                db.Skills.Add(defaultSkill);
+                db.CategorySkillRefs.Add(new CategorySkillRef { Category = category, Skill = defaultSkill, SortOrder = 0 });
 
                 draft.Categories.Add(new SkillTreeCategoryRef
                 {
@@ -183,28 +180,21 @@ public sealed class ContentPublicationService(
                     SortOrder = draft.Categories.Count
                 });
 
-                if (tree.CurrentPublishedRevisionId is null)
-                {
-                    draft.Status = SkillTreeRevisionStatus.Published;
-                    draft.PublishedAtUtc = DateTimeOffset.UtcNow;
-                    tree.CurrentPublishedRevisionId = draft.Id;
-                    tree.CurrentPublishedRevision = draft;
-                }
-                else
-                {
+                // Inline library publication only edits the course draft. A tree becomes
+                // visible only when an explicit tree/workspace publication freezes it.
+                if (db.Entry(draft).State != EntityState.Added)
                     db.Entry(draft).Property(revision => revision.Status).IsModified = true;
-                }
 
                 if (!orderedCategoryIds.Contains(category.Id))
                     orderedCategoryIds.Add(category.Id);
             }
 
             // Persist inline categories and draft references so the validation queries below can see them.
-            await db.SaveChangesAsync(token);
+            await SaveMembershipChangesAsync(token);
         }
 
         if (orderedCategoryIds.Count == 0)
-            throw new ContentCategoryRequiredException();
+            return [];
 
         var activeCategories = await db.SkillCategories
             .Where(category => orderedCategoryIds.Contains(category.Id) && category.DeletedAtUtc == null)
@@ -229,18 +219,57 @@ public sealed class ContentPublicationService(
         return orderedCategoryIds;
     }
 
-    private async Task<Dictionary<Guid, int>> LoadNextOrdersAsync(
-        IReadOnlyList<Guid> categoryIds, CancellationToken token)
+    private async Task<IReadOnlyList<Guid>> ResolveSkillsAsync(PublishContentCommand command, CancellationToken token)
     {
-        var existing = await db.CategoryContents
-            .Where(item => categoryIds.Contains(item.CategoryId))
-            .GroupBy(item => item.CategoryId)
-            .Select(group => new { CategoryId = group.Key, Max = group.Max(item => item.SortOrder) })
-            .ToListAsync(token);
+        var categoryIds = await ResolveCategoriesAsync(command, token);
+        var skillIds = (command.SkillIds ?? []).Distinct().ToList();
+        foreach (var categoryId in categoryIds)
+        {
+            var candidates = await db.CategorySkillRefs.Where(reference => reference.CategoryId == categoryId &&
+                reference.Skill.DeletedAtUtc == null && reference.Skill.IsEnabled).Select(reference => reference.SkillId).ToListAsync(token);
+            if (candidates.Count != 1) throw new SkillSelectionRequiredException();
+            if (!skillIds.Contains(candidates[0])) skillIds.Add(candidates[0]);
+        }
+        foreach (var inline in command.InlineSkills ?? [])
+        {
+            var metadata = new SkillCommand(inline.Name, inline.Summary, inline.IconKey);
+            SkillService.ValidateMetadata(metadata);
+            var category = await db.SkillCategories.FirstOrDefaultAsync(category => category.Id == inline.CategoryId && category.DeletedAtUtc == null, token)
+                ?? throw new ContentPublicationValidationException("An inline skill targets an unknown category.");
+            var skill = new Skill { Name = inline.Name.Trim(), Summary = (inline.Summary ?? "").Trim(), IconKey = inline.IconKey };
+            var nextOrder = await db.CategorySkillRefs.Where(reference => reference.CategoryId == inline.CategoryId)
+                .Select(reference => (int?)reference.SortOrder).MaxAsync(token) ?? -1;
+            var pending = db.ChangeTracker.Entries<CategorySkillRef>().Where(entry => entry.State == EntityState.Added && entry.Entity.CategoryId == inline.CategoryId)
+                .Select(entry => entry.Entity.SortOrder).DefaultIfEmpty(-1).Max();
+            db.Skills.Add(skill);
+            db.CategorySkillRefs.Add(new CategorySkillRef { Category = category, Skill = skill, SortOrder = Math.Max(nextOrder, pending) + 1 });
+            // Full membership replacement uses the category xmin. Adding a ref must invalidate an already-open editor.
+            category.UpdatedAtUtc = DateTimeOffset.UtcNow;
+            db.Entry(category).Property(item => item.UpdatedAtUtc).IsModified = true;
+            skillIds.Add(skill.Id);
+        }
+        if (skillIds.Count == 0) throw new ContentCategoryRequiredException();
+        await SaveMembershipChangesAsync(token);
+        var validSkillIds = await db.CategorySkillRefs.Where(reference => skillIds.Contains(reference.SkillId) &&
+            reference.Skill.DeletedAtUtc == null && reference.Skill.IsEnabled && reference.Category.DeletedAtUtc == null &&
+            reference.Category.SkillTrees.Any(tree => tree.Revision.SkillTree.DeletedAtUtc == null &&
+                (tree.Revision.Status == SkillTreeRevisionStatus.Draft || tree.Revision.SkillTree.CurrentPublishedRevisionId == tree.RevisionId)))
+            .Select(reference => reference.SkillId).Distinct().ToListAsync(token);
+        if (validSkillIds.Count != skillIds.Distinct().Count()) throw new ContentCategoryHasNoTreeException();
+        return skillIds.Distinct().ToList();
+    }
 
-        return categoryIds.ToDictionary(
-            categoryId => categoryId,
-            categoryId => existing.FirstOrDefault(item => item.CategoryId == categoryId)?.Max + 1 ?? 0);
+    private async Task SaveMembershipChangesAsync(CancellationToken token)
+    {
+        try { await db.SaveChangesAsync(token); }
+        catch (DbUpdateConcurrencyException) { throw new SkillTreeRevisionConflictException(); }
+    }
+
+    private async Task<Dictionary<Guid, int>> LoadNextOrdersAsync(IReadOnlyList<Guid> skillIds, CancellationToken token)
+    {
+        var existing = await db.SkillContents.Where(item => skillIds.Contains(item.SkillId))
+            .GroupBy(item => item.SkillId).Select(group => new { SkillId = group.Key, Max = group.Max(item => item.SortOrder) }).ToListAsync(token);
+        return skillIds.ToDictionary(id => id, id => existing.FirstOrDefault(item => item.SkillId == id)?.Max + 1 ?? 0);
     }
 
     private static SkillTreeRevision ClonePublishedRevision(SkillTree tree)
@@ -284,12 +313,14 @@ public sealed class ContentPublicationService(
 
     public static async Task<IReadOnlyList<Guid>> LoadContentCategoryIdsAsync(
         AppDbContext db, Guid? challengeId, Guid? lessonId, CancellationToken token) =>
-        await db.CategoryContents
-            .AsNoTracking()
-            .Where(item => (challengeId != null && item.ChallengeId == challengeId) ||
-                           (lessonId != null && item.LessonId == lessonId))
-            .OrderBy(item => item.SortOrder)
-            .Select(item => item.CategoryId)
-            .Distinct()
-            .ToListAsync(token);
+        await db.CategorySkillRefs.AsNoTracking()
+            .Where(reference => reference.Skill.DeletedAtUtc == null && reference.Category.DeletedAtUtc == null &&
+                reference.Skill.Contents.Any(item => (challengeId != null && item.ChallengeId == challengeId) ||
+                    (lessonId != null && item.LessonId == lessonId)))
+            .OrderBy(reference => reference.SortOrder).Select(reference => reference.CategoryId).Distinct().ToListAsync(token);
+
+    public static Task<List<Guid>> LoadContentSkillIdsAsync(AppDbContext db, Guid? challengeId, Guid? lessonId, CancellationToken token) =>
+        db.SkillContents.AsNoTracking().Where(content => content.Skill.DeletedAtUtc == null &&
+            ((challengeId != null && content.ChallengeId == challengeId) || (lessonId != null && content.LessonId == lessonId)))
+            .Select(content => content.SkillId).Distinct().ToListAsync(token);
 }

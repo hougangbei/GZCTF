@@ -227,6 +227,10 @@
     "recentActivity": "Recent activity"
   },
   "leaderboard": {
+    "viewSignature": "View {{name}}’s bio",
+    "level": "Level", "signature": "Bio", "noSignature": "No bio yet",
+    "historicalTrendNote": "Historical trends use original dates and exported point values as an estimate.",
+    "cumulativeNote": "Points accumulate over time. Repeating the same challenge does not add points.",
     "yourPosition": "Your position",
     "learningSpace": "Learning space",
     "breadcrumbLabel": "Breadcrumb",

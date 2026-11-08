@@ -25,31 +25,74 @@ namespace GZCTF.Migrations
 
             modelBuilder.Entity("GZCTF.Features.AboutPage.Domain.AboutPageState", b =>
                 {
-                    b.Property<int>("Id").HasColumnType("integer");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-                    b.Property<Guid?>("CurrentVersionId").HasColumnType("uuid");
-                    b.Property<string>("DraftJson").IsRequired().HasColumnType("text");
-                    b.Property<long>("DraftRevision").HasColumnType("bigint");
-                    b.Property<DateTimeOffset>("DraftUpdatedAtUtc").HasColumnType("timestamp with time zone");
-                    b.Property<DateTimeOffset?>("LockCreatedAtUtc").HasColumnType("timestamp with time zone");
-                    b.Property<Guid?>("LockOwnerId").HasColumnType("uuid");
-                    b.Property<string>("LockOwnerName").HasMaxLength(80).HasColumnType("character varying(80)");
+
+                    b.Property<Guid?>("CurrentVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DraftJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("DraftRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("DraftUpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LockCreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("LockOwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("LockOwnerName")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
                     b.HasKey("Id");
+
                     b.HasIndex("CurrentVersionId");
+
                     b.ToTable("AboutPageStates");
                 });
 
             modelBuilder.Entity("GZCTF.Features.AboutPage.Domain.AboutPageVersion", b =>
                 {
-                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uuid");
-                    b.Property<string>("DocumentJson").IsRequired().HasColumnType("text");
-                    b.Property<DateTimeOffset>("PublishedAtUtc").HasColumnType("timestamp with time zone");
-                    b.Property<Guid>("PublisherId").HasColumnType("uuid");
-                    b.Property<string>("PublisherName").IsRequired().HasMaxLength(80).HasColumnType("character varying(80)");
-                    b.Property<long>("SourceDraftRevision").HasColumnType("bigint");
-                    b.Property<long>("VersionNumber").HasColumnType("bigint");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DocumentJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("PublishedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PublisherId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PublisherName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<long>("SourceDraftRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("VersionNumber")
+                        .HasColumnType("bigint");
+
                     b.HasKey("Id");
-                    b.HasIndex("VersionNumber").IsUnique();
+
+                    b.HasIndex("VersionNumber")
+                        .IsUnique();
+
                     b.ToTable("AboutPageVersions");
                 });
 
@@ -205,11 +248,6 @@ namespace GZCTF.Migrations
                     b.Property<byte>("PublicationState")
                         .HasColumnType("smallint");
 
-                    b.Property<int>("Score")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(100);
-
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -218,6 +256,11 @@ namespace GZCTF.Migrations
 
                     b.Property<string>("RuntimeConfigurationJson")
                         .HasColumnType("jsonb");
+
+                    b.Property<int>("Score")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(100);
 
                     b.Property<string>("SourceId")
                         .IsRequired()
@@ -398,8 +441,6 @@ namespace GZCTF.Migrations
 
                     b.HasIndex("ChallengeId");
 
-                    b.HasIndex("HintId");
-
                     b.HasIndex("InstanceId");
 
                     b.HasIndex("UserId", "ChallengeId")
@@ -535,6 +576,8 @@ namespace GZCTF.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("PublishedChallengeJson").HasColumnType("text");
 
                     b.Property<string>("RuntimeMetadataJson")
                         .HasColumnType("jsonb");
@@ -798,6 +841,540 @@ namespace GZCTF.Migrations
                         {
                             t.HasCheckConstraint("CK_MigrationBatches_State", "\"State\" BETWEEN 0 AND 3");
                         });
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformHistoryAward", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("AwardedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ProtectedMetadata")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SourceId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SourceTeamId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SourceTeamName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("SourceUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SourceUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int>("Value")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId", "SourceId")
+                        .IsUnique();
+
+                    b.HasIndex("BatchId", "SourceTeamId");
+
+                    b.HasIndex("BatchId", "SourceUserId");
+
+                    b.ToTable("PlatformHistoryAwards");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformHistoryMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ProtectedMetadata")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SourceTeamId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SourceTeamName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("SourceUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SourceUserName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId", "SourceUserId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "BatchId", "SourceTeamId");
+
+                    b.ToTable("PlatformHistoryMembers");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformHistorySubmission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChallengeTitle")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ProtectedMetadata")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Result")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SourceChallengeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SourceId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SourceTeamId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SourceTeamName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("SourceUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SourceUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset?>("SubmittedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId", "SourceId")
+                        .IsUnique();
+
+                    b.HasIndex("BatchId", "SourceTeamId");
+
+                    b.HasIndex("BatchId", "SourceUserId");
+
+                    b.ToTable("PlatformHistorySubmissions");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformImportBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AwardCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ChallengeCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Format")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("PlanFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ProtectedMetadata")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReportJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SourceInstance")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("SubmissionCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TeamCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid?>("TreeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("UserCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("TreeId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("SourceInstance", "Fingerprint", "PlanFingerprint")
+                        .IsUnique();
+
+                    b.ToTable("PlatformImportBatches");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformImportMap", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("SourceId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SourceInstance")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("SourceInstance", "Kind", "SourceId")
+                        .IsUnique();
+
+                    b.ToTable("PlatformImportMaps");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformScoreBaseline", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("HasActivity")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Hidden")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LastScoringAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SolvedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SourceInstance")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SourceUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.HasIndex("SourceInstance", "SourceUserId")
+                        .IsUnique();
+
+                    b.ToTable("PlatformScoreBaselines");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformScoreMigration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ArchiveFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CanonicalSkipUserIdsHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SourceInstance")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("SourceInstance")
+                        .IsUnique();
+
+                    b.ToTable("PlatformScoreMigrations");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Leaderboard.Domain.RankingLevelSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ThresholdsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RankingLevelSettings");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Leaderboard.Domain.RankingOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActorName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<long>("AfterScore")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("BeforeScore")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("ChallengeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Delta")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("DetailsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PayloadHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid?>("ReversesId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SolvedDelta")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperationId")
+                        .IsUnique();
+
+                    b.HasIndex("ReversesId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "CreatedAtUtc");
+
+                    b.ToTable("RankingOperations");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Leaderboard.Domain.RankingScoreEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ChallengeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("ScoreDelta")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SolvedDelta")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RankingScoreEvents");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Leaderboard.Domain.RankingSolveCorrection", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChallengeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AttributionMetadataJson")
+                        .HasColumnType("text");
+
+                    b.Property<int>("FrozenScore")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ImportedScoreBaselineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("OriginalSolvedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Revoked")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("UserId", "ChallengeId");
+
+                    b.ToTable("RankingSolveCorrections");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Leaderboard.Domain.RankingUserState", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool?>("Hidden")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("RankingUserStates");
                 });
 
             modelBuilder.Entity("GZCTF.Features.LearningPaths.Domain.Enrollment", b =>
@@ -1093,6 +1670,12 @@ namespace GZCTF.Migrations
                     b.Property<Guid>("ChallengeId")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("ImportedFrozenScore")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ImportedScoreBaselineId")
+                        .HasColumnType("uuid");
+
                     b.Property<byte>("SolveMode")
                         .HasColumnType("smallint");
 
@@ -1105,6 +1688,8 @@ namespace GZCTF.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ChallengeId");
+
+                    b.HasIndex("ImportedScoreBaselineId");
 
                     b.HasIndex("SolvedAtUtc");
 
@@ -1157,6 +1742,36 @@ namespace GZCTF.Migrations
                         });
                 });
 
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CategorySkillRef", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SkillId");
+
+                    b.HasIndex("CategoryId", "SkillId")
+                        .IsUnique();
+
+                    b.HasIndex("CategoryId", "SortOrder")
+                        .IsUnique();
+
+                    b.ToTable("CategorySkillRefs", t =>
+                        {
+                            t.HasCheckConstraint("CK_CategorySkillRefs_Order", "\"SortOrder\" >= 0");
+                        });
+                });
+
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.LearningPathRedirect", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1184,6 +1799,54 @@ namespace GZCTF.Migrations
                     b.HasIndex("SkillTreeId");
 
                     b.ToTable("LearningPathRedirects");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.Skill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IconKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeletedAtUtc");
+
+                    b.ToTable("Skills", t =>
+                        {
+                            t.HasCheckConstraint("CK_Skills_IconKey", "\"IconKey\" IN ('flag','web','crypto','pwn','brain','ai','terminal','network','cloud','shield','bug','code','database','linux','windows','mobile','reverse','forensics','osint','binary','key','lock','file','folder','book','target','trophy','rocket','lab','tools','chip','wifi','globe','server','container','chain','puzzle','lightning','star','compass')");
+                        });
                 });
 
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillCategory", b =>
@@ -1236,10 +1899,123 @@ namespace GZCTF.Migrations
                         });
                 });
 
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillContent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ChallengeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("LessonId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChallengeId");
+
+                    b.HasIndex("LessonId");
+
+                    b.HasIndex("SkillId", "ChallengeId")
+                        .IsUnique()
+                        .HasFilter("\"ChallengeId\" IS NOT NULL");
+
+                    b.HasIndex("SkillId", "LessonId")
+                        .IsUnique()
+                        .HasFilter("\"LessonId\" IS NOT NULL");
+
+                    b.HasIndex("SkillId", "SortOrder")
+                        .IsUnique();
+
+                    b.ToTable("SkillContents", t =>
+                        {
+                            t.HasCheckConstraint("CK_SkillContents_ExactlyOneContent", "(\"LessonId\" IS NOT NULL AND \"ChallengeId\" IS NULL) OR (\"LessonId\" IS NULL AND \"ChallengeId\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_SkillContents_Order", "\"SortOrder\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CoursePublishedVersion", b =>
+                {
+                    b.Property<Guid>("Id").HasColumnType("uuid");
+                    b.Property<Guid>("SkillTreeId").HasColumnType("uuid");
+                    b.Property<string>("PublicDocumentJson").IsRequired().HasColumnType("text");
+                    b.Property<string>("CoverStorageKey").HasColumnType("text");
+                    b.Property<DateTimeOffset>("PublishedAtUtc").HasColumnType("timestamp with time zone");
+                    b.HasKey("Id");
+                    b.HasIndex("SkillTreeId");
+                    b.ToTable("CoursePublishedVersions");
+                });
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CoursePublishedContent", b =>
+                {
+                    b.Property<Guid>("Id").HasColumnType("uuid");
+                    b.Property<Guid>("VersionId").HasColumnType("uuid");
+                    b.Property<Guid>("ContentId").HasColumnType("uuid");
+                    b.Property<string>("Kind").IsRequired().HasMaxLength(16).HasColumnType("character varying(16)");
+                    b.Property<string>("PayloadJson").IsRequired().HasColumnType("text");
+                    b.HasKey("Id");
+                    b.HasIndex("VersionId", "Kind", "ContentId").IsUnique();
+                    b.ToTable("CoursePublishedContents");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseWorkspaceContent", b =>
+                {
+                    b.Property<Guid>("SkillTreeId").HasColumnType("uuid");
+                    b.Property<string>("Kind").HasMaxLength(16).HasColumnType("character varying(16)");
+                    b.Property<Guid>("ContentId").HasColumnType("uuid");
+                    b.Property<int>("Version").IsConcurrencyToken().HasColumnType("integer");
+                    b.Property<string>("PayloadJson").IsRequired().HasColumnType("text");
+                    b.HasKey("SkillTreeId", "Kind", "ContentId");
+                    b.ToTable("CourseWorkspaceContents");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseNodeOperation", b =>
+                {
+                    b.Property<Guid>("SkillTreeId").HasColumnType("uuid");
+                    b.Property<Guid>("OperationId").HasColumnType("uuid");
+                    b.Property<string>("RequestHash").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)");
+                    b.Property<string>("ResponseJson").IsRequired().HasColumnType("text");
+                    b.HasKey("SkillTreeId", "OperationId");
+                    b.ToTable("CourseNodeOperations");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseStoredAsset", b =>
+                {
+                    b.Property<string>("StorageKey").HasMaxLength(512).HasColumnType("character varying(512)");
+                    b.Property<string>("ReferenceToken").IsRequired().HasMaxLength(512).HasColumnType("character varying(512)");
+                    b.Property<DateTimeOffset>("LastTouchedUtc").HasColumnType("timestamp with time zone");
+                    b.HasKey("StorageKey");
+                    b.HasIndex("LastTouchedUtc");
+                    b.ToTable("CourseStoredAssets");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseAuthoringWorkspace", b =>
+                {
+                    b.Property<Guid>("SkillTreeId").HasColumnType("uuid");
+                    b.Property<string>("DocumentJson").IsRequired().HasColumnType("text");
+                    b.Property<string>("CoverStorageKey").HasColumnType("text");
+                    b.Property<Guid>("Version").IsConcurrencyToken().HasColumnType("uuid");
+                    b.HasKey("SkillTreeId");
+                    b.ToTable("CourseAuthoringWorkspaces");
+                });
+
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillTree", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("CoverHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -2688,11 +3464,6 @@ namespace GZCTF.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("GZCTF.Features.ChallengeLibrary.Domain.ChallengeHint", "Hint")
-                        .WithMany()
-                        .HasForeignKey("HintId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("GZCTF.Features.ChallengeRuntime.Domain.UserChallengeInstance", "Instance")
                         .WithMany("HelpUsages")
                         .HasForeignKey("InstanceId")
@@ -2705,8 +3476,6 @@ namespace GZCTF.Migrations
                         .IsRequired();
 
                     b.Navigation("Challenge");
-
-                    b.Navigation("Hint");
 
                     b.Navigation("Instance");
 
@@ -2825,6 +3594,94 @@ namespace GZCTF.Migrations
                     b.Navigation("MigrationBatch");
 
                     b.Navigation("Path");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformHistoryAward", b =>
+                {
+                    b.HasOne("GZCTF.Features.Imports.Domain.PlatformImportBatch", "Batch")
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Batch");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformHistoryMember", b =>
+                {
+                    b.HasOne("GZCTF.Features.Imports.Domain.PlatformImportBatch", "Batch")
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GZCTF.Models.Data.UserInfo", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Batch");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformHistorySubmission", b =>
+                {
+                    b.HasOne("GZCTF.Features.Imports.Domain.PlatformImportBatch", "Batch")
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Batch");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformImportBatch", b =>
+                {
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.SkillTree", null)
+                        .WithMany()
+                        .HasForeignKey("TreeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("GZCTF.Models.Data.UserInfo", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformImportMap", b =>
+                {
+                    b.HasOne("GZCTF.Features.Imports.Domain.PlatformImportBatch", "Batch")
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Batch");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformScoreBaseline", b =>
+                {
+                    b.HasOne("GZCTF.Features.Imports.Domain.PlatformImportBatch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GZCTF.Models.Data.UserInfo", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.Imports.Domain.PlatformScoreMigration", b =>
+                {
+                    b.HasOne("GZCTF.Features.Imports.Domain.PlatformImportBatch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("GZCTF.Features.LearningPaths.Domain.Enrollment", b =>
@@ -2963,6 +3820,11 @@ namespace GZCTF.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("GZCTF.Features.Imports.Domain.PlatformScoreBaseline", "ImportedScoreBaseline")
+                        .WithMany()
+                        .HasForeignKey("ImportedScoreBaselineId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("GZCTF.Models.Data.UserInfo", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -2970,6 +3832,8 @@ namespace GZCTF.Migrations
                         .IsRequired();
 
                     b.Navigation("Challenge");
+
+                    b.Navigation("ImportedScoreBaseline");
 
                     b.Navigation("User");
                 });
@@ -2999,6 +3863,25 @@ namespace GZCTF.Migrations
                     b.Navigation("Lesson");
                 });
 
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CategorySkillRef", b =>
+                {
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.SkillCategory", "Category")
+                        .WithMany("Skills")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.Skill", "Skill")
+                        .WithMany("Categories")
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Skill");
+                });
+
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.LearningPathRedirect", b =>
                 {
                     b.HasOne("GZCTF.Features.SkillTrees.Domain.SkillTree", "SkillTree")
@@ -3018,6 +3901,70 @@ namespace GZCTF.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("MergedIntoCategory");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillContent", b =>
+                {
+                    b.HasOne("GZCTF.Features.ChallengeLibrary.Domain.Challenge", "Challenge")
+                        .WithMany()
+                        .HasForeignKey("ChallengeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("GZCTF.Features.LearningPaths.Domain.Lesson", "Lesson")
+                        .WithMany()
+                        .HasForeignKey("LessonId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.Skill", "Skill")
+                        .WithMany("Contents")
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Challenge");
+
+                    b.Navigation("Lesson");
+
+                    b.Navigation("Skill");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CoursePublishedVersion", b =>
+                {
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.SkillTree", "SkillTree").WithMany()
+                        .HasForeignKey("SkillTreeId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                    b.Navigation("SkillTree");
+                });
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CoursePublishedContent", b =>
+                {
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.CoursePublishedVersion", "Version").WithMany("Contents")
+                        .HasForeignKey("VersionId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                    b.Navigation("Version");
+                });
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CoursePublishedVersion", b =>
+                {
+                    b.Navigation("Contents");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseWorkspaceContent", b =>
+                {
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.CourseAuthoringWorkspace", "Workspace").WithMany()
+                        .HasForeignKey("SkillTreeId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                    b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseNodeOperation", b =>
+                {
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.CourseAuthoringWorkspace", "Workspace").WithMany()
+                        .HasForeignKey("SkillTreeId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                    b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseAuthoringWorkspace", b =>
+                {
+                    b.HasOne("GZCTF.Features.SkillTrees.Domain.SkillTree", "SkillTree")
+                        .WithOne().HasForeignKey("GZCTF.Features.SkillTrees.Domain.CourseAuthoringWorkspace", "SkillTreeId")
+                        .OnDelete(DeleteBehavior.Cascade).IsRequired();
+                    b.Navigation("SkillTree");
                 });
 
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillTree", b =>
@@ -3650,11 +4597,20 @@ namespace GZCTF.Migrations
                     b.Navigation("Progress");
                 });
 
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.Skill", b =>
+                {
+                    b.Navigation("Categories");
+
+                    b.Navigation("Contents");
+                });
+
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillCategory", b =>
                 {
                     b.Navigation("Contents");
 
                     b.Navigation("SkillTrees");
+
+                    b.Navigation("Skills");
                 });
 
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.SkillTree", b =>

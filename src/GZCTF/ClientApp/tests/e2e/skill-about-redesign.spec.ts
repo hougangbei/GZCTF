@@ -3,6 +3,11 @@ import { expect, test } from '@playwright/test'
 const treeId = '01990000-0000-7000-8000-000000000001'
 const categoryId = '01990000-0000-7000-8000-000000000002'
 const challengeId = '01990000-0000-7000-8000-000000000003'
+const skillId = '01990000-0000-7000-8000-000000000004'
+const contents = [{ contentId: challengeId, kind: 'challenge', title: '第一道题',
+  summary: '题目摘要', difficulty: 'Normal', expectedMinutes: 30 }]
+const skill = { skillId, name: 'HTTP 基础技能', summary: '理解请求与响应', iconKey: 'web', sortOrder: 0,
+  challengeCount: 1, lessonCount: 0, contents }
 
 test('empty skill tree catalog gives visitors a next step on phones', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -26,8 +31,7 @@ test('published trees and category contents form a readable learning path', asyn
   await page.route(`**/api/skill-trees/${treeId}`, route => route.fulfill({ json: {
     skillTreeId: treeId, name: 'Web 工程师', summary: '从 HTTP 到漏洞利用', iconKey: 'web',
     categories: [{ categoryId, name: 'Web 基础', summary: '从 HTTP 开始', iconKey: 'web', sortOrder: 0,
-      contents: [{ contentId: challengeId, kind: 'challenge', title: '第一道题',
-        summary: '题目摘要', difficulty: 'Normal', expectedMinutes: 30 }],
+      contents, skills: [skill],
     }],
   } }))
   await page.goto('/skill-trees')
@@ -36,7 +40,9 @@ test('published trees and category contents form a readable learning path', asyn
   await expect(page.getByRole('link', { name: /Web 基础/ })).toBeVisible()
   await page.getByRole('link', { name: /Web 基础/ }).click()
   await expect(page.getByRole('heading', { name: 'Web 基础' })).toBeVisible()
-  await expect(page.getByRole('link', { name: /第一道题/ })).toBeVisible()
+  await page.getByRole('link', { name: /HTTP 基础技能/ }).click()
+  await expect(page).toHaveURL(new RegExp(`/skills/${skillId}$`))
+  await expect(page.getByRole('region', { name: '技能内容' }).getByRole('link', { name: /第一道题/ })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
 })
 

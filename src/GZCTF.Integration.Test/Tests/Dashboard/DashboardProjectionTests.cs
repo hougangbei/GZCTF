@@ -11,6 +11,7 @@ using GZCTF.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using GZCTF.Integration.Test.Tests.SkillTrees;
 using CanonicalChallenge = GZCTF.Features.ChallengeLibrary.Domain.Challenge;
 
 namespace GZCTF.Integration.Test.Tests.DashboardProjection;
@@ -197,7 +198,7 @@ public sealed class DashboardProjectionTests(GZCTFApplicationFactory factory)
         db.SkillCategories.AddRange(categories);
         db.SkillTrees.AddRange(trees);
         db.Cohorts.AddRange(cohort, otherCohort);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
 
         foreach (var treeId in treeIds)
             await db.SkillTrees.Where(item => item.Id == treeId)
@@ -205,6 +206,7 @@ public sealed class DashboardProjectionTests(GZCTFApplicationFactory factory)
                     setters.SetProperty(item => item.CurrentPublishedRevisionId,
                         trees.Single(tree => tree.Id == treeId).Revisions[0].Id));
 
+        await db.SaveRuntimeFixtureAsync();
         var client = factory.CreateClient();
         var login = await client.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = "S27!SharedSolve" });

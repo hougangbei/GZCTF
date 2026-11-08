@@ -4,10 +4,12 @@ import { expect, test } from '@playwright/test'
 import { createRoleContext } from './support/auth'
 import {
   attachCategory,
+  attachSkills,
   collectFailures,
   createAdminContext,
   createCategory,
   createLesson,
+  createSkill,
   createTree,
   publishContent,
   publishTree,
@@ -47,11 +49,13 @@ test.describe('skill tree redirects', () => {
     await publishTree(adminPage, treeId)
 
     const categoryId = await createCategory(adminPage, `Redirect category ${suffix}`)
+    const skillId = await createSkill(adminPage, `Redirect skill ${suffix}`)
+    await attachSkills(adminPage, categoryId, [skillId])
     await attachCategory(adminPage, treeId, [categoryId])
     await publishTree(adminPage, treeId)
 
     const lessonId = await createLesson(adminPage, lessonTitle)
-    await publishContent(adminPage, 'lesson', lessonId, [categoryId])
+    await publishContent(adminPage, 'lesson', lessonId, [skillId])
 
     // Read the public detail to learn the content identifier the redirect must target.
     const publicDetail = await adminPage.request.get(`/api/skill-trees/${treeId}`)
@@ -59,7 +63,9 @@ test.describe('skill tree redirects', () => {
     const tree = await publicDetail.json()
     const category = tree.categories.find((item: { categoryId: string }) => item.categoryId === categoryId)
     expect(category, 'the shared category is missing from the published tree').toBeTruthy()
-    const content = category.contents[0]
+    const skill = category.skills.find((item: { skillId: string }) => item.skillId === skillId)
+    expect(skill, 'the linked skill is missing from the category').toBeTruthy()
+    const content = skill.contents[0]
     expect(content, 'the published lesson is missing from the category').toBeTruthy()
     const contentId = content.contentId as string
 
@@ -80,7 +86,7 @@ test.describe('skill tree redirects', () => {
       // 3. An old deep link keeps its content address under the new tree.
       await page.goto(`/learn/${slug}/${categoryId}/${contentId}`)
       await expect(page).toHaveURL(
-        new RegExp(`/skill-trees/${treeId}/${categoryId}/lesson/${contentId}/?$`)
+        new RegExp(`/skill-trees/${treeId}/${categoryId}/skills/${skillId}/lesson/${contentId}/?$`)
       )
     }
 
@@ -113,10 +119,13 @@ async function insertRedirectAsync(slug: string, treeId: string): Promise<boolea
     `VALUES (gen_random_uuid(), '${treeId}', '${slug}', '${treeId}') ON CONFLICT DO NOTHING;`
   try {
     await execFileAsync('docker', [
-      'exec', 'gzctf-demo-db', 'psql', '-U', 'gzctf', '-d', 'gzctf_demo', '-c', sql,
+      'exec', process.env.E2E_DB_CONTAINER ?? 'gzctf-demo-db', 'psql',
+      '-U', process.env.E2E_DB_USER ?? 'gzctf', '-d', process.env.E2E_DB_NAME ?? 'gzctf_demo', '-c', sql,
     ])
     return true
-  } catch {
+  } catch (error) {
+    // An explicitly configured database is a required fixture, not optional coverage.
+    if (process.env.E2E_DB_CONTAINER) throw error
     return false
   }
 }

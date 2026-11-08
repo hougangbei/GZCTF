@@ -19,7 +19,7 @@ namespace GZCTF.Integration.Test.Tests.SkillTrees;
 public class SkillCategoryTests(GZCTFApplicationFactory factory)
 {
     [Fact]
-    public async Task Reordering_one_category_changes_every_referencing_tree()
+    public async Task Reordering_library_category_does_not_change_published_trees()
     {
         var seed = await SeedSharedCategoryAsync();
         using var admin = await CreateAdminClientAsync();
@@ -33,7 +33,7 @@ public class SkillCategoryTests(GZCTFApplicationFactory factory)
         using var anon = factory.CreateClient();
         var first = await anon.GetFromJsonAsync<SkillTreeDetailResponse>($"/api/skill-trees/{seed.FirstTreeId}");
         var second = await anon.GetFromJsonAsync<SkillTreeDetailResponse>($"/api/skill-trees/{seed.SecondTreeId}");
-        var expected = new[] { seed.LessonId, seed.ChallengeId };
+        var expected = new[] { seed.ChallengeId, seed.LessonId };
         Assert.Equal(expected, first!.Categories.Single().Contents.Select(item => item.ContentId));
         Assert.Equal(expected, second!.Categories.Single().Contents.Select(item => item.ContentId));
     }
@@ -65,7 +65,7 @@ public class SkillCategoryTests(GZCTFApplicationFactory factory)
     }
 
     [Fact]
-    public async Task Delete_hides_category_but_keeps_published_audit_refs()
+    public async Task Delete_keeps_the_published_category_snapshot()
     {
         var seed = await SeedSharedCategoryAsync();
         using var admin = await CreateAdminClientAsync();
@@ -85,7 +85,7 @@ public class SkillCategoryTests(GZCTFApplicationFactory factory)
 
         using var anon = factory.CreateClient();
         var detail = await anon.GetFromJsonAsync<SkillTreeDetailResponse>($"/api/skill-trees/{seed.FirstTreeId}");
-        Assert.Empty(detail!.Categories);
+        Assert.Equal(seed.CategoryId, Assert.Single(detail!.Categories).CategoryId);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class SkillCategoryTests(GZCTFApplicationFactory factory)
         db.SkillCategories.Add(category);
         var (tree, revision) = PublishedTree("Membership Tree", "flag", category);
         db.SkillTrees.Add(tree);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
         await SetCurrentRevisionAsync(db, tree.Id, revision.Id);
         // SetCurrentRevisionAsync bumps the tree row through raw SQL, so re-read the version.
         var treeRowVersion = await db.SkillTrees.AsNoTracking()
@@ -130,7 +130,7 @@ public class SkillCategoryTests(GZCTFApplicationFactory factory)
 
         var category = new SkillCategory { Id = Guid.CreateVersion7(), Name = "Impact Seed", Summary = "", IconKey = "flag" };
         db.SkillCategories.Add(category);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
 
         using var admin = await CreateAdminClientAsync();
 
@@ -167,7 +167,7 @@ public class SkillCategoryTests(GZCTFApplicationFactory factory)
         var first = PublishedTree("First", "flag", category);
         var second = PublishedTree("Second", "pwn", category);
         db.SkillTrees.AddRange(first.Tree, second.Tree);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
         await SetCurrentRevisionAsync(db, first.Tree.Id, first.Revision.Id);
         await SetCurrentRevisionAsync(db, second.Tree.Id, second.Revision.Id);
 
@@ -195,7 +195,7 @@ public class SkillCategoryTests(GZCTFApplicationFactory factory)
         db.SkillCategories.AddRange(survivor, duplicate);
         db.Challenges.Add(shared);
         db.Lessons.AddRange(survivorFirst, duplicateOnly);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
 
         return (survivor.Id, duplicate.Id, survivorFirst.Id, shared.Id, duplicateOnly.Id);
     }
@@ -221,9 +221,13 @@ public class SkillCategoryTests(GZCTFApplicationFactory factory)
         return (tree, revision);
     }
 
-    private static async Task SetCurrentRevisionAsync(AppDbContext db, Guid treeId, Guid revisionId) =>
+    private static async Task SetCurrentRevisionAsync(AppDbContext db, Guid treeId, Guid revisionId)
+    {
         await db.SkillTrees.Where(item => item.Id == treeId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.CurrentPublishedRevisionId, revisionId));
+        await CourseSnapshotBuilder.CaptureCurrentAsync(db, treeId, revisionId, default);
+        await db.SaveChangesAsync();
+    }
 
     private static CanonicalChallenge PublishedChallenge(string title)
     {

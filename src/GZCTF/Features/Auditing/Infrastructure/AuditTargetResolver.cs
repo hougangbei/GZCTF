@@ -40,6 +40,7 @@ public sealed class AuditTargetResolver(AppDbContext db)
             "lesson" => await db.Lessons.AsNoTracking().Where(item => item.Id == id)
                 .Select(item => item.Localizations.OrderBy(value => value.Locale == "zh-CN" ? 0 : 1).Select(value => value.Title).FirstOrDefault())
                 .SingleOrDefaultAsync(token),
+            "skill" => await db.Skills.AsNoTracking().Where(item => item.Id == id).Select(item => item.Name).SingleOrDefaultAsync(token),
             "skill_tree" => await db.SkillTrees.AsNoTracking().Where(item => item.Id == id).Select(item => item.Name).SingleOrDefaultAsync(token),
             "skill_category" => await db.SkillCategories.AsNoTracking().Where(item => item.Id == id).Select(item => item.Name).SingleOrDefaultAsync(token),
             "cohort" => await db.Cohorts.AsNoTracking().Where(item => item.Id == id).Select(item => item.Name).SingleOrDefaultAsync(token),

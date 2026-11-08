@@ -1,3 +1,4 @@
+using GZCTF.Features.ChallengeRuntime.Application;
 using GZCTF.Features.LearningPaths.Domain;
 using GZCTF.Features.SkillTrees.Application;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,7 @@ namespace GZCTF.Features.LearningPaths.Application;
 public sealed class EnrollmentService(AppDbContext db, SkillTreeEnrollmentService enrollments)
 {
     public async Task<LessonContentResponse> GetLessonAsync(
-        Guid lessonId, string? locale, CancellationToken token)
+        Guid lessonId, string? locale, CancellationToken token, Guid? courseId = null)
     {
         switch (await enrollments.GetLessonAccessAsync(lessonId, token))
         {
@@ -20,10 +21,7 @@ public sealed class EnrollmentService(AppDbContext db, SkillTreeEnrollmentServic
                 throw new LearningEnrollmentRequiredException();
         }
 
-        var lesson = await db.Lessons
-            .AsNoTracking()
-            .Include(item => item.Localizations)
-            .SingleOrDefaultAsync(item => item.Id == lessonId, token);
+        var lesson = await PublishedCourseContentReader.GetLessonAsync(db, lessonId, token, courseId);
         if (lesson is null)
             throw new LearningLessonNotFoundException();
 

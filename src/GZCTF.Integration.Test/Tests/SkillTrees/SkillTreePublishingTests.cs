@@ -132,7 +132,7 @@ public class SkillTreePublishingTests(GZCTFApplicationFactory factory)
             IconKey = "web"
         };
         db.SkillCategories.Add(category);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
         return category.Id;
     }
 
@@ -148,7 +148,7 @@ public class SkillTreePublishingTests(GZCTFApplicationFactory factory)
             IconKey = "web"
         };
         db.SkillCategories.Add(category);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
         return category.Id;
     }
 }

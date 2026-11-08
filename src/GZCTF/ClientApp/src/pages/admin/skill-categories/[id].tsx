@@ -3,21 +3,21 @@ import { showNotification } from '@mantine/notifications'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router'
-import api, {
-  Role,
-  type CategoryDeleteImpactResponse,
-  type SkillCategoryAdminResponse,
-  type SkillTreeContentSummaryResponse,
-} from '@Api'
-import { SkillTreeForm, type SkillTreeFormValues } from '@Components/admin/skill-trees/SkillTreeForm'
-import { CategoryContentList } from '@Components/admin/skill-categories/CategoryContentList'
-import { CategoryMergeModal } from '@Components/admin/skill-categories/CategoryMergeModal'
-import { TypedDeleteModal } from '@Components/admin/shared/TypedDeleteModal'
 import { WithNavBar } from '@Components/WithNavbar'
 import { WithRole } from '@Components/WithRole'
-import { useAdminSkillCategories, useAdminSkillCategory, useAdminSkillTrees, useSkillTreeAdminMutations } from '@Hooks/useSkillTreeAdmin'
-import { getApiErrorCode, moveItem, type SkillTreeIconKey } from '@Utils/skillTreeAdmin'
+import { TypedDeleteModal } from '@Components/admin/shared/TypedDeleteModal'
+import { CategoryMergeModal } from '@Components/admin/skill-categories/CategoryMergeModal'
+import { CategorySkillsEditor } from '@Components/admin/skill-categories/CategorySkillsEditor'
+import { SkillTreeForm, type SkillTreeFormValues } from '@Components/admin/skill-trees/SkillTreeForm'
+import { getApiErrorCode, type SkillTreeIconKey } from '@Utils/skillTreeAdmin'
 import { showSkillTreeError } from '@Utils/skillTreeAdminFeedback'
+import {
+  useAdminSkillCategories,
+  useAdminSkillCategory,
+  useAdminSkillTrees,
+  useSkillTreeAdminMutations,
+} from '@Hooks/useSkillTreeAdmin'
+import api, { Role, type CategoryDeleteImpactResponse, type SkillCategoryAdminResponse } from '@Api'
 
 const AdminSkillCategoryEdit = () => {
   const { id } = useParams()
@@ -25,13 +25,7 @@ const AdminSkillCategoryEdit = () => {
   const { data: category, mutate } = useAdminSkillCategory(id)
   const { data: trees, mutate: mutateTrees } = useAdminSkillTrees()
   const { data: allCategories } = useAdminSkillCategories()
-  const {
-    saveCategory,
-    sortCategoryContents,
-    saveTreeMemberships,
-    mergeCategories,
-    deleteCategory,
-  } = useSkillTreeAdminMutations()
+  const { saveCategory, saveTreeMemberships, mergeCategories, deleteCategory } = useSkillTreeAdminMutations()
   const navigate = useNavigate()
 
   const initialized = useRef<string | undefined>(undefined)
@@ -39,7 +33,6 @@ const AdminSkillCategoryEdit = () => {
   const [values, setValues] = useState<SkillTreeFormValues>({ name: '', summary: '', iconKey: 'flag' })
   const [viewedCategoryRowVersion, setViewedCategoryRowVersion] = useState<number>()
   const [viewedTreeRowVersions, setViewedTreeRowVersions] = useState<Record<string, number>>({})
-  const [contents, setContents] = useState<SkillTreeContentSummaryResponse[]>([])
   const [memberships, setMemberships] = useState<Record<string, boolean>>({})
   const [affectedTreeIds, setAffectedTreeIds] = useState<string[]>([])
   const [conflict, setConflict] = useState(false)
@@ -58,7 +51,6 @@ const AdminSkillCategoryEdit = () => {
       summary: category.summary ?? '',
       iconKey: (category.iconKey ?? 'flag') as SkillTreeIconKey,
     })
-    setContents((category.contents ?? []).slice().sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0)))
     const state: Record<string, boolean> = {}
     for (const tree of trees ?? []) state[tree.skillTreeId ?? ''] = false
     for (const reference of category.trees ?? []) state[reference.skillTreeId ?? ''] = true
@@ -98,27 +90,6 @@ const AdminSkillCategoryEdit = () => {
     }
   }
 
-  const saveContents = async () => {
-    setSaving(true)
-    try {
-      await sortCategoryContents(id, {
-        rowVersion: viewedCategoryRowVersion ?? 0,
-        contents: contents.map((content, sortOrder) => ({
-          kind: content.kind ?? '',
-          contentId: content.contentId ?? '',
-          sortOrder,
-        })),
-      })
-      const fresh = await mutate()
-      setViewedCategoryRowVersion(fresh?.rowVersion)
-      showNotification({ color: 'green', message: t('category.orderSuccess') })
-    } catch (error) {
-      handleError(error)
-    } finally {
-      setSaving(false)
-    }
-  }
-
   const saveMembership = async () => {
     setSaving(true)
     try {
@@ -134,7 +105,9 @@ const AdminSkillCategoryEdit = () => {
       const [freshCategory, freshTrees] = await Promise.all([mutate(), mutateTrees()])
       setViewedCategoryRowVersion(freshCategory?.rowVersion)
       if (freshTrees) {
-        setViewedTreeRowVersions(Object.fromEntries(freshTrees.map((tree) => [tree.skillTreeId ?? '', tree.rowVersion ?? 0])))
+        setViewedTreeRowVersions(
+          Object.fromEntries(freshTrees.map((tree) => [tree.skillTreeId ?? '', tree.rowVersion ?? 0]))
+        )
       }
       showNotification({ color: 'green', message: t('category.membershipSuccess') })
     } catch (error) {
@@ -285,18 +258,14 @@ const AdminSkillCategoryEdit = () => {
                 </Alert>
               )}
 
-              <Divider label={t('category.contents')} labelPosition="left" mt="md" />
-              <Text size="sm" c="dimmed">
-                {t('category.contentHint')}
-              </Text>
-              <CategoryContentList
-                contents={contents}
-                disabled={saving}
-                onMove={(from, to) => setContents((current) => moveItem(current, from, to))}
+              <Divider label="技能编排" labelPosition="left" mt="md" />
+              <CategorySkillsEditor
+                id={id}
+                onSaved={async () => {
+                  const fresh = await mutate()
+                  setViewedCategoryRowVersion(fresh?.rowVersion)
+                }}
               />
-              <Button w="fit-content" loading={saving} onClick={saveContents}>
-                {t('category.saveOrder')}
-              </Button>
 
               <Group mt="xl">
                 <Button variant="light" onClick={() => setMergeOpen(true)}>

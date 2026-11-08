@@ -28,11 +28,12 @@ public sealed class SkillCategoryService(AppDbContext db, ISkillTreeCacheInvalid
         var ids = categories.Select(category => category.Id).ToList();
         var treeRefs = await LoadTreeReferencesAsync(ids, token);
         var contents = await LoadContentSummariesAsync(ids, token);
+        var skills = await SkillHierarchyReader.LoadSkillsAsync(db, ids, false, token);
 
         return categories.Select(category => ToAdminResponse(
             category,
             treeRefs.GetValueOrDefault(category.Id, []),
-            contents.GetValueOrDefault(category.Id, []))).ToArray();
+            contents.GetValueOrDefault(category.Id, []), skills.GetValueOrDefault(category.Id, []))).ToArray();
     }
 
     public async Task<SkillCategoryAdminResponse?> GetAsync(Guid id, CancellationToken token)
@@ -45,10 +46,11 @@ public sealed class SkillCategoryService(AppDbContext db, ISkillTreeCacheInvalid
 
         var treeRefs = await LoadTreeReferencesAsync([id], token);
         var contents = await LoadContentSummariesAsync([id], token);
+        var skills = await SkillHierarchyReader.LoadSkillsAsync(db, [id], false, token);
         return ToAdminResponse(
             category,
             treeRefs.GetValueOrDefault(id, []),
-            contents.GetValueOrDefault(id, []));
+            contents.GetValueOrDefault(id, []), skills.GetValueOrDefault(id, []));
     }
 
     public async Task<SkillCategoryAdminResponse> CreateAsync(
@@ -102,84 +104,19 @@ public sealed class SkillCategoryService(AppDbContext db, ISkillTreeCacheInvalid
         Guid id, UpdateCategoryContentsCommand command, CancellationToken token)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token);
-
-        var category = await db.SkillCategories
-            .FirstOrDefaultAsync(item => item.Id == id && item.DeletedAtUtc == null, token);
-        if (category is null)
-            return null;
-
-        if (command.RowVersion != category.RowVersion)
-            throw new SkillTreeRevisionConflictException();
-
-        var commands = (command.Contents ?? []).OrderBy(item => item.SortOrder).ToList();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var item in commands)
-        {
-            var kind = NormalizeKind(item.Kind);
-            if (!seen.Add($"{kind}:{item.ContentId}"))
-                throw new SkillCategoryValidationException("Duplicate content entries are not allowed.");
-        }
-
-        var challengeIds = commands
-            .Where(item => NormalizeKind(item.Kind) == ChallengeKind)
-            .Select(item => item.ContentId).Distinct().ToList();
-        var lessonIds = commands
-            .Where(item => NormalizeKind(item.Kind) == LessonKind)
-            .Select(item => item.ContentId).Distinct().ToList();
-
-        var challenges = await db.Challenges
-            .Where(item => challengeIds.Contains(item.Id))
-            .ToDictionaryAsync(item => item.Id, token);
-        var lessons = await db.Lessons
-            .Where(item => lessonIds.Contains(item.Id))
-            .ToDictionaryAsync(item => item.Id, token);
-
-        foreach (var item in commands)
-        {
-            if (NormalizeKind(item.Kind) == ChallengeKind)
-            {
-                if (!challenges.TryGetValue(item.ContentId, out var challenge) ||
-                    challenge.PublicationState != ChallengePublicationState.Published || !challenge.IsEnabled)
-                    throw new SkillCategoryValidationException(
-                        "Only published and enabled challenges can be placed in a category.");
-            }
-            else if (!lessons.TryGetValue(item.ContentId, out var lesson) ||
-                     lesson.PublicationState != LessonPublicationState.Published)
-            {
-                throw new SkillCategoryValidationException(
-                    "Only published lessons can be placed in a category.");
-            }
-        }
-
-        await db.CategoryContents.Where(item => item.CategoryId == id).ExecuteDeleteAsync(token);
-
-        var now = DateTimeOffset.UtcNow;
-        for (var sortOrder = 0; sortOrder < commands.Count; sortOrder++)
-        {
-            var item = commands[sortOrder];
-            db.CategoryContents.Add(new CategoryContent
-            {
-                CategoryId = id,
-                SortOrder = sortOrder,
-                ChallengeId = NormalizeKind(item.Kind) == ChallengeKind ? item.ContentId : null,
-                LessonId = NormalizeKind(item.Kind) == LessonKind ? item.ContentId : null,
-                CreatedAtUtc = now
-            });
-        }
-
-        category.UpdatedAtUtc = now;
-
-        try
-        {
-            await db.SaveChangesAsync(token);
-            await transaction.CommitAsync(token);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            throw new SkillTreeRevisionConflictException();
-        }
-
-        await cacheInvalidator.InvalidateByCategoryAsync(id, token);
+        var category = await db.SkillCategories.FirstOrDefaultAsync(item => item.Id == id && item.DeletedAtUtc == null, token);
+        if (category is null) return null;
+        if (category.RowVersion != command.RowVersion) throw new SkillTreeRevisionConflictException();
+        var skillIds = await db.CategorySkillRefs.Where(reference => reference.CategoryId == id && reference.Skill.DeletedAtUtc == null)
+            .Select(reference => reference.SkillId).ToListAsync(token);
+        if (skillIds.Count != 1) throw new SkillSelectionRequiredException();
+        var skill = await db.Skills.SingleAsync(item => item.Id == skillIds[0], token);
+        await new SkillService(db, cacheInvalidator).UpdateContentsAsync(skill.Id,
+            new SkillContentUpdateCommand(skill.RowVersion, command.Contents), token);
+        category.UpdatedAtUtc = DateTimeOffset.UtcNow;
+        try { await db.SaveChangesAsync(token); }
+        catch (DbUpdateConcurrencyException) { throw new SkillTreeRevisionConflictException(); }
+        await transaction.CommitAsync(token);
         return await GetAsync(id, token);
     }
 
@@ -307,10 +244,8 @@ public sealed class SkillCategoryService(AppDbContext db, ISkillTreeCacheInvalid
             .Select(item => item.SkillTreeId).Distinct().Count();
         var publishedTreeCount = references.Where(item => item.IsPublished)
             .Select(item => item.SkillTreeId).Distinct().Count();
-        var challengeCount = await db.CategoryContents
-            .CountAsync(item => item.CategoryId == id && item.ChallengeId != null, token);
-        var lessonCount = await db.CategoryContents
-            .CountAsync(item => item.CategoryId == id && item.LessonId != null, token);
+        var challengeCount = await SkillHierarchyReader.CategoryContents(db, [id]).Where(item => item.ChallengeId != null).Select(item => item.ChallengeId).Distinct().CountAsync(token);
+        var lessonCount = await SkillHierarchyReader.CategoryContents(db, [id]).Where(item => item.LessonId != null).Select(item => item.LessonId).Distinct().CountAsync(token);
 
         return new CategoryDeleteImpactResponse(
             category.Id, category.Name, draftTreeCount, publishedTreeCount,
@@ -454,42 +389,15 @@ public sealed class SkillCategoryService(AppDbContext db, ISkillTreeCacheInvalid
                 });
         }
 
-        var duplicateContents = await db.CategoryContents
-            .Where(item => item.CategoryId == command.DuplicateCategoryId)
-            .OrderBy(item => item.SortOrder)
-            .ToListAsync(token);
-        var survivorContents = await db.CategoryContents
-            .Where(item => item.CategoryId == command.SurvivorCategoryId)
-            .OrderBy(item => item.SortOrder)
-            .ToListAsync(token);
-
-        var finalContents = survivorContents
-            .Select(item => (item.ChallengeId, item.LessonId, item.CreatedAtUtc))
-            .ToList();
-        var existingKeys = finalContents
-            .Select(item => ContentKey(item.ChallengeId, item.LessonId))
-            .ToHashSet(StringComparer.Ordinal);
-        foreach (var item in duplicateContents)
-        {
-            var key = ContentKey(item.ChallengeId, item.LessonId);
-            if (existingKeys.Add(key))
-                finalContents.Add((item.ChallengeId, item.LessonId, item.CreatedAtUtc));
-        }
-
-        await db.CategoryContents
-            .Where(item => item.CategoryId == command.SurvivorCategoryId ||
-                           item.CategoryId == command.DuplicateCategoryId)
+        var survivorSkills = await db.CategorySkillRefs.Where(reference => reference.CategoryId == command.SurvivorCategoryId)
+            .OrderBy(reference => reference.SortOrder).Select(reference => reference.SkillId).ToListAsync(token);
+        var duplicateSkills = await db.CategorySkillRefs.Where(reference => reference.CategoryId == command.DuplicateCategoryId)
+            .OrderBy(reference => reference.SortOrder).Select(reference => reference.SkillId).ToListAsync(token);
+        var finalSkills = survivorSkills.Concat(duplicateSkills).Distinct().ToList();
+        await db.CategorySkillRefs.Where(reference => reference.CategoryId == command.SurvivorCategoryId || reference.CategoryId == command.DuplicateCategoryId)
             .ExecuteDeleteAsync(token);
-
-        for (var sortOrder = 0; sortOrder < finalContents.Count; sortOrder++)
-            db.CategoryContents.Add(new CategoryContent
-            {
-                CategoryId = command.SurvivorCategoryId,
-                SortOrder = sortOrder,
-                ChallengeId = finalContents[sortOrder].ChallengeId,
-                LessonId = finalContents[sortOrder].LessonId,
-                CreatedAtUtc = finalContents[sortOrder].CreatedAtUtc
-            });
+        for (var index = 0; index < finalSkills.Count; index++)
+            db.CategorySkillRefs.Add(new CategorySkillRef { CategoryId = command.SurvivorCategoryId, SkillId = finalSkills[index], SortOrder = index });
 
         var now = DateTimeOffset.UtcNow;
         survivor.UpdatedAtUtc = now;
@@ -551,24 +459,8 @@ public sealed class SkillCategoryService(AppDbContext db, ISkillTreeCacheInvalid
     private async Task<Dictionary<Guid, IReadOnlyList<SkillTreeContentSummaryResponse>>> LoadContentSummariesAsync(
         IReadOnlyList<Guid> categoryIds, CancellationToken token)
     {
-        var contents = await db.CategoryContents
-            .AsNoTracking()
-            .Include(item => item.Challenge)
-                .ThenInclude(challenge => challenge!.Localizations)
-            .Include(item => item.Lesson)
-                .ThenInclude(lesson => lesson!.Localizations)
-            .Where(item => categoryIds.Contains(item.CategoryId))
-            .OrderBy(item => item.CategoryId)
-            .ThenBy(item => item.SortOrder)
-            .ToListAsync(token);
-
-        return contents
-            .GroupBy(item => item.CategoryId)
-            .ToDictionary(
-                group => group.Key,
-                group => (IReadOnlyList<SkillTreeContentSummaryResponse>)group
-                    .Select(ToContentSummary)
-                    .ToArray());
+        var skills = await SkillHierarchyReader.LoadSkillsAsync(db, categoryIds, false, token);
+        return skills.ToDictionary(pair => pair.Key, pair => SkillHierarchyReader.Flatten(pair.Value));
     }
 
     private static SkillTreeContentSummaryResponse ToContentSummary(CategoryContent content)
@@ -658,8 +550,8 @@ public sealed class SkillCategoryService(AppDbContext db, ISkillTreeCacheInvalid
     private static SkillCategoryAdminResponse ToAdminResponse(
         SkillCategory category,
         IReadOnlyList<CategoryTreeReferenceResponse> trees,
-        IReadOnlyList<SkillTreeContentSummaryResponse> contents) =>
-        new(category.Id, category.Name, category.Summary, category.IconKey, category.RowVersion, trees, contents);
+        IReadOnlyList<SkillTreeContentSummaryResponse> contents, IReadOnlyList<SkillPublicResponse>? skills = null) =>
+        new(category.Id, category.Name, category.Summary, category.IconKey, category.RowVersion, trees, contents, skills ?? []);
 
     private static string PickTitle(IEnumerable<ChallengeLocalization>? localizations) =>
         PickText(localizations, item => item.Locale)?.Title ?? string.Empty;

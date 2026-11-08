@@ -1,15 +1,22 @@
 import useSWR, { useSWRConfig } from 'swr'
-import api, { ChallengeSolveMode, fetcher, type ChallengeInstanceResponse, type ChallengeSummaryResponse } from '@Api'
+import api, {
+  ChallengeSolveMode,
+  fetcher,
+  type ChallengeInstanceResponse,
+  type ChallengeSummaryResponse,
+  type LessonResponse,
+} from '@Api'
 
 const localeQuery = (locale: string) => encodeURIComponent(locale || 'en')
+const courseQuery = (id?: string) => id ? `&course=${encodeURIComponent(id)}` : ''
 
-export const useLesson = (id: string | undefined, locale: string, enabled: boolean) =>
+export const useLesson = (id: string | undefined, locale: string, enabled: boolean, courseId?: string) =>
   useSWR<{ lessonId: string; locale: string; title: string; body: string }>(
-    id && enabled ? `/api/learning-lessons/${id}?locale=${localeQuery(locale)}` : null,
+    id && enabled ? `/api/learning-lessons/${id}?locale=${localeQuery(locale)}${courseQuery(courseId)}` : null,
     fetcher
   )
 
-export const useChallenge = (id: string | undefined, locale: string, enabled: boolean) =>
+export const useChallenge = (id: string | undefined, locale: string, enabled: boolean, courseId?: string) =>
   useSWR<{
     id: string
     title: string
@@ -20,8 +27,9 @@ export const useChallenge = (id: string | undefined, locale: string, enabled: bo
     hintLocaleCount: number
     hasWriteup: boolean
     hasAttachment: boolean
+    hasSupplementaryAttachment?: boolean
     hasContainer: boolean
-  }>(id && enabled ? `/api/challenges/${id}?locale=${localeQuery(locale)}` : null, fetcher)
+  }>(id && enabled ? `/api/challenges/${id}?locale=${localeQuery(locale)}${courseQuery(courseId)}` : null, fetcher)
 
 export const useChallengeInstance = (id: string | undefined, enabled: boolean) =>
   useSWR<ChallengeInstanceResponse | null>(
@@ -37,11 +45,11 @@ export const useChallengeInstance = (id: string | undefined, enabled: boolean) =
     { refreshInterval: 15000 }
   )
 
-export const useLearningMutations = () => {
+export const useLearningMutations = (courseId?: string) => {
   const { mutate } = useSWRConfig()
 
   const completeLesson = async (lessonId: string) => {
-    await api.lessons.lessonsComplete(lessonId)
+    await api.request({path:`/api/learning-lessons/${lessonId}/complete`,method:'POST',query:courseId?{course:courseId}:undefined})
     // The generated hook keys the record as `[path, query]`, so match both key forms.
     await mutate((key) => {
       const path = Array.isArray(key) ? key[0] : key
@@ -67,17 +75,24 @@ export const useLearningMutations = () => {
     await mutate(`/api/challenges/${challengeId}/instances`, null, false)
   }
 
-  const submitChallenge = async (challengeId: string, flag: string) =>
-    (await api.challengeSubmissions.challengeSubmissionsSubmit(challengeId, { flag })).data as {
+  const submitChallenge = async (challengeId: string, flag: string) => {
+    const result = (await api.challengeSubmissions.challengeSubmissionsSubmit(challengeId, { flag })).data as {
       accepted: boolean
       firstSolve: boolean
       solveMode?: ChallengeSolveMode | null
       rejectionCode?: string
       submissionId: string
     }
+    if (result.accepted)
+      await mutate((key) => {
+        const path = Array.isArray(key) ? key[0] : key
+        return typeof path === 'string' && path.startsWith('/api/my-learning')
+      })
+    return result
+  }
 
   const nextHint = async (challengeId: string, locale: string) =>
-    (await api.challenges.challengesNextHint(challengeId, { locale })).data as {
+    (await api.challenges.challengesNextHint(challengeId, { locale, ...(courseId ? {course:courseId} : {}) })).data as {
       hintId: string
       sortOrder: number
       locale: string
@@ -85,7 +100,7 @@ export const useLearningMutations = () => {
     } | null
 
   const revealWriteup = async (challengeId: string, locale: string) =>
-    (await api.challenges.challengesWriteup(challengeId, { locale })).data as {
+    (await api.challenges.challengesWriteup(challengeId, { locale, ...(courseId ? {course:courseId} : {}) })).data as {
       locale: string
       content: string
       firstViewedAtUtc: number
@@ -96,8 +111,7 @@ export const useLearningMutations = () => {
 
 export const useAdminChallenges = () => useSWR<ChallengeSummaryResponse[]>('/api/admin/challenges?locale=en', fetcher)
 
-export const useAdminLessons = () =>
-  useSWR<{ id: string; locale: string; title: string; body: string }[]>('/api/admin/lessons?locale=en', fetcher)
+export const useAdminLessons = () => useSWR<LessonResponse[]>('/api/admin/lessons?locale=en', fetcher)
 
 export const useImportBatches = () =>
   useSWR<

@@ -157,5 +157,6 @@
   "addressCopied": "已复制",
   "openChallenge": "打开题目",
   "copyFailed": "复制失败，请选中上方地址手动复制。",
-  "tcpConnectionHint": "此地址用于 TCP 客户端连接。"
+  "tcpConnectionHint": "此地址用于 TCP 客户端连接。",
+  "testInstanceNoCredit": "管理员测试实例不会记录通关或积分。请停止测试实例后再使用正式题目实例。"
 }

@@ -56,14 +56,14 @@ test.describe('admin workspace', () => {
     await page.goto('/')
     await page.evaluate(() => localStorage.setItem('language', JSON.stringify('zh-CN')))
 
-    // 1. The workspace shows the four tabs in order.
+    // 1. The workspace retains its grouped navigation, including skills and ranking management.
     await page.goto('/admin/skill-trees')
-    const labels = ['技能树', '全局类别', '题目管理', '成员管理', '用户管理', 'WP 审核', 'WP 管理', '实例管理']
+    const labels = ['技能树', '全局类别', '技能库', '题目管理', '成员管理', '用户管理', '排行榜管理', 'WP 审核', 'WP 管理', '实例管理']
     for (const label of labels) {
       await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: label })).toBeVisible()
     }
     await expect(page.getByRole('tab')).toHaveCount(0)
-    await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link')).toHaveCount(16)
+    await expect(page.getByRole('navigation', { name: '管理导航' }).getByRole('link')).toHaveCount(18)
 
     // 2. Selecting the challenges tab updates the URL and survives a reload.
     await page.getByRole('navigation', { name: '管理导航' }).getByRole('link', { name: '题目管理' }).click()

@@ -13,10 +13,9 @@ public sealed record ChallengeWriteupResponse(string Locale, string Content, Dat
 public sealed class ChallengeHelpService(AppDbContext db)
 {
     public async Task<ChallengeHintResponse?> RevealNextHintAsync(
-        Guid userId, Guid challengeId, string? locale, CancellationToken token = default)
+        Guid userId, Guid challengeId, string? locale, CancellationToken token = default, Guid? courseId = null)
     {
-        var challenge = await db.Challenges.Include(item => item.Hints)
-            .SingleOrDefaultAsync(item => item.Id == challengeId, token);
+        var challenge = await PublishedCourseContentReader.GetChallengeAsync(db, challengeId, token, courseId: courseId);
         if (challenge is null)
             return null;
 
@@ -41,10 +40,9 @@ public sealed class ChallengeHelpService(AppDbContext db)
     }
 
     public async Task<ChallengeWriteupResponse?> RevealWriteupAsync(
-        Guid userId, Guid challengeId, string? locale, CancellationToken token = default)
+        Guid userId, Guid challengeId, string? locale, CancellationToken token = default, Guid? courseId = null)
     {
-        var challenge = await db.Challenges.Include(item => item.Writeups)
-            .SingleOrDefaultAsync(item => item.Id == challengeId, token);
+        var challenge = await PublishedCourseContentReader.GetChallengeAsync(db, challengeId, token, courseId: courseId);
         if (challenge is null)
             return null;
 

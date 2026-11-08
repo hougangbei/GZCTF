@@ -115,7 +115,7 @@ public class LearningRedirectTests(GZCTFApplicationFactory factory)
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var entity = await db.SkillTrees.FirstAsync(t => t.Id == tree.SkillTreeId);
         entity.DeletedAtUtc = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
 
         using var anon = factory.CreateClient();
         var response = await anon.GetAsync($"/api/skill-tree-redirects/{oldSlug}");
@@ -132,7 +132,7 @@ public class LearningRedirectTests(GZCTFApplicationFactory factory)
             OldSlug = oldSlug,
             SkillTreeId = skillTreeId
         });
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
     }
 
     private static async Task<AdminSkillTreeResponse> CreateTreeAsync(HttpClient admin, string name, string iconKey)
@@ -167,7 +167,7 @@ public class LearningRedirectTests(GZCTFApplicationFactory factory)
             IconKey = "flag"
         };
         db.SkillCategories.Add(category);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
         return category.Id;
     }
 
@@ -189,7 +189,7 @@ public class LearningRedirectTests(GZCTFApplicationFactory factory)
             }
         };
         db.Challenges.Add(challenge);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
 
         var content = new CategoryContent
         {
@@ -207,6 +207,9 @@ public class LearningRedirectTests(GZCTFApplicationFactory factory)
             CategoryId = categoryId,
             SortOrder = 0
         });
+        await db.SaveSkillTreeFixtureAsync();
+        draftRevision.Status = SkillTreeRevisionStatus.Published;
+        tree.CurrentPublishedRevisionId = draftRevision.Id;
         await db.SaveChangesAsync();
 
         return challenge.Id;
@@ -226,7 +229,7 @@ public class LearningRedirectTests(GZCTFApplicationFactory factory)
             }
         };
         db.Lessons.Add(lesson);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
 
         var content = new CategoryContent
         {
@@ -244,6 +247,9 @@ public class LearningRedirectTests(GZCTFApplicationFactory factory)
             CategoryId = categoryId,
             SortOrder = 0
         });
+        await db.SaveSkillTreeFixtureAsync();
+        draftRevision.Status = SkillTreeRevisionStatus.Published;
+        tree.CurrentPublishedRevisionId = draftRevision.Id;
         await db.SaveChangesAsync();
 
         return lesson.Id;

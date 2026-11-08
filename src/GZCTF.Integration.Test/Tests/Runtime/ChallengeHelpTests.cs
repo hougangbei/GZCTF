@@ -58,7 +58,7 @@ public sealed class ChallengeHelpTests(GZCTFApplicationFactory factory)
             ],
             Writeups = [new ChallengeWriteup { Locale = "en", Content = "Official writeup" }]
         });
-        await db.SaveChangesAsync();
+        await db.SaveRuntimeFixtureAsync();
         return challengeId;
     }
 }

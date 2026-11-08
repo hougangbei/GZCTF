@@ -23,7 +23,8 @@ internal static class LearningModelConfiguration
             entity.Property(e => e.Type).HasConversion<byte>();
             entity.Property(e => e.CtfCategory).HasConversion<byte>();
             entity.Property(e => e.Difficulty).HasConversion<byte>();
-            entity.Property(e => e.Score).HasDefaultValue(100);
+            // Zero is a valid imported score; it must not be mistaken for an unset store-generated default.
+            entity.Property(e => e.Score).HasDefaultValue(100).HasSentinel(-1);
             entity.ToTable(table => table.HasCheckConstraint(
                 "CK_Challenges_Score_Range", "\"Score\" >= 0 AND \"Score\" <= 10000"));
             entity.Property(e => e.SubmissionLimit).HasDefaultValue(0);
@@ -344,6 +345,7 @@ internal static class LearningModelConfiguration
             entity.Property(e => e.AssignedAttachmentSha256).HasMaxLength(128);
             entity.Property(e => e.AssignedFlag).HasMaxLength(512);
             entity.Property(e => e.RuntimeMetadataJson).HasColumnType("jsonb");
+            entity.Property(e => e.PublishedChallengeJson).HasColumnType("text");
             entity.HasIndex(e => new { e.UserId, e.ChallengeId })
                 .IsUnique()
                 .HasFilter("\"IsActive\" = TRUE");
@@ -401,10 +403,8 @@ internal static class LearningModelConfiguration
                 .WithMany(e => e.HelpUsages)
                 .HasForeignKey(e => e.InstanceId)
                 .OnDelete(DeleteBehavior.SetNull);
-            entity.HasOne(e => e.Hint)
-                .WithMany()
-                .HasForeignKey(e => e.HintId)
-                .OnDelete(DeleteBehavior.SetNull);
+            // A revealed hint belongs to an immutable published version; its draft row may be removed.
+            entity.Ignore(e => e.Hint);
         });
     }
 }

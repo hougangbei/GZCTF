@@ -38,7 +38,7 @@ public sealed class FlagSubmissionApiTests(GZCTFApplicationFactory factory)
                 Localizations = [new ChallengeLocalization { Locale = "en", Title = "Audit Flag Challenge", Summary = "Test", Body = "Test" }],
                 Flags = [new ChallengeFlag { Kind = ChallengeFlagKind.Static, Value = expectedFlag }]
             });
-            await db.SaveChangesAsync();
+            await db.SaveRuntimeFixtureAsync();
         }
 
         using var client = await LoginAsync(user.UserName, user.Password);

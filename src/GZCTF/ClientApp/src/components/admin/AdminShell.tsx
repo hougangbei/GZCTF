@@ -16,6 +16,7 @@ import {
   mdiPackageVariantClosed,
   mdiSitemapOutline,
   mdiUpdate,
+  mdiTrophyOutline,
 } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import { type PropsWithChildren, useEffect, useRef, useState } from 'react'
@@ -43,6 +44,7 @@ export const AdminShell = ({ children }: PropsWithChildren) => {
           path: workspace('categories'),
           icon: mdiFolderOutline,
         },
+        { key: 'skills', label: '技能库', path: '/admin/skills', icon: mdiSitemapOutline },
         {
           key: 'challenges',
           label: t('skillTrees:workspace.tabs.challenges'),
@@ -67,6 +69,7 @@ export const AdminShell = ({ children }: PropsWithChildren) => {
           icon: mdiAccountGroupOutline,
         },
         { key: 'users', label: t('tab.users'), path: workspace('users'), icon: mdiAccountCogOutline },
+        { key: 'rankings', label: '排行榜管理', path: '/admin/rankings', icon: mdiTrophyOutline },
       ],
     },
     {

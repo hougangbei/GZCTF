@@ -13,8 +13,18 @@ namespace GZCTF.Features.LearningProgress.Api;
 [Produces(MediaTypeNames.Application.Json)]
 public sealed class MyLearningController(
     LearningRecordService service,
-    UserManager<UserInfo> userManager) : ControllerBase
+    UserManager<UserInfo> userManager,
+    GZCTF.Features.SkillTrees.Application.SkillTreeEnrollmentService skillTrees) : ControllerBase
 {
+    [HttpGet("skill-trees/{treeId:guid}")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> GetTreeProgress(Guid treeId, CancellationToken token)
+    {
+        var user = await userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+        return await skillTrees.GetTreeProgressAsync(user.Id, treeId, token) is { } result ? Ok(result) : NotFound();
+    }
+
     [HttpGet]
     public async Task<ActionResult<MyLearningResponse>> Get(
         [FromQuery] string? locale, CancellationToken token)

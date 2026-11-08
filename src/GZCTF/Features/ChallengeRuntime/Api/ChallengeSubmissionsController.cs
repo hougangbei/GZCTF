@@ -34,7 +34,8 @@ public sealed class ChallengeSubmissionsController(
             await flagAttempts.CompleteAsync(attemptId, "rejected", "empty_flag", null, CancellationToken.None);
             return BadRequest();
         }
-        if (!await access.CanAccessAsync(challengeId, user, token))
+        if (!await access.CanAccessAsync(challengeId, user, token) ||
+            await PublishedCourseContentReader.GetChallengeAsync(db, challengeId, token) is null)
         {
             await flagAttempts.CompleteAsync(attemptId, "rejected", "challenge_inaccessible", null, CancellationToken.None);
             return NotFound();

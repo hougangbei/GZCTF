@@ -45,7 +45,7 @@ public class SkillTreeEnrollmentTests(GZCTFApplicationFactory factory)
                 SolvedAtUtc = DateTimeOffset.UtcNow,
                 SolveMode = ChallengeSolveMode.Independent
             });
-            await db.SaveChangesAsync();
+            await db.SaveSkillTreeFixtureAsync();
         }
 
         var record = await client.GetFromJsonAsync<MyLearningResponse>("/api/my-learning", JsonOptions);
@@ -105,7 +105,7 @@ public class SkillTreeEnrollmentTests(GZCTFApplicationFactory factory)
             category.Contents.Add(new CategoryContent { Category = category, Lesson = lesson, SortOrder = 0 });
             var (tree, revision) = BuildTree("Open tree", "brain", category);
             db.SkillTrees.Add(tree);
-            await db.SaveChangesAsync();
+            await db.SaveSkillTreeFixtureAsync();
             await SetCurrentAsync(db, tree.Id, revision.Id);
         }
 
@@ -191,7 +191,7 @@ public class SkillTreeEnrollmentTests(GZCTFApplicationFactory factory)
         var second = BuildTree("Second", "pwn", category);
         db.Challenges.Add(challenge);
         db.SkillTrees.AddRange(first.Tree, second.Tree);
-        await db.SaveChangesAsync();
+        await db.SaveSkillTreeFixtureAsync();
         await SetCurrentAsync(db, first.Tree.Id, first.Revision.Id);
         await SetCurrentAsync(db, second.Tree.Id, second.Revision.Id);
 
@@ -219,9 +219,13 @@ public class SkillTreeEnrollmentTests(GZCTFApplicationFactory factory)
         return (tree, revision);
     }
 
-    private static async Task SetCurrentAsync(AppDbContext db, Guid treeId, Guid revisionId) =>
+    private static async Task SetCurrentAsync(AppDbContext db, Guid treeId, Guid revisionId)
+    {
         await db.SkillTrees.Where(item => item.Id == treeId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.CurrentPublishedRevisionId, revisionId));
+        await CourseSnapshotBuilder.CaptureCurrentAsync(db, treeId, revisionId, CancellationToken.None);
+        await db.SaveChangesAsync();
+    }
 
     private async Task<(TestDataSeeder.SeededUser User, HttpClient Client)> CreateUserClientAsync()
     {

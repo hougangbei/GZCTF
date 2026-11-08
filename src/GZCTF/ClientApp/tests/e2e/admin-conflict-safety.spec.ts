@@ -30,7 +30,7 @@ test('saving an out-of-date skill tree draft does not resubmit local edits with 
   })
   await page.route('**/api/admin/skill-categories', (route) => route.fulfill({ json: [] }))
 
-  await page.goto(`/admin/skill-trees/${treeId}`)
+  await page.goto(`/admin/skill-trees/${treeId}?legacy=1`)
   await page.getByRole('textbox', { name: 'Name' }).fill('My local edit')
   await page.getByRole('button', { name: 'Save draft' }).click()
 
@@ -50,7 +50,7 @@ test('publishing an out-of-date skill tree does not retry with a new version', a
   })
   await page.route('**/api/admin/skill-categories', (route) => route.fulfill({ json: [] }))
 
-  await page.goto(`/admin/skill-trees/${treeId}`)
+  await page.goto(`/admin/skill-trees/${treeId}?legacy=1`)
   await page.getByRole('button', { name: 'Publish', exact: true }).click()
 
   await expect(page.getByRole('alert', { name: /changed|conflict/i })).toBeVisible()

@@ -15,7 +15,8 @@ using CanonicalChallenge = GZCTF.Features.ChallengeLibrary.Domain.Challenge;
 namespace GZCTF.Features.ChallengeLibrary.Application;
 
 public sealed class ChallengeLibraryService(
-    AppDbContext db, IChallengeMergeConflictChecker conflictChecker, QqBotNotifier qqBot)
+    AppDbContext db, IChallengeMergeConflictChecker conflictChecker, QqBotNotifier qqBot,
+    CourseAssetRegistry assetRegistry)
 {
     public async Task<ChallengeEditResponse> CreateChallengeAsync(
         ChallengeCommand command, CancellationToken token)
@@ -61,12 +62,15 @@ public sealed class ChallengeLibraryService(
         if (challenge is null)
             return null;
         var categoryIds = await LoadCategoryIdsAsync(id, null, token);
-        return ToEditResponse(challenge, locale, categoryIds);
+        var result = ToEditResponse(challenge, locale, categoryIds);
+        return result with { Publication = result.Publication with { SkillIds = await ContentPublicationService.LoadContentSkillIdsAsync(db, id, null, token) } };
     }
 
     public async Task<ChallengeEditResponse?> UpdateChallengeAsync(
         Guid id, ChallengeCommand command, CancellationToken token)
     {
+        await using var transaction = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(token) : null;
+        await assetRegistry.LockReferencedAssetsAsync(db, JsonSerializer.Serialize(command), token);
         var challenge = await db.Challenges
             .Include(item => item.Localizations)
             .Include(item => item.Flags)
@@ -96,6 +100,7 @@ public sealed class ChallengeLibraryService(
         try
         {
             await db.SaveChangesAsync(token);
+            if (transaction is not null) await transaction.CommitAsync(token);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -160,12 +165,15 @@ public sealed class ChallengeLibraryService(
         if (lesson is null)
             return null;
         var categoryIds = await LoadCategoryIdsAsync(null, id, token);
-        return ToLessonResponse(lesson, locale, categoryIds);
+        var result = ToLessonResponse(lesson, locale, categoryIds);
+        return result with { Publication = result.Publication with { SkillIds = await ContentPublicationService.LoadContentSkillIdsAsync(db, null, id, token) } };
     }
 
     public async Task<LessonResponse?> UpdateLessonAsync(
         Guid id, LessonCommand command, CancellationToken token)
     {
+        await using var transaction = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(token) : null;
+        await assetRegistry.LockReferencedAssetsAsync(db, JsonSerializer.Serialize(command), token);
         var lesson = await db.Lessons
             .Include(item => item.Localizations)
             .SingleOrDefaultAsync(item => item.Id == id, token);
@@ -174,6 +182,7 @@ public sealed class ChallengeLibraryService(
 
         ApplyLessonCommand(lesson, command, isCreate: false);
         await db.SaveChangesAsync(token);
+        if (transaction is not null) await transaction.CommitAsync(token);
         var categoryIds = await LoadCategoryIdsAsync(null, id, token);
         return ToLessonResponse(lesson, command.Locale, categoryIds);
     }
@@ -195,7 +204,10 @@ public sealed class ChallengeLibraryService(
         if (duplicateId == survivorId)
             throw new ChallengeMergeException("A challenge cannot be merged into itself.");
 
-        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token);
+        // The account lock serializes scoring and merges. READ COMMITTED ensures that
+        // progress committed while we waited for that lock is visible to the merge.
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, token);
+        await GZCTF.Features.Leaderboard.Application.RankingScoreService.LockAsync(db, Guid.Empty, token);
         var duplicate = await db.Challenges.SingleOrDefaultAsync(item => item.Id == duplicateId, token)
                         ?? throw new ChallengeMergeException("Duplicate challenge was not found.");
         var survivor = await db.Challenges.SingleOrDefaultAsync(item => item.Id == survivorId, token)
@@ -207,6 +219,24 @@ public sealed class ChallengeLibraryService(
         if (await conflictChecker.HasConflictAsync(duplicateId, token) ||
             await conflictChecker.HasConflictAsync(survivorId, token))
             throw new ChallengeMergeConflictException();
+
+        var corrections = await db.RankingSolveCorrections.AsNoTracking()
+            .Where(c => c.ChallengeId == duplicateId || c.ChallengeId == survivorId).ToArrayAsync(token);
+        foreach (var correction in corrections)
+        {
+            var otherId = correction.ChallengeId == duplicateId ? survivorId : duplicateId;
+            if (corrections.Any(c => c.UserId == correction.UserId && c.ChallengeId == otherId) ||
+                await db.ChallengeProgress.AnyAsync(p => p.UserId == correction.UserId && p.ChallengeId == otherId, token))
+                throw new ChallengeMergeException("These challenges have overlapping ranking corrections; resolve the duplicate learner attribution before merging.");
+        }
+        foreach (var correction in corrections.Where(c => c.ChallengeId == duplicateId))
+        {
+            await db.RankingSolveCorrections.Where(c => c.UserId == correction.UserId && c.ChallengeId == duplicateId).ExecuteDeleteAsync(token);
+            correction.ChallengeId = survivorId;
+            db.RankingSolveCorrections.Add(correction);
+        }
+        await db.RankingScoreEvents.Where(e => e.ChallengeId == duplicateId)
+            .ExecuteUpdateAsync(u => u.SetProperty(e => e.ChallengeId, survivorId), token);
 
         var affectedUserIds = await db.ChallengeProgress
             .Where(progress => progress.ChallengeId == duplicateId || progress.ChallengeId == survivorId)
@@ -233,7 +263,9 @@ public sealed class ChallengeLibraryService(
                 ChallengeId = survivorId,
                 SolvedAtUtc = earliest.SolvedAtUtc,
                 SolveMode = earliest.SolveMode,
-                AttributionMetadataJson = earliest.AttributionMetadataJson
+                ImportedScoreBaselineId = userProgress.Select(p => p.ImportedScoreBaselineId).FirstOrDefault(id => id != null),
+                ImportedFrozenScore = userProgress.FirstOrDefault(p => p.ImportedScoreBaselineId != null)?.ImportedFrozenScore,
+                AttributionMetadataJson = userProgress.FirstOrDefault(p => p.ImportedScoreBaselineId != null)?.AttributionMetadataJson ?? earliest.AttributionMetadataJson
             });
         }
 
@@ -272,7 +304,7 @@ public sealed class ChallengeLibraryService(
         await db.LearnerDailySolveStats.AddRangeAsync(rebuilt, token);
     }
 
-    private static void ApplyChallengeCommand(CanonicalChallenge challenge, ChallengeCommand command, bool isCreate)
+    internal static void ApplyChallengeCommand(CanonicalChallenge challenge, ChallengeCommand command, bool isCreate)
     {
         if (command.Type is { } type)
             challenge.Type = type;
@@ -354,7 +386,7 @@ public sealed class ChallengeLibraryService(
         }
     }
 
-    private static void ApplyLessonCommand(Lesson lesson, LessonCommand command, bool isCreate)
+    internal static void ApplyLessonCommand(Lesson lesson, LessonCommand command, bool isCreate)
     {
         if (command.Localizations is not null)
         {
@@ -389,7 +421,7 @@ public sealed class ChallengeLibraryService(
             challenge.SourceName);
     }
 
-    private static ChallengeEditResponse ToEditResponse(
+    internal static ChallengeEditResponse ToEditResponse(
         CanonicalChallenge challenge, string? locale, IReadOnlyList<Guid> categoryIds)
     {
         var summary = ToSummaryResponse(challenge, locale);
@@ -408,7 +440,7 @@ public sealed class ChallengeLibraryService(
                 challenge.RowVersion, challenge.PublicationState.ToString(), categoryIds));
     }
 
-    private static LessonResponse ToLessonResponse(
+    internal static LessonResponse ToLessonResponse(
         Lesson lesson, string? locale, IReadOnlyList<Guid> categoryIds)
     {
         var localization = SelectLocalization(lesson.Localizations, locale, item => item.Locale);
@@ -425,30 +457,16 @@ public sealed class ChallengeLibraryService(
 
     private async Task<IReadOnlyList<Guid>> LoadCategoryIdsAsync(
         Guid? challengeId, Guid? lessonId, CancellationToken token) =>
-        await db.CategoryContents
-            .AsNoTracking()
-            .Where(item => (challengeId != null && item.ChallengeId == challengeId) ||
-                           (lessonId != null && item.LessonId == lessonId))
-            .OrderBy(item => item.SortOrder)
-            .Select(item => item.CategoryId)
-            .Distinct()
-            .ToListAsync(token);
+        await ContentPublicationService.LoadContentCategoryIdsAsync(db, challengeId, lessonId, token);
 
     private async Task<Dictionary<Guid, IReadOnlyList<Guid>>> LoadCategoryLookupAsync(
         List<Guid> lessonIds, Guid? unusedChallengeId, CancellationToken token)
     {
-        var rows = await db.CategoryContents
-            .AsNoTracking()
-            .Where(item => item.LessonId != null && lessonIds.Contains(item.LessonId.Value))
-            .OrderBy(item => item.SortOrder)
-            .Select(item => new { LessonId = item.LessonId!.Value, item.CategoryId })
-            .ToListAsync(token);
-
-        return rows
-            .GroupBy(row => row.LessonId)
-            .ToDictionary(
-                group => group.Key,
-                group => (IReadOnlyList<Guid>)group.Select(row => row.CategoryId).Distinct().ToArray());
+        var rows = await db.CategorySkillRefs.AsNoTracking().Where(reference => reference.Skill.DeletedAtUtc == null && reference.Category.DeletedAtUtc == null)
+            .SelectMany(reference => reference.Skill.Contents.Where(content => content.LessonId != null && lessonIds.Contains(content.LessonId.Value))
+                .Select(content => new { LessonId = content.LessonId!.Value, reference.CategoryId })).ToListAsync(token);
+        return rows.GroupBy(row => row.LessonId).ToDictionary(group => group.Key,
+            group => (IReadOnlyList<Guid>)group.Select(row => row.CategoryId).Distinct().ToArray());
     }
 
     private static T? SelectLocalization<T>(
@@ -548,6 +566,7 @@ public sealed class ChallengeWriteupCommand
 
 public sealed class LessonCommand
 {
+    public uint? RowVersion { get; set; }
     public string? Locale { get; set; }
     public List<LessonLocalizationCommand>? Localizations { get; set; }
 }

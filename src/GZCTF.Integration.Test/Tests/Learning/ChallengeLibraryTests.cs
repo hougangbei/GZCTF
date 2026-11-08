@@ -103,6 +103,7 @@ public class ChallengeLibraryTests(GZCTFApplicationFactory factory)
         Assert.Equal(1, body?["challenge"]?["submissionLimit"]?.GetValue<int>());
 
         var challengeId = Guid.Parse(body!["challenge"]!["id"]!.GetValue<string>());
+        await PublishRuntimeChallengeAsync(challengeId);
         var learner = await TestDataSeeder.CreateUserAsync(
             factory.Services, TestDataSeeder.RandomName(), "S12!LearnerPassword");
         await using var scope = factory.Services.CreateAsyncScope();
@@ -128,6 +129,7 @@ public class ChallengeLibraryTests(GZCTFApplicationFactory factory)
         });
         created.EnsureSuccessStatusCode();
         var challengeId = ReadGuid(await created.Content.ReadAsStringAsync());
+        await PublishRuntimeChallengeAsync(challengeId);
         var learner = await TestDataSeeder.CreateUserAsync(
             factory.Services, TestDataSeeder.RandomName(), "S12!LearnerPassword");
 
@@ -402,6 +404,20 @@ public class ChallengeLibraryTests(GZCTFApplicationFactory factory)
                     .Select(item => item.PublicationState)
                     .SingleAsync());
         }
+    }
+
+    private async Task PublishRuntimeChallengeAsync(Guid challengeId)
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var challenge = await db.Challenges.SingleAsync(c => c.Id == challengeId);
+        challenge.PublicationState = ChallengePublicationState.Published;
+        var skill = new GZCTF.Features.SkillTrees.Domain.Skill { Name = "Limit fixture", Contents = [new() { ChallengeId = challengeId }] };
+        var category = new GZCTF.Features.SkillTrees.Domain.SkillCategory { Name = "Limit fixture", Skills = [new() { Skill = skill }] };
+        var revision = new GZCTF.Features.SkillTrees.Domain.SkillTreeRevision { Status = GZCTF.Features.SkillTrees.Domain.SkillTreeRevisionStatus.Published, Categories = [new() { Category = category }] };
+        var tree = new GZCTF.Features.SkillTrees.Domain.SkillTree { Name = "Limit fixture", Revisions = [revision] };
+        db.SkillTrees.Add(tree); await db.SaveChangesAsync(); tree.CurrentPublishedRevisionId = revision.Id; await db.SaveChangesAsync();
+        await GZCTF.Features.SkillTrees.Application.CourseSnapshotBuilder.CaptureCurrentAsync(db, tree.Id, revision.Id, default); await db.SaveChangesAsync();
     }
 
     private async Task<HttpClient> CreateAdminClientAsync()
