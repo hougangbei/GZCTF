@@ -76,7 +76,7 @@ jobs:
       - name: Import, editor lifecycle, layout and theme browser regressions
         env:
           E2E_BASE_URL: http://127.0.0.1:63022
-          E2E_WEB_SERVER: pnpm dev --host 127.0.0.1 --port 63022
+          E2E_WEB_SERVER: pnpm preview --host 127.0.0.1 --port 63022 --strictPort
         run: >-
           pnpm exec playwright test
           tests/e2e/platform-imports.spec.ts
