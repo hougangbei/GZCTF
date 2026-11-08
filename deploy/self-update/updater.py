@@ -313,6 +313,8 @@ class Handler(BaseHTTPRequestHandler):
         if not self._authorized():
             self._send(401, {"message": "Unauthorized"})
             return
+        if self._offline_request('GET'):
+            return
         if self.path not in {"/status", "/status?refresh=1"}:
             self._send(404, {"message": "Not found"})
             return
@@ -325,6 +327,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         if not self._authorized():
             self._send(401, {"message": "Unauthorized"})
+            return
+        if self._offline_request('POST'):
             return
         if self.path not in {"/apply", "/validate"}:
             self._send(404, {"message": "Not found"})
@@ -368,6 +372,70 @@ class Handler(BaseHTTPRequestHandler):
             LOG.exception("Could not start update")
             self._send(503, {"message": "无法启动更新任务。"})
 
+    def do_PUT(self) -> None:
+        if not self._authorized():
+            self._send(401, {"message": "Unauthorized"})
+            return
+        if not self._offline_request('PUT'):
+            self._send(404, {"message": "Not found"})
+
+    def _offline_request(self, method: str) -> bool:
+        # Keep legacy source/native/compose handlers untouched and their JSON
+        # requests small. Only this one authenticated route accepts binary data.
+        if not getattr(self.server.updater, 'offline_packages', False):
+            return False
+        adapter = self.server.updater
+        adapter.request_actor.value = self.headers.get('X-Update-Actor', 'authenticated-admin')
+        try:
+            if method == 'GET' and self.path in {'/status', '/status?refresh=1'}:
+                self._send(200, adapter.status())
+            elif method == 'GET' and self.path == '/packages/settings':
+                self._send(200, adapter.settings())
+            elif method == 'GET' and self.path == '/packages':
+                self._send(200, adapter.packages())
+            elif method == 'POST' and self.path == '/packages/upload':
+                if self.headers.get('Transfer-Encoding') or len(self.headers.get_all('Content-Length', [])) != 1:
+                    raise UpdateError(400, '上传必须提供唯一的 Content-Length。')
+                size = int(self.headers['Content-Length'])
+                name = urllib.parse.unquote(self.headers.get('X-File-Name', ''), errors='strict')
+                self.connection.settimeout(60)
+                self._send(201, adapter.upload(self.rfile, size, name))
+            else:
+                route = re.fullmatch(r'/packages/([0-9a-f]{32})/(checksum|validate|apply)', self.path)
+                if not (method == 'PUT' and self.path == '/packages/settings') and not (method == 'POST' and route):
+                    self._send(404, {'message': 'Not found'})
+                    return True
+                if self.headers.get('Transfer-Encoding'):
+                    raise UpdateError(400, '请求内容无效。')
+                size = int(self.headers.get('Content-Length', '0'))
+                if size < 0 or size > 8192:
+                    raise UpdateError(400, '请求内容无效。')
+                self.connection.settimeout(30)
+                raw = self.rfile.read(size)
+                if len(raw) != size:
+                    raise UpdateError(400, '请求被截断。')
+                payload = json.loads(raw) if raw else {}
+                if not isinstance(payload, dict):
+                    raise UpdateError(400, '请求内容无效。')
+                if method == 'PUT':
+                    if not isinstance(payload.get('directory'), str):
+                        raise UpdateError(400, '目录无效。')
+                    self._send(200, adapter.settings(payload['directory']))
+                elif route[2] == 'checksum':
+                    self._send(200, adapter.checksum(route[1], payload.get('sha256')))
+                elif route[2] == 'validate':
+                    self._send(202, adapter.begin_validation(route[1]))
+                else:
+                    self._send(202, adapter.begin_apply(route[1], payload))
+        except UpdateError as error:
+            self._send(error.status, {'message': str(error)})
+        except (ValueError, UnicodeError, json.JSONDecodeError):
+            self._send(400, {'message': '请求内容无效。'})
+        except Exception:
+            LOG.exception('Offline package request failed')
+            self._send(503, {'message': '离线更新服务暂不可用，请检查宿主机。'})
+        return True
+
 
 class UpdaterServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
     daemon_threads = True
@@ -386,7 +454,21 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     config_path = Path(sys.argv[1]).resolve()
     config = json.loads(config_path.read_text())
-    if config.get("deployment_mode"):
+    if config.get('deployment_mode') == 'offline':
+        from offline_updates import OfflineUpdater
+        if config_path.stat().st_mode & 0o077:
+            raise ValueError('updater config must be private (chmod 600)')
+        token_file = Path(config['token_file'])
+        if not token_file.is_absolute() or token_file.is_symlink() or token_file.stat().st_mode & 0o077:
+            raise ValueError('updater token must be a private absolute regular file')
+        if not Path(config['socket_path']).is_absolute():
+            raise ValueError('socket_path must be absolute')
+        updater = OfflineUpdater(config)
+        updater.token = token_file.read_text().strip()
+        if len(updater.token) < 32:
+            raise ValueError('updater token must contain at least 32 characters')
+        updater.config['socket_path'] = Path(config['socket_path'])
+    elif config.get("deployment_mode"):
         from managed_updates import ManagedUpdater
         if config_path.stat().st_mode & 0o077:
             raise ValueError("updater config must be private (chmod 600)")
@@ -426,6 +508,8 @@ def main() -> None:
         server.updater = updater
         if not listen_tcp:
             os.chmod(socket_path, 0o660)
+            if config.get('deployment_mode') == 'offline' and os.geteuid() == 0:
+                os.chown(socket_path, 0, int(config.get('socket_gid', 0)))
         LOG.info("GZCTF updater listening on %s", address)
         try:
             server.serve_forever(poll_interval=0.5)

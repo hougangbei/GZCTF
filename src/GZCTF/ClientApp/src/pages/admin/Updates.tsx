@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { AdminPage } from '@Components/admin/AdminPage'
 import api, { ContentType, fetcher } from '@Api'
+import { OfflinePackageUpdates } from '@Components/admin/updates/OfflinePackageUpdates'
 
 type UpdateSource = { kind: 'github' | 'package' | 'directory'; location: string; ref: string; sha256: string }
 type Validation = {
@@ -18,7 +19,7 @@ type Validation = {
 }
 type UpdateStatus = {
   configured: boolean
-  mode?: 'native' | 'compose'
+  mode?: 'native' | 'compose' | 'offline'
   phase: string
   message?: string | null
   currentSha?: string | null
@@ -44,7 +45,7 @@ const Updates = () => {
     data: source,
     error: sourceError,
     mutate: mutateSource,
-  } = useSWR<UpdateSource>('/api/admin/updates/source', fetcher)
+  } = useSWR<UpdateSource>(data && data.mode !== 'offline' ? '/api/admin/updates/source' : null, fetcher)
   const [form, setForm] = useState<UpdateSource>(emptySource)
   const initialized = useRef(false)
   const [operation, setOperation] = useState<'saving' | 'validating' | 'applying' | 'refreshing'>()
@@ -217,6 +218,8 @@ const Updates = () => {
       },
     })
   }
+
+  if (data?.mode === 'offline') return <AdminPage><OfflinePackageUpdates /></AdminPage>
 
   return (
     <AdminPage isLoading={isLoading}>

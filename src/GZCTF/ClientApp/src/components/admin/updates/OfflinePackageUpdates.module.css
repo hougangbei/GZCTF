@@ -1,0 +1,43 @@
+.workspace {
+  width: 100%;
+  max-width: 1080px;
+  min-width: 0;
+  margin-inline: auto;
+}
+.sources {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--mantine-spacing-md);
+}
+.panel {
+  min-width: 0;
+  background: var(--hbc-card);
+}
+.drop {
+  border: 1px dashed var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-md);
+}
+.package {
+  display: flex;
+  gap: var(--mantine-spacing-md);
+  align-items: flex-start;
+  padding: var(--mantine-spacing-md);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+}
+.details {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.hash {
+  font-family: var(--mantine-font-family-monospace);
+  overflow-wrap: anywhere;
+  font-size: var(--mantine-font-size-xs);
+}
+@media (max-width: 720px) {
+  .sources {
+    grid-template-columns: 1fr;
+  }
+}

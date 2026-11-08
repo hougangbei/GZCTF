@@ -1,0 +1,14 @@
+{
+  "deployment_mode": "offline",
+  "runtime_dir": "/root/nynuctf/runtime",
+  "work_dir": "/root/nynuctf/updater/state",
+  "socket_path": "/root/nynuctf/updater/run/updater.sock",
+  "socket_gid": 0,
+  "token_file": "/root/nynuctf/updater/updater.token",
+  "allowed_package_roots": ["/root/nynuctf/update-packages"],
+  "package_directory": "/root/nynuctf/update-packages",
+  "max_upload_bytes": 1073741824,
+  "max_extracted_bytes": 8589934592,
+  "max_archive_files": 20000,
+  "max_image_bytes": 17179869184
+}
