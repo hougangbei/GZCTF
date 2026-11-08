@@ -4,8 +4,8 @@
 
 - 目标 `linux/amd64`，.NET 发布 RID `linux-musl-x64`，ReadyToRun，Alpine 运行环境；构建与生产前端类型检查通过。
 - 固定应用镜像 `gzctf-offline/app:9b88599fa74613d2-amd64`。
-- 离线包 `gzctf-course-authoring-amd64-20261108.tar.gz`，318095008 字节。
-- SHA-256：`e3d4240af8cc562048879c26f8b9f4b383133a1341feda5d4663297687b2bd70`。
+- 离线包 `gzctf-course-authoring-amd64-20261108.tar.gz`，318096138 字节。
+- SHA-256：`ba255a22dde5111854c62395d71a17fde72e8be91d62525ceadf3d3a5dbed924`。
 - 包含应用及原 Traefik 3.7.16 amd64 镜像；PostgreSQL 15 / Redis 7 镜像指纹与旧发行版一致，更新不替换它们。
 
 ## 本轮实测
