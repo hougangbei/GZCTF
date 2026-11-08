@@ -168,6 +168,7 @@ for (const dark of [true, false]) {
     await page.getByRole('button', { name: '复制地址', exact: true }).focus()
     await expect(page.getByRole('button', { name: '复制地址', exact: true })).toBeFocused()
     await dialog.screenshot({ path: testInfo.outputPath('modal-mobile.png') })
+    await page.getByRole('button', { name: '社区 WP', exact: true }).click()
     await page.getByRole('tab', { name: '提交 WP', exact: true }).click()
     const wpTitle = page.getByRole('textbox', { name: 'WP 标题', exact: true })
     await wpTitle.scrollIntoViewIfNeeded()

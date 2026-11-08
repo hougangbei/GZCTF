@@ -102,7 +102,7 @@ export const LessonMarkdownEditor = ({
       const markdown = response.data
         .map(
           (file) =>
-            `![${file.name.replace(/[\[\]\\\r\n]/g, '')}](${'url' in file ? file.url : `/assets/${encodeURIComponent(file.hash!)}/${encodeURIComponent(file.name)}`})`
+            `![${file.name.replace(/[[\]\\\r\n]/g, '')}](${'url' in file ? file.url : `/assets/${encodeURIComponent(file.hash!)}/${encodeURIComponent(file.name)}`})`
         )
         .join('\n')
       latestChange.current(

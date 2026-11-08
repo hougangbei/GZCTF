@@ -1,4 +1,7 @@
 const runtimeErrorKeys: Record<string, string> = {
+  'challenge.flag_template_obsolete': 'translation:common.error.challenge_flag_template_obsolete',
+  'challenge.test_session_conflict': 'translation:common.error.challenge_test_session_conflict',
+  'challenge.test_session_invalid': 'translation:common.error.challenge_test_session_invalid',
   'challenge.instance_configuration_changed': 'translation:common.error.challenge_instance_configuration_changed',
   'challenge.runtime_unavailable': 'translation:common.error.challenge_runtime_unavailable',
   'challenge.container_start_failed': 'translation:common.error.challenge_container_start_failed',

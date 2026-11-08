@@ -132,7 +132,7 @@ public sealed class PublishedRuntimeSnapshotTests(GZCTFApplicationFactory factor
         challenge.Type = type;
         challenge.Flags = type == ChallengeType.StaticContainer
             ? [new ChallengeFlag { Kind = ChallengeFlagKind.Static, Value = "flag{old}" }]
-            : [new ChallengeFlag { Kind = ChallengeFlagKind.Template, Template = "flag{old}" }];
+            : [new ChallengeFlag { Kind = ChallengeFlagKind.Template, Template = "flag{old-[GUID]}" }];
         challenge.RuntimeConfigurationJson = Configuration("old-image");
         db.Challenges.Add(challenge);
         await db.SaveChangesAsync();
@@ -141,9 +141,11 @@ public sealed class PublishedRuntimeSnapshotTests(GZCTFApplicationFactory factor
         var runtime = new ChallengeRuntimeService(db, adapter,
             scope.ServiceProvider.GetRequiredService<LearningInstanceSettingsService>());
         var running = await runtime.StartAsync(user.Id, challenge.Id);
-        Assert.Equal("flag{old}", running.AssignedFlag);
+        var originalFlag = running.AssignedFlag!;
+        if (type == ChallengeType.StaticContainer) Assert.Equal("flag{old}", originalFlag);
+        else Assert.StartsWith("flag{old-", originalFlag);
         challenge.Flags[0].Value = "flag{new}";
-        challenge.Flags[0].Template = "flag{new}";
+        challenge.Flags[0].Template = "flag{new-[GUID]}";
         challenge.RuntimeConfigurationJson = Configuration("new-image");
         await db.SaveChangesAsync();
         await PublishAsync(db, challenge, tree);
@@ -152,13 +154,17 @@ public sealed class PublishedRuntimeSnapshotTests(GZCTFApplicationFactory factor
         Assert.Equal("old-image", PublishedCourseContentReader.ReadChallenge(extended.PublishedChallengeJson!).RuntimeConfigurationJson is { } config
             ? JsonDocument.Parse(config).RootElement.GetProperty("Image").GetString() : null);
         var second = await runtime.StartAsync(newcomer.Id, challenge.Id);
-        Assert.Equal("flag{new}", second.AssignedFlag);
+        if (type == ChallengeType.StaticContainer) Assert.Equal("flag{new}", second.AssignedFlag);
+        else Assert.StartsWith("flag{new-", second.AssignedFlag);
+        var stillRunning = await runtime.StartAsync(user.Id, challenge.Id);
+        Assert.Equal(running.Id, stillRunning.Id);
+        Assert.Equal(originalFlag, stillRunning.AssignedFlag);
         Assert.Equal(new[] { "old-image", "new-image" }, adapter.Requests.Select(r => r.Image));
         // Submission service uses its normal runtime but the durable startup payload/flag controls validation.
         Assert.True((await scope.ServiceProvider.GetRequiredService<ChallengeSubmissionService>()
-            .SubmitAsync(user.Id, challenge.Id, "flag{old}")).Accepted);
+            .SubmitAsync(user.Id, challenge.Id, originalFlag)).Accepted);
         Assert.True((await scope.ServiceProvider.GetRequiredService<ChallengeSubmissionService>()
-            .SubmitAsync(newcomer.Id, challenge.Id, "flag{new}")).Accepted);
+            .SubmitAsync(newcomer.Id, challenge.Id, second.AssignedFlag!)).Accepted);
     }
 
     [Fact]

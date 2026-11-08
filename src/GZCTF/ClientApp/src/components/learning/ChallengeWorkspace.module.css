@@ -32,6 +32,7 @@
 }
 .description {
   max-width: 72ch;
+  min-width: 0;
   line-height: 1.75;
   overflow-wrap: anywhere;
 }
@@ -42,59 +43,73 @@
   margin-bottom: 0;
 }
 .activity {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 .activitySection {
   min-width: 0;
-  padding: 20px;
-  border: 1px solid var(--hbc-border);
-  border-radius: 12px;
-  background: var(--hbc-surface);
-}
-.singleActivity {
-  grid-template-columns: 1fr;
+  padding-top: 20px;
+  border-top: 1px solid var(--hbc-border);
 }
 .sectionTitle {
-  margin-bottom: 16px;
-  font-size: 14px;
+  margin-bottom: 12px;
+  font-size: var(--mantine-font-size-md);
   line-height: 1.4;
   font-weight: 650;
 }
+.runningInstance {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+.instanceControls {
+  flex-shrink: 0;
+}
+.resourceActions:not(:empty) {
+  margin-top: 12px;
+}
 .connection {
   display: flex;
-  width: 100%;
+  flex: 1 1 460px;
   min-width: 0;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 .timer {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 7px;
-  color: var(--hbc-accent);
+  color: var(--hbc-muted);
   font-size: 12px;
 }
 .timer strong {
-  margin-left: auto;
-  color: var(--hbc-ink);
-  font: 600 22px/1.2 var(--mantine-font-family-monospace);
+  margin-left: 3px;
+  color: var(--hbc-accent);
+  font: 600 16px/1.2 var(--mantine-font-family-monospace);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.04em;
 }
 .timer[data-urgent='true'],
 .timer[data-urgent='true'] strong {
-  color: light-dark(#a14506, #f2bd76);
+  color: var(--mantine-color-orange-text);
+}
+.addressActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
 }
 .instanceAddress {
   display: block;
-  width: 100%;
-  padding: 10px 12px;
+  flex: 1 1 180px;
+  min-width: 0;
+  padding: 7px 10px;
   border: 1px solid var(--hbc-border);
   border-radius: 7px;
-  background: var(--hbc-card);
+  background: var(--hbc-surface);
   color: var(--hbc-ink);
   font-size: 13px;
   font-family: var(--mantine-font-family-monospace);
@@ -103,7 +118,6 @@
 }
 .submitForm {
   display: flex;
-  flex-direction: column;
   align-items: stretch;
   gap: 10px;
 }
@@ -111,38 +125,64 @@
   flex: 1;
   min-width: 0;
 }
-.submitForm button {
-  align-self: flex-start;
-}
 .flagInput {
   height: 42px;
   background: var(--hbc-card);
 }
 .feedback {
   margin-top: 12px;
+  overflow-wrap: anywhere;
 }
 .help {
-  padding: 20px;
-  border: 1px solid var(--hbc-border);
-  border-radius: 12px;
+  min-width: 0;
+  border-top: 1px solid var(--hbc-border);
+}
+.helpItem {
+  border-color: var(--hbc-border);
+  background: transparent;
+}
+.helpControl {
+  min-height: 48px;
+  padding-inline: 0;
+  color: var(--hbc-ink);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+}
+.helpControl:hover {
+  background: var(--hbc-surface);
+}
+.helpContent {
+  padding: 4px 0 20px;
+}
+.communityWriteups > section {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+.communityWriteups > section > :first-child > h3 {
+  display: none;
 }
 @media (max-width: 640px) {
-  .workspace {
+  .workspace,
+  .activity {
     gap: 20px;
   }
-  .activity {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
   .activitySection {
-    padding: 16px;
+    padding-top: 16px;
   }
-  .timer strong {
-    font-size: 24px;
+  .connection {
+    flex-basis: 100%;
+  }
+  .submitForm {
+    flex-direction: column;
+  }
+  .submitForm button {
+    width: 100%;
   }
 }
 .workspace :global(.mantine-Button-root:focus-visible),
-.workspace :global(.mantine-Tabs-tab:focus-visible) {
+.workspace :global(.mantine-Tabs-tab:focus-visible),
+.helpControl:focus-visible {
   outline: 2px solid var(--hbc-accent);
   outline-offset: 2px;
 }

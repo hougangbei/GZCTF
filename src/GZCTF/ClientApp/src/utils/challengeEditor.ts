@@ -1,3 +1,4 @@
+import { mergeChallengeLocalization } from '@Utils/LearningAdmin'
 import {
   ChallengeCategory,
   ChallengeFlagKind,
@@ -6,9 +7,9 @@ import {
   type ChallengeCommand,
   type ChallengeEditResponse,
 } from '@Api'
-import { mergeChallengeLocalization } from '@Utils/LearningAdmin'
 
 export type AttachmentEntry = {
+  [key: string]: unknown
   FileName: string
   Sha256: string
   StorageKey: string
@@ -50,32 +51,48 @@ export const isAttachmentType = (type: ChallengeType) =>
   type === ChallengeType.StaticAttachment || type === ChallengeType.DynamicAttachment
 
 const defaultContainer: ContainerFields = {
-  ContainerImage: '', ExposedPort: 80, Cpu: 1, MemoryMb: 256,
-  StorageMb: 512, NetworkMode: 'Open', FlagTemplate: '',
+  ContainerImage: '',
+  ExposedPort: 80,
+  Cpu: 1,
+  MemoryMb: 256,
+  StorageMb: 512,
+  NetworkMode: 'Open',
+  FlagTemplate: 'flag{[GUID]}',
 }
 
 const parseConfig = (value?: string | null): Record<string, unknown> => {
   if (!value) return {}
   try {
     const parsed: unknown = JSON.parse(value)
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? parsed as Record<string, unknown>
-      : {}
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {}
   } catch {
     return {}
   }
 }
 
+const runtimeValue = (config: Record<string, unknown>, field: string): unknown =>
+  Object.entries(config).find(([key]) => key.toLowerCase() === field.toLowerCase())?.[1]
+
+const editableRuntimeFields = new Set(['image', ...Object.keys(defaultContainer).map((key) => key.toLowerCase())])
+
 const parseAttachments = (value?: string | null): AttachmentEntry[] => {
   if (!value) return []
   try {
     const parsed: unknown = JSON.parse(value)
-    const entries = Array.isArray(parsed) ? parsed :
-      parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>).Attachments : []
+    const entries = Array.isArray(parsed)
+      ? parsed
+      : parsed && typeof parsed === 'object'
+        ? runtimeValue(parsed as Record<string, unknown>, 'Attachments')
+        : []
     if (!Array.isArray(entries)) return []
     return entries.map((entry) => {
       const item = entry as Record<string, unknown>
       return {
+        ...Object.fromEntries(
+          Object.entries(item).filter(
+            ([key]) => !['filename', 'sha256', 'storagekey', 'flag'].includes(key.toLowerCase())
+          )
+        ),
         FileName: String(item.FileName ?? item.fileName ?? ''),
         Sha256: String(item.Sha256 ?? item.sha256 ?? ''),
         StorageKey: String(item.StorageKey ?? item.storageKey ?? item.FileName ?? ''),
@@ -105,20 +122,25 @@ export const challengeDraftFromResponse = (data: ChallengeEditResponse): Challen
     submissionLimit: data.challenge?.submissionLimit ?? 0,
     isEnabled: data.challenge?.isEnabled ?? true,
     container: {
-      ContainerImage: String(config.ContainerImage ?? config.Image ?? ''),
-      ExposedPort: Number(config.ExposedPort ?? 80),
-      Cpu: Number(config.Cpu ?? 1),
-      MemoryMb: Number(config.MemoryMb ?? 256),
-      StorageMb: Number(config.StorageMb ?? 512),
-      NetworkMode: String(config.NetworkMode ?? 'Open'),
-      FlagTemplate: String(config.FlagTemplate ?? template ?? ''),
+      ContainerImage: String(runtimeValue(config, 'ContainerImage') ?? runtimeValue(config, 'Image') ?? ''),
+      ExposedPort: Number(runtimeValue(config, 'ExposedPort') ?? 80),
+      Cpu: Number(runtimeValue(config, 'Cpu') ?? 1),
+      MemoryMb: Number(runtimeValue(config, 'MemoryMb') ?? 256),
+      StorageMb: Number(runtimeValue(config, 'StorageMb') ?? 512),
+      NetworkMode:
+        ['Open', 'Isolated', 'Custom'].find(
+          (mode) => mode.toLowerCase() === String(runtimeValue(config, 'NetworkMode') ?? '').toLowerCase()
+        ) ?? 'Open',
+      FlagTemplate: String(runtimeValue(config, 'FlagTemplate') || template || defaultContainer.FlagTemplate),
     },
     attachments: parseAttachments(dynamicPool?.metadataJson ?? data.runtimeConfigurationJson),
-    staticFlags: data.flags?.filter((flag) => flag.kind === ChallengeFlagKind.Static)
-      .map((flag) => flag.value ?? '') ?? [],
-    hints: data.hints?.filter((hint) => hint.locale?.toLowerCase() === 'en')
-      .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
-      .map((hint) => hint.content ?? '') ?? [],
+    staticFlags:
+      data.flags?.filter((flag) => flag.kind === ChallengeFlagKind.Static).map((flag) => flag.value ?? '') ?? [],
+    hints:
+      data.hints
+        ?.filter((hint) => hint.locale?.toLowerCase() === 'en')
+        .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
+        .map((hint) => hint.content ?? '') ?? [],
     writeup: data.writeups?.find((item) => item.locale?.toLowerCase() === 'en')?.content ?? '',
   }
 }
@@ -126,17 +148,44 @@ export const challengeDraftFromResponse = (data: ChallengeEditResponse): Challen
 export const challengeCommandFromDraft = (
   draft: ChallengeDraft,
   current: ChallengeEditResponse,
-  rowVersion: number | undefined,
+  rowVersion: number | undefined
 ): ChallengeCommand => {
   const attachments = draft.attachments.map((entry) => ({
     ...entry,
-    Flag: draft.type === ChallengeType.StaticAttachment ? draft.staticFlags[0] ?? '' : entry.Flag,
+    Flag:
+      draft.type === ChallengeType.StaticAttachment && !entry.ResourceOnly ? (draft.staticFlags[0] ?? '') : entry.Flag,
   }))
-  const flags = draft.type === ChallengeType.DynamicContainer
-    ? [{ kind: ChallengeFlagKind.Template, template: draft.container.FlagTemplate }]
-    : draft.type === ChallengeType.DynamicAttachment
-      ? [{ kind: ChallengeFlagKind.DynamicAttachment, metadataJson: JSON.stringify(attachments) }]
-      : draft.staticFlags.filter((value) => value.trim()).map((value) => ({ kind: ChallengeFlagKind.Static, value }))
+  const originalConfig = parseConfig(current.runtimeConfigurationJson)
+  const currentPool = current.flags?.find((flag) => flag.kind === ChallengeFlagKind.DynamicAttachment)
+  const originalPool = parseAttachments(currentPool?.metadataJson ?? current.runtimeConfigurationJson)
+  const attachmentKey = (entry: AttachmentEntry) =>
+    JSON.stringify([entry.StorageKey, entry.Sha256, entry.FileName, entry.Flag])
+  const poolKeys = new Set(originalPool.map(attachmentKey))
+  const supplemental =
+    draft.type === ChallengeType.DynamicAttachment
+      ? parseAttachments(current.runtimeConfigurationJson).filter((entry) => !poolKeys.has(attachmentKey(entry)))
+      : []
+  const runtimeAttachments = [...attachments, ...supplemental]
+  const rootWithoutAttachments = Object.fromEntries(
+    Object.entries(originalConfig).filter(([key]) => key.toLowerCase() !== 'attachments')
+  )
+  const flags =
+    draft.type === ChallengeType.DynamicContainer
+      ? [{ kind: ChallengeFlagKind.Template, template: draft.container.FlagTemplate }]
+      : draft.type === ChallengeType.DynamicAttachment
+        ? [{ kind: ChallengeFlagKind.DynamicAttachment, metadataJson: JSON.stringify(attachments) }]
+        : draft.staticFlags
+            .filter((value) => value.trim())
+            .map((value) => {
+              const original = current.flags?.find(
+                (flag) => flag.kind === ChallengeFlagKind.Static && flag.value === value
+              )
+              return {
+                kind: ChallengeFlagKind.Static,
+                value,
+                ...(original?.metadataJson ? { metadataJson: original.metadataJson } : {}),
+              }
+            })
   return {
     rowVersion,
     type: draft.type,
@@ -147,15 +196,29 @@ export const challengeCommandFromDraft = (
     expectedMinutes: draft.expectedMinutes,
     submissionLimit: draft.submissionLimit,
     runtimeConfigurationJson: isContainerType(draft.type)
-      ? JSON.stringify(draft.container)
-      : JSON.stringify({ Attachments: attachments }),
+      ? JSON.stringify({
+          ...Object.fromEntries(
+            Object.entries(parseConfig(current.runtimeConfigurationJson)).filter(
+              ([key]) => !editableRuntimeFields.has(key.toLowerCase())
+            )
+          ),
+          ...draft.container,
+        })
+      : JSON.stringify({ ...rootWithoutAttachments, Attachments: runtimeAttachments }),
     localizations: mergeChallengeLocalization(current.localizations ?? [], {
-      locale: 'en', title: draft.title.trim(), summary: draft.summary.trim(), body: draft.body,
+      locale: 'en',
+      title: draft.title.trim(),
+      summary: draft.summary.trim(),
+      body: draft.body,
     }),
     flags,
-    hints: draft.hints.filter((content) => content.trim()).map((content, sortOrder) => ({
-      locale: 'en', sortOrder, content,
-    })),
+    hints: draft.hints
+      .filter((content) => content.trim())
+      .map((content, sortOrder) => ({
+        locale: 'en',
+        sortOrder,
+        content,
+      })),
     writeups: draft.writeup.trim() ? [{ locale: 'en', content: draft.writeup }] : [],
   }
 }

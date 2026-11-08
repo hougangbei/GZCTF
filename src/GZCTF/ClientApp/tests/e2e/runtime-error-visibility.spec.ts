@@ -22,7 +22,7 @@ test('admin test-container start translates a runtime503 and remains retryable',
   }
   await page.route(`**/api/admin/challenges/${challengeId}/edit**`, route => route.fulfill({ json: edit }))
   await page.route(`**/api/admin/challenges/${challengeId}`, route => route.fulfill({ json: edit }))
-  await page.route(`**/api/challenges/${challengeId}/instances`, route => route.fulfill({ status: 503, json: unavailable }))
+  await page.route(`**/api/challenges/${challengeId}/instances?*`, route => route.fulfill({ status: 503, json: unavailable }))
   await page.goto(`/admin/library/challenges/${challengeId}`)
   await page.getByRole('button', { name: 'Start test container' }).click()
   await expect(page.getByText(message, { exact: true })).toBeVisible()

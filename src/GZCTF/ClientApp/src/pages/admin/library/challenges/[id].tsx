@@ -1,3 +1,5 @@
+import { useAdminTestSession } from '@Hooks/useAdminTestSession'
+import { runtimeErrorKey } from '@Utils/runtimeErrors'
 import { useHistoryLeaveGuard } from '@Hooks/useHistoryLeaveGuard'
 import { Icon } from '@mdi/react'
 import { mdiPlayOutline, mdiStop } from '@mdi/js'
@@ -10,7 +12,7 @@ import useSWR from 'swr'
 import { contextualPath, courseContext, workspaceHref } from '@Utils/courseAuthoring'
 import { courseRequest, CourseRequestError } from '@Hooks/useCourseAuthoring'
 import { useUser } from '@Hooks/useUser'
-import api, { ChallengeInstanceStatus, ChallengeType, Role, type ChallengeInstanceResponse, type ChallengeEditResponse, fetcher } from '@Api'
+import api, { ChallengeInstanceStatus, ChallengeType, Role, type ChallengeEditResponse, fetcher } from '@Api'
 import { ChallengeBasicsForm } from '@Components/admin/library/ChallengeBasicsForm'
 import { ChallengeFlagEditor } from '@Components/admin/library/ChallengeFlagEditor'
 import { ChallengeHelpEditor } from '@Components/admin/library/ChallengeHelpEditor'
@@ -70,7 +72,7 @@ const ChallengeEditSession = () => {
   const [retireOpen, setRetireOpen] = useState(false)
   const [retiring, setRetiring] = useState(false)
   const [publishVersion, setPublishVersion] = useState<number>()
-  const [testInstance, setTestInstance] = useState<ChallengeInstanceResponse>()
+  const { instance: testInstance, prepareStart: prepareTestStart, stop: stopTestInstance } = useAdminTestSession(id, user?.userId, context?.courseId)
   const [formError, setFormError] = useState<string>()
   const [conflict, setConflict] = useState(false)
   const [serverCompare,setServerCompare]=useState<ChallengeEditResponse>()
@@ -90,6 +92,10 @@ const ChallengeEditSession = () => {
   const save = async (): Promise<number | undefined> => {
     if (conflict) return undefined
     if (!data || !draft || saveInFlight.current || uploadInFlight.current) return
+    if (draft.type === ChallengeType.DynamicContainer && /\{userid\}/i.test(draft.container.FlagTemplate)) {
+      setFormError(t('editorFlagTemplateObsolete'))
+      return
+    }
     if (!draft.title.trim()) {
       setFormError(t('adminTitle'))
       return
@@ -182,22 +188,21 @@ const ChallengeEditSession = () => {
 
   const toggleTestContainer = async () => {
     if (!draft || !isContainerType(draft.type) || uploadInFlight.current || testInFlight.current) return
+    const startOwnedTest = prepareTestStart()
     testInFlight.current = true
     setTesting(true)
     try {
       if (testInstance?.status === ChallengeInstanceStatus.Running) {
-        await api.challengeInstances.challengeInstancesStop(id)
-        setTestInstance(undefined)
+        await stopTestInstance()
       } else {
         const version = await save()
         if (version === undefined) return
-        const response = context
-          ? { data: await courseRequest<ChallengeInstanceResponse>(contextualPath(`/api/challenges/${id}/instances`,context),undefined,'POST') }
-          : await api.challengeInstances.challengeInstancesStart(id)
-        setTestInstance(response.data)
+        await startOwnedTest()
       }
     } catch (testError) {
-      showErrorMsg(testError, tDefault)
+      const key = runtimeErrorKey(testError)
+      if (key) showNotification({ color: 'red', message: tDefault(key) })
+      else showErrorMsg(testError, tDefault)
     } finally {
       testInFlight.current = false
       setTesting(false)
@@ -258,6 +263,7 @@ const ChallengeEditSession = () => {
                 />
                 {isContainerType(draft.type) && (
                   <Stack mt="md" gap="xs" align="flex-start">
+                    <Text size="sm" c="dimmed">{t('editorTestSessionHint')}</Text>
                     <Button leftSection={<Icon path={testInstance?.status === ChallengeInstanceStatus.Running ? mdiStop : mdiPlayOutline} size={0.8} aria-hidden="true" />} variant="light" loading={testing} disabled={saving || uploading || retired} onClick={toggleTestContainer}>
                       {testInstance?.status === ChallengeInstanceStatus.Running
                         ? t('editorTestStop') : t('editorTestStart')}

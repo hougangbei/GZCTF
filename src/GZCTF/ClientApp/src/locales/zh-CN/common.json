@@ -117,7 +117,10 @@
     "challenge_runtime_unavailable": "题目运行环境未连接，请管理员配置或检查独立题目机的 Docker 控制连接。Harbor 仅提供镜像。",
     "challenge_container_start_failed": "题目实例启动失败，请管理员检查题目镜像、资源配置和题目机日志。",
     "challenge_container_stop_failed": "题目实例停止失败，请稍后重试或联系管理员检查题目机。",
-    "challenge_instance_configuration_changed": "已有使用另一版本配置的测试实例正在运行。请先停止该实例，再启动新的测试。"
+    "challenge_instance_configuration_changed": "已有使用另一版本配置的测试实例正在运行。请先停止该实例，再启动新的测试。",
+    "challenge_flag_template_obsolete": "动态 Flag 不再支持 {userId}，请在题目配置中改用 [GUID]。",
+    "challenge_test_session_conflict": "该题目已有其他页面或旧版本启动的实例。请先关闭原页面，或在实例管理中停止原测试实例。",
+    "challenge_test_session_invalid": "测试页面会话无效，请重新打开题目配置页。"
   },
   "label": {
     "challenge": "题目",

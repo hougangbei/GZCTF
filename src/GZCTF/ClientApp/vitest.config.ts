@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@Api': path.resolve(import.meta.dirname, 'src/Api.ts'),
+      '@Utils': path.resolve(import.meta.dirname, 'src/utils'),
     },
   },
   test: {

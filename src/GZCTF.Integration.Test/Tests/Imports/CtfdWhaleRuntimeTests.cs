@@ -21,9 +21,11 @@ namespace GZCTF.Integration.Test.Tests.Imports;
 public sealed class CtfdWhaleRuntimeTests(GZCTFApplicationFactory factory)
 {
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Imported_Whale_runtime_keeps_generation_environment_and_validation_semantics(bool staticFlags)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Imported_Whale_runtime_keeps_generation_environment_and_validation_semantics(bool staticFlags, bool missingMode)
     {
         var user = await TestDataSeeder.CreateUserAsync(factory.Services,
             TestDataSeeder.RandomName(), "Whale!Synthetic2026");
@@ -48,6 +50,16 @@ public sealed class CtfdWhaleRuntimeTests(GZCTFApplicationFactory factory)
         Assert.Equal(5, settings.RootElement.GetProperty("Cpu").GetInt32());
         Assert.Equal(128, settings.RootElement.GetProperty("MemoryMb").GetInt32());
         Assert.Equal(staticFlags ? 2 : 0, challenge.Flags.Count(flag => flag.Kind == ChallengeFlagKind.Static));
+
+        if (missingMode)
+        {
+            // Older editor saves dropped the mode; immutable import provenance must keep
+            // both the runtime alias and the static Flag judging behavior consistent.
+            var edited = System.Text.Json.Nodes.JsonNode.Parse(challenge.RuntimeConfigurationJson!)!.AsObject();
+            edited.Remove("FlagMode");
+            challenge.RuntimeConfigurationJson = edited.ToJsonString();
+            await db.SaveChangesAsync();
+        }
 
         // The recording adapter never resolves Docker/Kubernetes or launches a source image.
         var adapter = new RecordingRuntime();

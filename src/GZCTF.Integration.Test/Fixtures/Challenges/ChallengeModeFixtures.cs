@@ -82,7 +82,7 @@ public static class ChallengeModeFixtures
             "Dynamic container challenge",
             ChallengeType.DynamicContainer,
             null,
-            "flag{dynamic-container-{userId}}",
+            "flag{dynamic-container-[GUID]}",
             [],
             "ghcr.io/gzctf/runtime-dynamic:fixture",
             9000,
