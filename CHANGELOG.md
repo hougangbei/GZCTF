@@ -3,6 +3,24 @@
 All notable changes to [**GZCTF**](https://github.com/GZTimeWalker/GZCTF) will be documented in this file.
 
 ---
+## [intranet-course-authoring-20261108] - 2026-11-08
+
+### Added
+
+- Author a complete skill tree in one workspace with inline category, reusable skill, challenge and lesson creation, conflict-safe drafts, publication checks, previews and immutable learner-facing snapshots.
+- Import GZCTF/CTFd content, accounts and history with explicit identity-conflict handling and optional frozen score baselines; compatible CTFd passwords upgrade on successful login.
+- Manage learner ranking adjustments, solve corrections, visibility, audited reversals, CSV exports and configurable score-based levels.
+- Read lessons in a full-page course directory and edit Markdown with a toolbar, split preview and account-scoped local drafts.
+
+### Changed
+
+- Support reusable four-level skill hierarchies and preserve stable content identity, completion and scores across placements.
+- Respect personal themes across course and ranking views, improve light-mode chart contrast and hovered-curve tooltips, and recover obsolete frontend chunks without reload loops.
+
+### Deployment
+
+- Provide a verified offline linux/amd64 application update retaining the existing database/cache images, settings, challenge socket tunnel and port pool. Database migrations require full matched-backup recovery rather than image-only rollback.
+
 ## [Unreleased] - 2026-10-27
 
 ### Added
