@@ -146,7 +146,7 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
             SourceType = "legacy-db",
             SourceId = challengeId.ToString("N"),
             Localizations = [new ChallengeLocalization { Locale = "en", Title = "Imported container" }],
-            Flags = [new ChallengeFlag { Kind = ChallengeFlagKind.Template, Template = "flag{legacy-{userId}}" }],
+            Flags = [new ChallengeFlag { Kind = ChallengeFlagKind.Template, Template = "flag{legacy-[GUID]}" }],
             RuntimeConfigurationJson = JsonSerializer.Serialize(new
             {
                 Image = "registry.test/legacy:1", ExposedPort = 8080,
@@ -161,7 +161,9 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
 
         Assert.Equal(ChallengeInstanceStatus.Running, instance.Status);
         Assert.Equal("registry.test/legacy:1", adapter.LastRequest?.Image);
-        Assert.Equal($"flag{{legacy-{user.Id:N}}}", adapter.LastRequest?.Flag);
+        Assert.StartsWith("flag{legacy-", adapter.LastRequest?.Flag);
+        Assert.True(Guid.TryParse(adapter.LastRequest!.Flag![12..^1], out _));
+        Assert.Equal(instance.AssignedFlag, adapter.LastRequest.Flag);
     }
 
     [Fact]
@@ -448,7 +450,7 @@ public sealed class ChallengeModeContractTests(GZCTFApplicationFactory factory)
             return fixture.ExpectedStaticFlag;
 
         if (fixture.Type == ChallengeType.DynamicContainer)
-            return fixture.FlagTemplate!.Replace("{userId}", userId.ToString("N"), StringComparison.Ordinal);
+            return new DynamicFlagGenerator(fixture.FlagTemplate!).GenerateWithTeamHash(() => userId.ToString("N"));
 
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

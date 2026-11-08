@@ -51,7 +51,9 @@ def normalize_source(value: dict) -> dict:
         parts = url.path.strip('/').split('/')
         if url.hostname.lower() != 'github.com' or url.port or url.query or len(parts) < 2:
             raise SourceError('请输入 GitHub 仓库或分支链接。')
-        owner, repo = parts[:2]; repo = repo.removesuffix('.git')
+        owner, repo = parts[:2]
+        if repo.endswith('.git'):
+            repo = repo[:-4]
         if not re.fullmatch(r'[A-Za-z0-9_.-]+', owner) or not re.fullmatch(r'[A-Za-z0-9_.-]+', repo):
             raise SourceError('GitHub 仓库地址无效。')
         if len(parts) > 2:
@@ -94,15 +96,24 @@ def excluded(name: str) -> bool:
             name in {'updater.token', 'updater.json', 'kube-config.yaml'} or name.endswith('.key'))
 
 
+def is_relative_to(path: Path, root: Path) -> bool:
+    # Path.is_relative_to is only available from Python 3.9 onward.
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False
+
+
 def snapshot_directory(origin: Path, destination: Path, roots: list[Path]) -> None:
     # Resolve containment before reading and reject a symlink as the selected root itself.
     if origin.is_symlink() or not origin.is_dir():
         raise SourceError('更新目录不存在，或不是普通目录。')
     origin = origin.resolve()
-    if not any(origin.is_relative_to(root.resolve()) for root in roots):
+    if not any(is_relative_to(origin, root.resolve()) for root in roots):
         raise SourceError('目录不在宿主机允许的更新目录范围内。')
     destination = destination.resolve()
-    if destination.is_relative_to(origin) and not any(excluded(p) for p in destination.relative_to(origin).parts):
+    if is_relative_to(destination, origin) and not any(excluded(p) for p in destination.relative_to(origin).parts):
         raise SourceError('暂存目录不能位于更新源目录内。')
     count = total = 0
     destination.mkdir(parents=True, exist_ok=True)

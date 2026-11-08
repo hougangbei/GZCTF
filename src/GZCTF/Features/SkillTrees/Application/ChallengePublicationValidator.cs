@@ -88,7 +88,16 @@ internal static class ChallengePublicationValidator
                 "content_container_configuration_required");
 
         if (challenge.Type == ChallengeType.DynamicContainer &&
-            settings.FlagMode is not ("gzctf-random" or "gzctf" or "ctfd-whale") &&
+            (settings.FlagTemplate?.Contains("{userId}", StringComparison.OrdinalIgnoreCase) == true ||
+             challenge.Flags.Any(flag => flag.Kind == ChallengeFlagKind.Template &&
+                 flag.Template?.Contains("{userId}", StringComparison.OrdinalIgnoreCase) == true)))
+            throw new ContentPublicationValidationException(
+                "The {userId} Flag placeholder is no longer supported. Replace it with [GUID].",
+                "content_flag_template_obsolete");
+
+        if (challenge.Type == ChallengeType.DynamicContainer &&
+            !ChallengeRuntimeService.IsWhale(challenge, settings.FlagMode) &&
+            settings.FlagMode is not ("gzctf-random" or "gzctf") &&
             string.IsNullOrWhiteSpace(settings.FlagTemplate) &&
             !challenge.Flags.Any(flag => flag.Kind == ChallengeFlagKind.Template &&
                                          !string.IsNullOrWhiteSpace(flag.Template)))

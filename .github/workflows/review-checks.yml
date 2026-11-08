@@ -1,0 +1,107 @@
+name: Review Checks
+
+on:
+  push:
+    branches: ['codex/**']
+    paths:
+      - 'src/**'
+      - 'deploy/**'
+      - '.github/workflows/review-checks.yml'
+  pull_request:
+    branches: ['**']
+    paths:
+      - 'src/**'
+      - 'deploy/**'
+      - '.github/workflows/review-checks.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Docker local mode)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: src/global.json
+      - name: Restore
+        run: dotnet restore src/GZCTF.slnx
+      - name: Build
+        run: dotnet build src/GZCTF.slnx --no-restore -c Release
+      - name: Unit tests
+        run: dotnet test src/GZCTF.Test --no-build --no-restore -c Release --logger 'trx;LogFileName=unit.trx'
+      - name: Integration tests
+        env:
+          GZCTF_INTEGRATION_TEST_MODE: local
+        run: dotnet test src/GZCTF.Integration.Test --no-build --no-restore -c Release --logger 'trx;LogFileName=integration.trx'
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: review-backend-results
+          path: 'src/**/TestResults/*.trx'
+          if-no-files-found: warn
+          retention-days: 7
+
+  frontend:
+    name: Frontend (build and browser regressions)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src/GZCTF/ClientApp
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v6
+        with:
+          version: '11.24.0'
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Unit tests
+        run: pnpm test:unit
+      - name: Production build and type check
+        run: pnpm build
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Import, editor lifecycle, layout and theme browser regressions
+        env:
+          E2E_BASE_URL: http://127.0.0.1:63022
+          E2E_WEB_SERVER: pnpm preview --host 127.0.0.1 --port 63022 --strictPort
+        run: >-
+          pnpm exec playwright test
+          tests/e2e/platform-imports.spec.ts
+          tests/e2e/admin-test-session.spec.ts
+          tests/e2e/challenge-layout.spec.ts
+          tests/e2e/platform-theme.spec.ts
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: review-browser-results
+          path: |
+            src/GZCTF/ClientApp/playwright-report/
+            src/GZCTF/ClientApp/test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  deployment-tools:
+    name: Offline deployment tools
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.8'
+      - run: python -m unittest discover -s deploy/offline/tests
+      - run: python -m unittest discover -s deploy/self-update/tests
+      - run: python -m unittest discover -s deploy/traefik/tests

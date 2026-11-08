@@ -20,5 +20,5 @@
 
 .links { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.25rem; }
 .links a { color: var(--hbc-muted); font-size: .85rem; font-weight: 600; text-decoration: none; }
-.links a:hover { color: var(--hbc-primary); }
+.links a:hover { color: var(--hbc-accent); }
 .links a:focus-visible { outline: 2px solid var(--hbc-primary); outline-offset: 3px; }

@@ -70,6 +70,7 @@ export const ChallengeFlagEditor = ({ value, onChange, disabled }: Props) => {
           label={t('editorFlagTemplate')}
           description={t('editorFlagTemplateHint')}
           value={value.container.FlagTemplate}
+          error={/\{userid\}/i.test(value.container.FlagTemplate) ? t('editorFlagTemplateObsolete') : undefined}
           onChange={(event) =>
             onChange({
               ...value,

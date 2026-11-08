@@ -700,6 +700,7 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
       {check && (
         <PublishReview
           check={check}
+          document={current.document}
           pending={pending}
           onClose={() => !pending && setCheck(undefined)}
           onPublish={() => void publish()}

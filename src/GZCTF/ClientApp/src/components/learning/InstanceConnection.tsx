@@ -55,50 +55,54 @@ export const InstanceConnection = ({ instance, category, onExpire }: Props) => {
           {t('instanceExpired')}
         </Text>
       )}
-      <Text component="code" className={classes.instanceAddress}>
-        {address || t('instanceRunning')}
-      </Text>
-      {address && (
-        <Group gap="xs">
-          <Button
-            variant="default"
-            size="xs"
-            leftSection={<Icon path={mdiContentCopy} size={0.65} aria-hidden />}
-            onClick={async () => {
-              try {
-                await copyInstanceAddress(address)
-                setCopyState('copied')
-              } catch {
-                setCopyState('failed')
-              }
-            }}
-          >
-            {t(copyState === 'copied' ? 'addressCopied' : 'copyAddress')}
-          </Button>
-          {href && remaining !== 0 && (
+      <div className={classes.addressActions}>
+        <Text component="code" className={classes.instanceAddress}>
+          {address || t('instanceRunning')}
+        </Text>
+        {address && (
+          <Group gap="xs">
             <Button
-              component="a"
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
               variant="default"
               size="xs"
-              rightSection={<Icon path={mdiOpenInNew} size={0.65} aria-hidden />}
+              leftSection={<Icon path={mdiContentCopy} size={0.65} aria-hidden />}
+              onClick={async () => {
+                try {
+                  await copyInstanceAddress(address)
+                  setCopyState('copied')
+                } catch {
+                  setCopyState('failed')
+                }
+              }}
             >
-              {t('openChallenge')}
+              {t(copyState === 'copied' ? 'addressCopied' : 'copyAddress')}
             </Button>
-          )}
-        </Group>
+            {href && remaining !== 0 && (
+              <Button
+                component="a"
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="default"
+                size="xs"
+                rightSection={<Icon path={mdiOpenInNew} size={0.65} aria-hidden />}
+              >
+                {t('openChallenge')}
+              </Button>
+            )}
+          </Group>
+        )}
+      </div>
+      {(copyState !== 'idle' || (!href && address)) && (
+        <Text size="xs" c={copyState === 'failed' ? 'red' : 'dimmed'} role="status">
+          {copyState === 'failed'
+            ? t('copyFailed')
+            : copyState === 'copied'
+              ? t('addressCopied')
+              : !href && address
+                ? t('tcpConnectionHint')
+                : null}
+        </Text>
       )}
-      <Text size="xs" c={copyState === 'failed' ? 'red' : 'dimmed'} role="status">
-        {copyState === 'failed'
-          ? t('copyFailed')
-          : copyState === 'copied'
-            ? t('addressCopied')
-            : !href && address
-              ? t('tcpConnectionHint')
-              : null}
-      </Text>
     </div>
   )
 }

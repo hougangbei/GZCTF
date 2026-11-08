@@ -117,7 +117,10 @@
     "challenge_runtime_unavailable": "Challenge runtime is unavailable. Ask an administrator to configure or check the challenge host Docker connection. Harbor only stores images.",
     "challenge_container_start_failed": "The challenge instance could not start. Ask an administrator to check the image, resources and challenge host logs.",
     "challenge_container_stop_failed": "The challenge instance could not stop. Retry or ask an administrator to check the challenge host.",
-    "challenge_instance_configuration_changed": "An instance using another configuration is still running. Stop it before starting a new test."
+    "challenge_instance_configuration_changed": "An instance using another configuration is still running. Stop it before starting a new test.",
+    "challenge_flag_template_obsolete": "Dynamic Flags no longer support {userId}. Replace it with [GUID] in the challenge settings.",
+    "challenge_test_session_conflict": "This challenge already has an instance from another page or an older editor. Close the original editor or stop its test in instance management.",
+    "challenge_test_session_invalid": "The test editor session is invalid. Reopen the challenge editor."
   },
   "label": {
     "challenge": "Challenge",

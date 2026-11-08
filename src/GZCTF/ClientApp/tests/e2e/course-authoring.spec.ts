@@ -441,3 +441,27 @@ test('deleting a renamed draft confirms the server identity and reviewed version
  await expect(page).toHaveURL(/\/admin\/skill-trees$/)
  expect(deletion).toEqual({confirmationName:'Original published name',rowVersion:42})
 })
+
+test('publication errors identify the content and explain missing description in Chinese', async ({ page }) => {
+  const state = await setup(page)
+  state.workspace.document.categories.push({ categoryId, name: '资料', summary: '', iconKey: 'flag', skills: [{ skillId, name: '参考资料', summary: '', iconKey: 'flag', isEnabled: true, contents: [{ contentId: lessonId, kind: 'challenge', title: 'WP模板', summary: '', state: 'Draft' }] }] })
+  await page.route(`**/api/admin/skill-trees/${treeId}/workspace/check`, route => route.fulfill({ json: { version: '1', categoryCount: 1, skillCount: 1, challengeCount: 1, lessonCount: 0, issues: [{ severity: 'error', code: 'challenge_invalid', message: 'The challenge is missing, retired, or needs a title and description.', contentId: lessonId }] } }))
+  await page.goto(`/admin/skill-trees/${treeId}`)
+  await page.getByRole('button', { name: '检查并发布', exact: true }).click()
+  const error = page.getByRole('dialog').getByRole('alert')
+  await expect(error).toContainText('WP模板')
+  await expect(error).toContainText('请补全题目标题和各语言版本的正文')
+  await expect(page.getByRole('button', { name: '确认统一发布', exact: true })).toBeDisabled()
+  await error.getByRole('button', { name: '定位问题', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'WP模板', exact: true })).toBeVisible()
+})
+
+test('cover and disabled-content warnings explain that they do not prevent publication', async ({ page }) => {
+  await setup(page)
+  await page.route(`**/api/admin/skill-trees/${treeId}/workspace/check`, route => route.fulfill({ json: { version: '1', categoryCount: 0, skillCount: 0, challengeCount: 0, lessonCount: 0, issues: [{ severity: 'warning', code: 'missing_cover', message: 'The course has no cover.' }, { severity: 'warning', code: 'disabled_challenge', message: 'This challenge is disabled.' }] } }))
+  await page.goto(`/admin/skill-trees/${treeId}`)
+  await page.getByRole('button', { name: '检查并发布', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('尚未设置课程封面，不影响发布。')
+  await expect(page.getByRole('dialog')).toContainText('该题目已停用，发布后学员无法使用它；不影响其他内容发布。')
+  await expect(page.getByRole('button', { name: '确认统一发布', exact: true })).toBeEnabled()
+})

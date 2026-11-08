@@ -1,13 +1,13 @@
 .page { width: 100%; max-width: 1120px; margin: 0 auto; padding: 1.2rem 0 4rem; }
 .edit { display: inline-flex; float: right; align-items: center; gap: 0.4rem; margin: 0.25rem 0 0.5rem; padding: 0.45rem 0.7rem; border: 1px solid var(--hbc-border); border-radius: 0.6rem; background: var(--hbc-card); color: var(--hbc-muted); font-size: 0.84rem; font-weight: 600; text-decoration: none; }
-.edit:hover { border-color: var(--hbc-primary); color: var(--hbc-primary); }
+.edit:hover { border-color: var(--hbc-primary); color: var(--hbc-accent); }
 .edit:focus-visible { outline: 2px solid var(--hbc-primary); outline-offset: 3px; }
 .header { clear: both; margin: 0 0 2rem; padding: 1.2rem 0 1.7rem; border-bottom: 1px solid var(--hbc-border); }
 .header h1 { margin: 0; color: var(--hbc-ink); font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.3; }
 .header p { margin: 0.55rem 0 0; color: var(--hbc-muted); line-height: 1.7; }
-.statePanel, .loading { max-width: 860px; margin: 1.2rem auto 0; border: 1px solid var(--hbc-border); border-radius: 1.1rem; background: var(--hbc-card); box-shadow: 0 10px 30px rgb(30 41 59 / 4%); }
+.statePanel, .loading { max-width: 860px; margin: 1.2rem auto 0; border: 1px solid var(--hbc-border); border-radius: 1.1rem; background: var(--hbc-card); box-shadow: 0 10px 30px rgb(0 0 0 / 4%); }
 .statePanel { display: flex; min-height: 360px; flex-direction: column; align-items: center; justify-content: center; padding: 2.5rem 1.5rem; text-align: center; }
-.stateIcon { display: grid; width: 4rem; height: 4rem; place-items: center; border-radius: 1.15rem; background: var(--hbc-primary-soft); color: var(--hbc-primary); }
+.stateIcon { display: grid; width: 4rem; height: 4rem; place-items: center; border-radius: 1.15rem; background: var(--hbc-primary-soft); color: var(--hbc-accent); }
 .statePanel h2 { margin: 1.35rem 0 0; color: var(--hbc-ink); font-size: 1.35rem; font-weight: 750; line-height: 1.35; text-wrap: balance; }
 .statePanel p { max-width: 30rem; margin: 0.65rem 0 0; color: var(--hbc-muted); line-height: 1.75; }
 .statePanel button { margin-top: 1.4rem; }

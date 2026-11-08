@@ -228,9 +228,13 @@ public sealed class ChallengeSubmissionService(
             return configured;
         // Whale may inject a random environment value even for a challenge judged by imported static flags.
         using var configuration = System.Text.Json.JsonDocument.Parse(challenge.RuntimeConfigurationJson ?? "{}");
-        var whale = configuration.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object &&
-            configuration.RootElement.EnumerateObject().Any(p => p.Name.Equals("FlagMode", StringComparison.OrdinalIgnoreCase) &&
-                p.Value.ValueKind == System.Text.Json.JsonValueKind.String && p.Value.GetString() == "ctfd-whale");
+        var mode = configuration.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+            ? configuration.RootElement.EnumerateObject()
+                .Where(p => p.Name.Equals("FlagMode", StringComparison.OrdinalIgnoreCase) &&
+                    p.Value.ValueKind == System.Text.Json.JsonValueKind.String)
+                .Select(p => p.Value.GetString()).FirstOrDefault()
+            : null;
+        var whale = ChallengeRuntimeService.IsWhale(challenge, mode);
         return configured || !whale && MatchesFlag(instance.AssignedFlag, submitted,
             IsCaseInsensitive(challenge.Flags.FirstOrDefault(item => item.Value == instance.AssignedFlag)?.MetadataJson));
     }

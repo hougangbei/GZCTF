@@ -4,7 +4,7 @@
   border-bottom: 1px solid var(--hbc-border);
   background: var(--hbc-card);
   color: var(--hbc-ink);
-  box-shadow: 0 4px 18px rgb(30 41 59 / 5%);
+  box-shadow: 0 4px 18px rgb(0 0 0 / 5%);
 }
 
 .inner {
@@ -42,12 +42,12 @@
   background: var(--hbc-bg);
   color: var(--hbc-muted);
 }
-.themeButton:hover { background: var(--hbc-primary-soft); color: var(--hbc-primary); }
+.themeButton:hover { background: var(--hbc-primary-soft); color: var(--hbc-accent); }
 .loginButton { min-height: 2.35rem; border-radius: 0.55rem; background: var(--hbc-primary); color: var(--hbc-primary-foreground); }
 .loginButton:hover { background: var(--hbc-primary-hover); }
 .accountButton { max-width: 9rem; border-radius: 0.55rem; }
 .iconAction { color: var(--hbc-muted); }
-.iconAction:hover { color: var(--hbc-primary); background: var(--hbc-primary-soft); }
+.iconAction:hover { color: var(--hbc-accent); background: var(--hbc-primary-soft); }
 
 @media (max-width: 68.75em) {
   .inner { gap: 0.5rem; }

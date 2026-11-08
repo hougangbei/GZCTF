@@ -115,6 +115,8 @@ public static class AuditActionCatalog
             ["challenge_instances.start"] = new("challenge_instances.start", "containers", "challenge"),
             ["challenge_instances.extend"] = new("challenge_instances.extend", "containers", "challenge"),
             ["challenge_instances.stop"] = new("challenge_instances.stop", "containers", "challenge"),
+            ["challenge_instances.test_heartbeat"] = new("challenge_instances.test_heartbeat", "containers", "challenge"),
+            ["challenge_instances.test_stop"] = new("challenge_instances.test_stop", "containers", "challenge"),
         };
 
     public static IReadOnlyCollection<AuditActionDefinition> All => Actions.Values.ToArray();

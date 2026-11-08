@@ -28,7 +28,7 @@
   font-weight: 600;
 }
 .steps a[aria-current] {
-  color: var(--hbc-primary);
+  color: var(--hbc-accent);
   background: var(--hbc-primary-soft);
   border-color: var(--hbc-primary);
 }
@@ -100,7 +100,7 @@
   width: 2.8rem;
   height: 2.8rem;
   background: var(--hbc-primary-soft);
-  color: var(--hbc-primary);
+  color: var(--hbc-accent);
   border-radius: 0.75rem;
   font-size: 1.5rem;
 }
@@ -186,7 +186,7 @@
 }
 .directory a[aria-current],
 .directory a:hover {
-  color: var(--hbc-primary);
+  color: var(--hbc-accent);
   background: var(--hbc-primary-soft);
 }
 .directory details::details-content {
@@ -270,7 +270,7 @@
 }
 .status {
   font-size: 0.78rem;
-  color: var(--hbc-primary);
+  color: var(--hbc-accent);
   margin-bottom: 0.8rem;
 }
 .notice {
@@ -278,7 +278,7 @@
   color: var(--hbc-muted);
 }
 .notice a {
-  color: var(--hbc-primary);
+  color: var(--hbc-accent);
 }
 h1[tabindex='-1']:focus {
   outline: none;

@@ -60,7 +60,7 @@
   border: 1px solid var(--hbc-border);
   border-radius: 1.1rem;
   background: var(--hbc-card);
-  box-shadow: 0 10px 30px rgb(30 41 59 / 4%);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 4%);
   text-align: center;
 }
 .stateIcon {
@@ -70,7 +70,7 @@
   place-items: center;
   border-radius: 1.15rem;
   background: var(--hbc-primary-soft);
-  color: var(--hbc-primary);
+  color: var(--hbc-accent);
 }
 .statePanel h2 {
   margin: 1.35rem 0 0;

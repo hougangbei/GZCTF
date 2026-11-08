@@ -17,6 +17,22 @@ class SourceTests(unittest.TestCase):
         self.assertEqual(result['location'], 'https://github.com/hougangbei/GZCTF')
         self.assertEqual(result['ref'], 'main')
 
+    def test_github_git_suffix_is_removed_only_at_the_end(self):
+        for name, expected in [('repo.git', 'repo'), ('repo.git-tools', 'repo.git-tools')]:
+            with self.subTest(name=name):
+                result = sources.normalize_source({'kind': 'github', 'location': f'https://github.com/owner/{name}'})
+                self.assertEqual(result['location'], f'https://github.com/owner/{expected}')
+
+    def test_snapshot_checks_path_components_and_rejects_nested_staging(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); allowed = root/'repo'; allowed.mkdir()
+            sibling = root/'repo-other'; sibling.mkdir()
+            with self.assertRaises(sources.SourceError):
+                sources.snapshot_directory(sibling, root/'stage', [allowed])
+            with self.assertRaises(sources.SourceError):
+                sources.snapshot_directory(allowed, allowed/'stage', [allowed])
+            self.assertFalse((allowed/'stage').exists())
+
     def test_rejects_url_credentials_queries_and_unsafe_refs(self):
         for value in [
             {'kind':'github','location':'https://github.com/a/b','ref':'--upload-pack=evil'},

@@ -1,14 +1,26 @@
 import { Alert, Badge, Button, Group, Modal, Stack, Text } from '@mantine/core'
-import type { CourseCheck, PublicationIssue } from '@Utils/courseAuthoring'
+import type { CourseCheck, CourseDocument, PublicationIssue } from '@Utils/courseAuthoring'
+
+const publicationMessages: Record<string, string> = {
+  missing_cover: '尚未设置课程封面，不影响发布。',
+  disabled_challenge: '该题目已停用，发布后学员无法使用它；不影响其他内容发布。',
+  challenge_invalid:
+    '题目不存在、已退役，或内容不完整。请补全题目标题和各语言版本的正文；若是下载模板等辅助资料，可从课程目录移出。',
+  challenge_identity_unavailable: '该题目已删除、退役或合并。请移出此引用，并从题目库添加有效的题目。',
+  lesson_invalid: '课节不存在、已退役或缺少标题。请检查课节内容，或移出无效引用。',
+  lesson_identity_unavailable: '该课节已删除或退役。请移出此引用，并从课节库添加有效的课节。',
+}
 
 export const PublishReview = ({
   check,
+  document,
   pending,
   onClose,
   onPublish,
   onLocate,
 }: {
   check: CourseCheck
+  document: CourseDocument
   pending: boolean
   onClose: () => void
   onPublish: () => void
@@ -76,22 +88,33 @@ export const PublishReview = ({
             </Text>
           </Stack>
         ) : null}
-        {check.issues.map((issue, index) => (
-          <Alert
-            key={`${issue.code}:${index}`}
-            color={issue.severity === 'error' ? 'red' : 'yellow'}
-            title={issue.severity === 'error' ? '阻止发布' : '请留意'}
-          >
-            <Stack gap="xs">
-              <Text size="sm">{issue.message}</Text>
-              {(issue.categoryId || issue.skillId || issue.contentId) && (
-                <Button size="compact-sm" variant="subtle" w="fit-content" onClick={() => onLocate(issue)}>
-                  定位问题
-                </Button>
-              )}
-            </Stack>
-          </Alert>
-        ))}
+        {check.issues.map((issue, index) => {
+          const categories = document.categories
+          const skills = categories.flatMap((category) => category.skills)
+          const name = issue.contentId
+            ? skills.flatMap((skill) => skill.contents).find((content) => content.contentId === issue.contentId)?.title
+            : issue.skillId
+              ? skills.find((skill) => skill.skillId === issue.skillId)?.name
+              : issue.categoryId
+                ? categories.find((category) => category.categoryId === issue.categoryId)?.name
+                : undefined
+          return (
+            <Alert
+              key={`${issue.code}:${index}`}
+              color={issue.severity === 'error' ? 'red' : 'yellow'}
+              title={`${issue.severity === 'error' ? '阻止发布' : '请留意'}${name ? ` · ${name}` : ''}`}
+            >
+              <Stack gap="xs">
+                <Text size="sm">{publicationMessages[issue.code] ?? issue.message}</Text>
+                {(issue.categoryId || issue.skillId || issue.contentId) && (
+                  <Button size="compact-sm" variant="subtle" w="fit-content" onClick={() => onLocate(issue)}>
+                    定位问题
+                  </Button>
+                )}
+              </Stack>
+            </Alert>
+          )
+        })}
         {!check.issues.length && (
           <Alert color="green">检查通过，可以发布。容器配置校验不代表镜像已在题目机实际启动验证。</Alert>
         )}

@@ -63,7 +63,7 @@
   "editorFlagNumber": "Flag {{number}}",
   "editorAddFlag": "添加 Flag",
   "editorFlagTemplate": "Flag 模板",
-  "editorFlagTemplateHint": "使用 {userId} 为每名学员生成专属 Flag。",
+  "editorFlagTemplateHint": "统一使用 [GUID] 生成每次启动的随机 Flag，例如 nynuctf{[GUID]}。",
   "editorDynamicFlagHint": "在每个附件旁填写对应的 Flag。",
   "editorHelp": "提示与题解",
   "editorHintNumber": "提示 {{number}}",
@@ -158,5 +158,7 @@
   "openChallenge": "打开题目",
   "copyFailed": "复制失败，请选中上方地址手动复制。",
   "tcpConnectionHint": "此地址用于 TCP 客户端连接。",
-  "testInstanceNoCredit": "管理员测试实例不会记录通关或积分。请停止测试实例后再使用正式题目实例。"
+  "testInstanceNoCredit": "管理员测试实例不会记录通关或积分。请停止测试实例后再使用正式题目实例。",
+  "editorFlagTemplateObsolete": "不再支持 {userId} 占位符，请改用 [GUID]。",
+  "editorTestSessionHint": "测试实例仅用于当前配置页，离开页面后自动停止；异常断开由租约超时回收。"
 }

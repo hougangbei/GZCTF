@@ -6,7 +6,7 @@
   background-position: center center;
   padding: calc(var(--mantine-spacing-xl) * 3) 0;
 
-  background: light-dark(var(--mantine-color-white), rgba(0, 0, 0, 0.2));
+  background: var(--hbc-card);
 
   @mixin smaller-than $mantine-breakpoint-sm {
     justify-content: start;
@@ -37,7 +37,7 @@
 }
 
 .description {
-  color: var(--mantine-color-white);
+  color: var(--hbc-muted);
   max-width: 600;
 }
 
@@ -46,7 +46,7 @@
   font-weight: 900;
   line-height: 1.1;
 
-  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-white));
+  color: var(--hbc-ink);
 
   @mixin smaller-than $mantine-breakpoint-md {
     max-width: 100%;
@@ -70,5 +70,5 @@
 }
 
 .date {
-  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-white));
+  color: var(--hbc-ink);
 }

@@ -78,6 +78,50 @@ public class ContentPublicationTests(GZCTFApplicationFactory factory)
         Assert.Equal("content_attachment_pool_required", await ReadCodeAsync(noAttachmentPool));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Publishing_rejects_obsolete_dynamic_templates_with_actionable_code(bool runtimeTemplate)
+    {
+        var (_, categoryId) = await SeedPublishedTreeAsync();
+        var draft = await SeedDraftAsync("challenge", ChallengeType.DynamicContainer);
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var challenge = await db.Challenges.Include(c => c.Flags).SingleAsync(c => c.Id == draft.Id);
+            challenge.RuntimeConfigurationJson = JsonSerializer.Serialize(new { Image = "fixture.invalid/obsolete:1", ExposedPort = 80,
+                Cpu = 1, MemoryMb = 64, StorageMb = 0, NetworkMode = "Open", FlagMode = "ctfd-whale",
+                FlagTemplate = runtimeTemplate ? "flag{{userId}}" : null });
+            if (runtimeTemplate) challenge.Flags.Clear();
+            await db.SaveChangesAsync();
+            draft = (challenge.Id, challenge.RowVersion);
+        }
+        using var admin = await CreateAdminClientAsync();
+        var response = await PublishAsync(admin, "challenge", draft, [categoryId], []);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("content_flag_template_obsolete", await ReadCodeAsync(response));
+        Assert.Contains("[GUID]", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Publishing_infers_Whale_mode_for_edited_CTFd_dynamic_container_missing_mode()
+    {
+        var (_, categoryId) = await SeedPublishedTreeAsync();
+        var draft = await SeedDraftAsync("challenge", ChallengeType.DynamicContainer, includeFlag: false);
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var challenge = await db.Challenges.SingleAsync(c => c.Id == draft.Id);
+            challenge.SourceType = "CTFd";
+            challenge.RuntimeConfigurationJson = JsonSerializer.Serialize(new { Image = "fixture.invalid/whale:1", ExposedPort = 80,
+                Cpu = 1, MemoryMb = 64, StorageMb = 0, NetworkMode = "Open" });
+            await db.SaveChangesAsync();
+            draft = (challenge.Id, challenge.RowVersion);
+        }
+        using var admin = await CreateAdminClientAsync();
+        (await PublishAsync(admin, "challenge", draft, [categoryId], [])).EnsureSuccessStatusCode();
+    }
+
     [Fact]
     public async Task Publishing_rejects_challenge_without_a_description()
     {

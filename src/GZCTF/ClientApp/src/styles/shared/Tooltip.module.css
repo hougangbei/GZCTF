@@ -2,15 +2,9 @@
   font-weight: 500;
   box-shadow: var(--mantine-shadow-md);
 
-  @mixin dark {
-    color: var(--mantine-color-gray-0);
-    background-color: var(--mantine-color-gray-7);
-  }
-
-  @mixin light {
-    color: var(--mantine-color-gray-7);
-    background-color: var(--mantine-color-light-1);
-  }
+  color: var(--hbc-ink);
+  background-color: var(--hbc-card);
+  border: 1px solid var(--hbc-border);
 }
 
 .arrow {

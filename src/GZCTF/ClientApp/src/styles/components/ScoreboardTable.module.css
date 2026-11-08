@@ -18,7 +18,7 @@
 
 .left {
   position: sticky;
-  background-color: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+  background-color: var(--hbc-card);
 }
 
 .header {

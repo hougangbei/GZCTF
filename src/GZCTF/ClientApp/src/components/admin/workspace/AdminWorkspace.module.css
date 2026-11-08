@@ -36,7 +36,7 @@
   align-items: center;
   gap: var(--mantine-spacing-sm);
   padding: calc(var(--mantine-spacing-xl) * 1.5) var(--mantine-spacing-md);
-  border: 1px dashed var(--mantine-color-default-border);
+  border: 1px dashed var(--hbc-border);
   border-radius: var(--mantine-radius-md);
   text-align: center;
 }
@@ -57,14 +57,15 @@
   transition: background-color 100ms ease;
 
   &:hover {
-    background-color: var(--mantine-color-default-hover);
+    background-color: var(--hbc-surface);
   }
 }
 
 .cohortRowActive {
-  background-color: var(--mantine-primary-color-light);
+  color: var(--hbc-accent);
+  background-color: var(--hbc-primary-soft);
 
   &:hover {
-    background-color: var(--mantine-primary-color-light-hover);
+    background-color: var(--hbc-primary-soft);
   }
 }

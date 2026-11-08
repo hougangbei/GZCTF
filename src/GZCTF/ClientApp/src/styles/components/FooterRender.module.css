@@ -21,7 +21,7 @@
   }
 
   & strong {
-    color: light-dark(var(--mantine-primary-color-7), var(--mantine-primary-color-6));
+    color: var(--hbc-accent);
   }
 
   & a {

@@ -29,16 +29,41 @@ public sealed class ChallengeInstancesController(
 
     [HttpPost]
     [AuditAction("challenge_instances.start")]
-    public async Task<ActionResult<ChallengeInstanceResponse>> Start(Guid challengeId, [FromQuery] Guid? course, CancellationToken token)
+    public async Task<ActionResult<ChallengeInstanceResponse>> Start(Guid challengeId, [FromQuery] Guid? course, [FromQuery] Guid? testSessionId, CancellationToken token)
     {
         var user = await users.GetUserAsync(User);
         if (user is null) return Unauthorized();
         var admin = user.Role == GZCTF.Utils.Role.Admin;
-        if (course.HasValue && !admin) return Forbid();
+        if ((course.HasValue || testSessionId.HasValue) && !admin) return Forbid();
         var draft = course is { } treeId
             ? await workspaceContents.GetWorkspaceChallengeAsync(treeId, challengeId, token) : null;
         if (course.HasValue && draft is null) return NotFound();
-        return await Execute(challengeId, () => runtime.StartAsync(user.Id, challengeId, token, admin, draft));
+        return await Execute(challengeId, () => runtime.StartAsync(user.Id, challengeId, token, admin, draft, testSessionId));
+    }
+
+    [HttpPost("test-heartbeat")]
+    [RequireAdmin]
+    [AuditAction("challenge_instances.test_heartbeat")]
+    public Task<ActionResult<ChallengeInstanceResponse>> HeartbeatTest(Guid challengeId,
+        [FromBody] TestSessionRequest request, CancellationToken token) =>
+        Execute(challengeId, () => runtime.HeartbeatTestAsync(GetUserId(), challengeId,
+            request.InstanceId, request.TestSessionId, token), allowOwned: true);
+
+    [HttpPost("test-stop")]
+    [RequireAdmin]
+    [AuditAction("challenge_instances.test_stop")]
+    public async Task<IActionResult> StopTest(Guid challengeId, [FromBody] TestSessionRequest request, CancellationToken token)
+    {
+        try
+        {
+            await runtime.StopTestAsync(GetUserId(), challengeId, request.InstanceId, request.TestSessionId, token);
+            return NoContent();
+        }
+        catch (ChallengeRuntimeException error)
+        {
+            return StatusCode(error.StatusCode,
+                new ApiError(error.Code, error.UserMessage, HttpContext.TraceIdentifier));
+        }
     }
 
     [HttpPost("extend")]
@@ -115,3 +140,5 @@ public sealed class ChallengeInstancesController(
             host, port, instance.AssignedAttachmentKey, instance.AssignedAttachmentSha256);
     }
 }
+
+public sealed record TestSessionRequest(Guid InstanceId, Guid TestSessionId);

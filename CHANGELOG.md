@@ -3,6 +3,15 @@
 All notable changes to [**GZCTF**](https://github.com/GZTimeWalker/GZCTF) will be documented in this file.
 
 ---
+## [Unreleased — review branch] - 2026-11-08
+
+These changes follow the published course-authoring offline bundle and are not yet included in that image.
+
+- Separate GZCTF challenge-only import from CTFd platform migration, validate source identifiers before upload, isolate legacy migration files, and name publication errors in the course outline.
+- Preserve imported runtime modes, static Flag rules and attachment metadata when editing; unify dynamic Flag templates on `[GUID]` and explicitly reject obsolete `{userId}` templates.
+- Bind administrator test containers to exact editor sessions with guarded release, heartbeat leases and expiry cleanup, while retaining learner instance snapshots and score isolation.
+- Refine the vertical challenge workspace with folded help/writeups and unify readable neutral light/dark surfaces across learning and administration, preserving personal accents and semantic control states.
+
 ## [intranet-course-authoring-20261108] - 2026-11-08
 
 ### Added

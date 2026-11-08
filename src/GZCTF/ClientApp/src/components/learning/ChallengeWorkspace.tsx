@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Group, Stack, Text, TextInput, Title } from '@mantine/core'
+import { Accordion, Alert, Badge, Button, Group, Stack, Text, TextInput, Title } from '@mantine/core'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -94,8 +94,8 @@ export const ChallengeWorkspace = ({
           : result.rejectionCode === 'challenge.test_instance'
             ? t('testInstanceNoCredit')
             : result.rejectionCode === 'challenge.submission_limit_exhausted'
-            ? t('submissionLimitExhausted')
-            : t('rejected')
+              ? t('submissionLimitExhausted')
+              : t('rejected')
       )
       if (result.accepted) {
         setSolveMode(result.solveMode === undefined || result.solveMode === null ? undefined : String(result.solveMode))
@@ -180,21 +180,22 @@ export const ChallengeWorkspace = ({
         </div>
       </section>
 
-      <div className={`${classes.activity} ${!hasResource ? classes.singleActivity : ''}`}>
+      <div className={classes.activity}>
         {hasResource && (
-          <section className={classes.activitySection}>
+          <section className={classes.activitySection} aria-label={t('instance')}>
             <Title order={3} className={classes.sectionTitle}>
               {t('instance')}
             </Title>
             {instance?.status === ChallengeInstanceStatus.Running ? (
-              <Stack gap="sm" align="flex-start">
+              <div className={classes.runningInstance}>
                 <InstanceConnection
                   instance={instance}
                   category={challenge!.ctfCategory}
                   onExpire={refreshExpiredInstance}
                 />
-                <Group gap="xs">
+                <Group gap="xs" className={classes.instanceControls}>
                   <Button
+                    size="xs"
                     variant="default"
                     disabled={instanceActionPending}
                     onClick={() =>
@@ -207,6 +208,7 @@ export const ChallengeWorkspace = ({
                     {t('extend')}
                   </Button>
                   <Button
+                    size="xs"
                     color="red"
                     variant="subtle"
                     loading={instanceActionPending}
@@ -219,7 +221,7 @@ export const ChallengeWorkspace = ({
                     {t('stop')}
                   </Button>
                 </Group>
-              </Stack>
+              </div>
             ) : challenge!.hasContainer ? (
               <Button
                 variant="light"
@@ -234,29 +236,41 @@ export const ChallengeWorkspace = ({
                 {t('start')}
               </Button>
             ) : (
-              <Button component="a" variant="light" href={`/api/challenges/${challengeId}/attachment${courseId ? `?course=${encodeURIComponent(courseId)}` : ''}`}>
-                {t('downloadAttachment')}
-              </Button>
-            )}
-            {challenge!.hasSupplementaryAttachment && (
               <Button
                 component="a"
-                variant="default"
-                href={`/api/challenges/${challengeId}/attachment?supplementary=true${courseId ? `&course=${encodeURIComponent(courseId)}` : ''}`}
+                variant="light"
+                href={`/api/challenges/${challengeId}/attachment${courseId ? `?course=${encodeURIComponent(courseId)}` : ''}`}
               >
-                补充附件
-              </Button>
-            )}
-            {challenge!.hasContainer && challenge!.hasAttachment && (
-              <Button component="a" variant="light" href={`/api/challenges/${challengeId}/attachment${courseId ? `?course=${encodeURIComponent(courseId)}` : ''}`}>
                 {t('downloadAttachment')}
               </Button>
             )}
+            <Group gap="xs" className={classes.resourceActions}>
+              {challenge!.hasSupplementaryAttachment && (
+                <Button
+                  component="a"
+                  variant="default"
+                  size="xs"
+                  href={`/api/challenges/${challengeId}/attachment?supplementary=true${courseId ? `&course=${encodeURIComponent(courseId)}` : ''}`}
+                >
+                  补充附件
+                </Button>
+              )}
+              {challenge!.hasContainer && challenge!.hasAttachment && (
+                <Button
+                  component="a"
+                  variant="default"
+                  size="xs"
+                  href={`/api/challenges/${challengeId}/attachment${courseId ? `?course=${encodeURIComponent(courseId)}` : ''}`}
+                >
+                  {t('downloadAttachment')}
+                </Button>
+              )}
+            </Group>
           </section>
         )}
 
         {user ? (
-          <section className={classes.activitySection}>
+          <section className={classes.activitySection} aria-label={t('submit')}>
             <Title order={3} className={classes.sectionTitle}>
               {t('submit')}
             </Title>
@@ -274,7 +288,7 @@ export const ChallengeWorkspace = ({
                 aria-label={t('flagPlaceholder')}
                 classNames={{ input: classes.flagInput }}
               />
-              <Button type="submit" disabled={!flag.trim()}>
+              <Button type="submit" h={42} disabled={!flag.trim()}>
                 {t('submit')}
               </Button>
             </form>
@@ -296,36 +310,56 @@ export const ChallengeWorkspace = ({
         )}
       </div>
 
-      {!!user && (challenge!.hintLocaleCount > 0 || challenge!.hasWriteup) && (
-        <section className={classes.help}>
-          <Stack gap="sm">
-            <Title order={3} className={classes.sectionTitle}>
-              {t('help')}
-            </Title>
-            <Group>
-              {challenge!.hintLocaleCount > 0 && (
-                <Button variant="light" onClick={revealHint}>
+      <Accordion
+        multiple
+        variant="default"
+        transitionDuration={0}
+        className={classes.help}
+        classNames={{ item: classes.helpItem, control: classes.helpControl, content: classes.helpContent }}
+      >
+        {!!user && challenge!.hintLocaleCount > 0 && (
+          <Accordion.Item value="hints">
+            <Accordion.Control>{t('help')}</Accordion.Control>
+            <Accordion.Panel>
+              <Stack gap="sm" align="flex-start">
+                <Button variant="light" size="sm" onClick={revealHint}>
                   {t('nextHint')}
                 </Button>
-              )}
-              {challenge!.hasWriteup && (
-                <Button variant="light" onClick={revealOfficialWriteup}>
+                {hints.map((hint, index) => (
+                  <Alert key={`${index}-${hint}`} w="100%">
+                    {hint}
+                  </Alert>
+                ))}
+              </Stack>
+            </Accordion.Panel>
+          </Accordion.Item>
+        )}
+        {!!user && challenge!.hasWriteup && (
+          <Accordion.Item value="official">
+            <Accordion.Control>{t('editorWriteup')}</Accordion.Control>
+            <Accordion.Panel>
+              <Stack gap="sm" align="flex-start">
+                <Button variant="light" size="sm" onClick={revealOfficialWriteup}>
                   {t('showWriteup')}
                 </Button>
-              )}
-            </Group>
-            {hints.map((hint, index) => (
-              <Alert key={`${index}-${hint}`}>{hint}</Alert>
-            ))}
-            {writeup && (
-              <div ref={official}>
-                <Markdown source={writeup} />
-              </div>
-            )}
-          </Stack>
-        </section>
-      )}
-      <CommunityWriteups challengeId={challengeId} />
+                {writeup && (
+                  <div ref={official} className={classes.description}>
+                    <Markdown source={writeup} />
+                  </div>
+                )}
+              </Stack>
+            </Accordion.Panel>
+          </Accordion.Item>
+        )}
+        <Accordion.Item value="community">
+          <Accordion.Control>{tSkillTrees('writeups.title')}</Accordion.Control>
+          <Accordion.Panel>
+            <div className={classes.communityWriteups}>
+              <CommunityWriteups challengeId={challengeId} />
+            </div>
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
     </div>
   )
 }

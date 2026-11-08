@@ -61,12 +61,12 @@
   background: var(--hbc-surface-hover, var(--hbc-primary-soft));
 }
 .node[aria-current] {
-  color: var(--mantine-primary-color-filled);
+  color: var(--hbc-accent);
   background: var(--hbc-primary-soft);
   font-weight: 600;
 }
 .node:focus-visible {
-  outline: 2px solid var(--mantine-primary-color-filled);
+  outline: 2px solid var(--hbc-accent);
   outline-offset: 1px;
 }
 .nodeKind {

@@ -43,9 +43,9 @@ test('administrator edits container settings and Flag template without writing J
     localizations: [{ locale: 'en', title: 'Container lesson', summary: '', body: 'Original body' }],
     runtimeConfigurationJson: JSON.stringify({
       ContainerImage: 'registry.test/old:1', ExposedPort: 8080, Cpu: 1,
-      MemoryMb: 128, StorageMb: 256, NetworkMode: 'Open', FlagTemplate: 'flag{old-{userId}}',
+      MemoryMb: 128, StorageMb: 256, NetworkMode: 'Open', FlagTemplate: 'flag{old-[GUID]}',
     }),
-    flags: [{ kind: 'Template', template: 'flag{old-{userId}}' }],
+    flags: [{ kind: 'Template', template: 'flag{old-[GUID]}' }],
     hints: [], writeups: [],
     publication: { rowVersion: 1, publicationState: 'Draft', categoryIds: [] },
   }
@@ -63,7 +63,7 @@ test('administrator edits container settings and Flag template without writing J
   await page.goto(`/admin/library/challenges/${challengeId}`)
   await page.getByRole('textbox', { name: 'Challenge description' }).fill('Updated body')
   await page.getByRole('textbox', { name: 'Container image' }).fill('registry.test/new:2')
-  await page.getByRole('textbox', { name: 'Flag template' }).fill('flag{new-{userId}}')
+  await page.getByRole('textbox', { name: 'Flag template' }).fill('flag{new-[GUID]}')
   await page.getByRole('textbox', { name: 'Submission limit' }).fill('3')
   await page.getByRole('button', { name: 'Save draft' }).click()
 
@@ -72,11 +72,11 @@ test('administrator edits container settings and Flag template without writing J
     type: 'DynamicContainer',
     submissionLimit: 3,
     localizations: [{ locale: 'en', title: 'Container lesson', body: 'Updated body' }],
-    flags: [{ kind: 'Template', template: 'flag{new-{userId}}' }],
+    flags: [{ kind: 'Template', template: 'flag{new-[GUID]}' }],
   })
   expect(JSON.parse(String(saved?.runtimeConfigurationJson))).toMatchObject({
     ContainerImage: 'registry.test/new:2', ExposedPort: 8080,
-    FlagTemplate: 'flag{new-{userId}}',
+    FlagTemplate: 'flag{new-[GUID]}',
   })
 })
 
@@ -315,7 +315,7 @@ test('administrator can start and stop a test container from an unpublished draf
   await page.route(`**/api/admin/challenges/${challengeId}`, (route) =>
     route.fulfill({ json: { ...edit, publication: { rowVersion: 2, categoryIds: [] } } })
   )
-  await page.route(`**/api/challenges/${challengeId}/instances`, (route) => {
+  await page.route(`**/api/challenges/${challengeId}/instances?*`, (route) => {
     if (route.request().method() === 'POST') {
       starts += 1
       return route.fulfill({ json: {
@@ -330,6 +330,7 @@ test('administrator can start and stop a test container from an unpublished draf
     return route.fulfill({ status: 404, json: {} })
   })
 
+  await page.route(`**/api/challenges/${challengeId}/instances/test-stop`, route => { stops += 1; return route.fulfill({ status: 204, body: '' }) })
   await page.goto(`/admin/library/challenges/${challengeId}`)
   await page.getByRole('button', { name: 'Start test container' }).click()
   await expect(page.getByRole('button', { name: 'Stop test container' })).toBeVisible()

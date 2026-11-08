@@ -63,7 +63,7 @@
   "editorFlagNumber": "Flag {{number}}",
   "editorAddFlag": "Add Flag",
   "editorFlagTemplate": "Flag template",
-  "editorFlagTemplateHint": "Use {userId} for a unique Flag per learner.",
+  "editorFlagTemplateHint": "Use [GUID] for a new random Flag on each start, for example flag{[GUID]}.",
   "editorDynamicFlagHint": "Set each Flag beside its uploaded attachment.",
   "editorHelp": "Hints and writeup",
   "editorHintNumber": "Hint {{number}}",
@@ -158,5 +158,7 @@
   "openChallenge": "Open challenge",
   "copyFailed": "Copy failed. Select the address above and copy it manually.",
   "tcpConnectionHint": "Connect to this address with a TCP client.",
-  "testInstanceNoCredit": "Administrator test instances do not award progress or points. Stop the test instance before using the published challenge."
+  "testInstanceNoCredit": "Administrator test instances do not award progress or points. Stop the test instance before using the published challenge.",
+  "editorFlagTemplateObsolete": "The {userId} placeholder is no longer supported. Replace it with [GUID].",
+  "editorTestSessionHint": "Tests belong to this editor and stop when you leave. A short lease reclaims tests after an unexpected disconnect."
 }
