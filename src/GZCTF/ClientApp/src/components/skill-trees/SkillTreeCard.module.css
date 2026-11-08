@@ -8,7 +8,7 @@
   border: 1px solid var(--hbc-border);
   border-radius: 1rem;
   background: var(--hbc-card);
-  box-shadow: 0 8px 24px rgb(30 41 59 / 3%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 3%);
   color: var(--hbc-ink);
   text-decoration: none;
   transition:
@@ -18,7 +18,7 @@
 }
 .card:hover {
   border-color: var(--hbc-primary);
-  box-shadow: 0 14px 30px rgb(30 41 59 / 8%);
+  box-shadow: 0 14px 30px rgb(0 0 0 / 8%);
   transform: translateY(-3px);
 }
 .card:focus-visible {
@@ -73,7 +73,7 @@
   margin-top: 0.9rem;
   padding-top: 0.85rem;
   border-top: 1px solid var(--hbc-border);
-  color: var(--hbc-primary);
+  color: var(--hbc-accent);
   font-size: 0.87rem;
   font-weight: 700;
 }
@@ -109,7 +109,7 @@
   overflow: hidden;
   border-radius: 1rem 1rem 0 0;
   background: var(--hbc-primary-soft);
-  color: var(--hbc-primary);
+  color: var(--hbc-accent);
 }
 .cover img {
   width: 100%;

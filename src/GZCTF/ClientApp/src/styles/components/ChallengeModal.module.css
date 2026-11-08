@@ -22,7 +22,7 @@
   display: flex;
   justify-content: space-between;
   position: sticky;
-  background-color: var(--mantine-color-body);
+  background-color: var(--hbc-card);
   bottom: 0;
   width: 100%;
   z-index: 400;

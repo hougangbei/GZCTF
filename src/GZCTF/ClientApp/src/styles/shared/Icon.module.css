@@ -1,5 +1,5 @@
 .main {
-  fill: light-dark(var(--mantine-color-gray-6), var(--mantine-color-white));
+  fill: var(--hbc-muted);
 }
 
 .front {

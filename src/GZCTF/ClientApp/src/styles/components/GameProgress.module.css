@@ -47,13 +47,7 @@
   height: var(--thickness);
   width: 100%;
 
-  @mixin dark {
-    background-color: alpha(var(--mantine-color-gray-6), 0.8);
-  }
-
-  @mixin light {
-    background-color: alpha(var(--mantine-color-light-4), 0.8);
-  }
+  background-color: var(--hbc-border);
 }
 
 @keyframes spike {

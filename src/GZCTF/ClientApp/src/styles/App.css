@@ -1,28 +1,5 @@
-/* Shared GZCTF surfaces, adapted from the public HaoBaChang visual reference. */
-:root,
-[data-mantine-color-scheme='light'] {
-  --hbc-bg: #f9fafb;
-  --hbc-card: #fff;
-  --hbc-surface: #f3f5fa;
-  --hbc-ink: #1e293b;
-  --hbc-muted: #64748b;
-  --hbc-border: #e2e8f0;
-  --artex-background: var(--hbc-bg);
-  --artex-sidebar: var(--hbc-surface);
-  --artex-card: var(--hbc-card);
-  --artex-surface: var(--hbc-surface);
-  --artex-foreground: var(--hbc-ink);
-  --artex-muted: var(--hbc-muted);
-  --artex-border: var(--hbc-border);
-}
-
-[data-mantine-color-scheme='dark'] {
-  --hbc-bg: #111827;
-  --hbc-card: #1f2937;
-  --hbc-surface: #273449;
-  --hbc-ink: #f8fafc;
-  --hbc-muted: #cbd5e1;
-  --hbc-border: #37465d;
+/* Neutral surfaces come from the shared Mantine resolver; accents follow personal settings. */
+:root {
   --artex-background: var(--hbc-bg);
   --artex-sidebar: var(--hbc-surface);
   --artex-card: var(--hbc-card);
@@ -35,61 +12,142 @@
 body {
   padding: 0;
   margin: 0;
-
   background-color: var(--hbc-bg);
   color: var(--hbc-ink);
-
-  @media print {
-    background-color: light-dark(var(--mantine-color-white), var(--mantine-color-gray-7));
-  }
+  -webkit-font-smoothing: antialiased;
 }
 
 .mantine-Card-root,
 .mantine-Paper-root {
   border: 1px solid var(--hbc-border);
-  border-radius: 0.9rem;
+  border-radius: 12px;
   background: var(--hbc-card);
-  box-shadow: 0 8px 26px rgb(30 41 59 / 3%);
+  color: var(--hbc-ink);
+  box-shadow: none;
 }
 
-.mantine-Input-input,
-.mantine-Select-input,
-.mantine-Textarea-input {
-  border-color: var(--hbc-border);
-  border-radius: 0.65rem;
+.mantine-Modal-content,
+.mantine-Modal-header,
+.mantine-Drawer-content,
+.mantine-Drawer-header,
+.mantine-Popover-dropdown,
+.mantine-Menu-dropdown,
+.mantine-Combobox-dropdown,
+.mantine-Notifications-notification {
+  background: var(--hbc-card);
+  color: var(--hbc-ink);
+}
+
+.mantine-Modal-content,
+.mantine-Drawer-content,
+.mantine-Popover-dropdown,
+.mantine-Menu-dropdown,
+.mantine-Combobox-dropdown {
+  border: 1px solid var(--hbc-border);
+  box-shadow: var(--hbc-shadow);
+}
+
+:is(.mantine-Input-input, .mantine-Select-input, .mantine-Textarea-input):not([data-variant='unstyled']) {
+  background-color: var(--hbc-card);
+  color: var(--input-color, var(--hbc-ink));
+  border-color: var(--hbc-control-border);
+  border-radius: 8px;
 }
 
 .mantine-Input-input::placeholder,
 .mantine-Select-input::placeholder,
 .mantine-Textarea-input::placeholder {
-  color: var(--hbc-muted);
+  color: var(--input-placeholder-color, var(--hbc-muted));
   opacity: 1;
+}
+
+.mantine-Input-input:focus,
+.mantine-Select-input:focus,
+.mantine-Textarea-input:focus,
+.mantine-Input-input:focus-within {
+  border-color: var(--hbc-accent);
+}
+
+.mantine-Input-input[data-error],
+.mantine-Select-input[data-error],
+.mantine-Textarea-input[data-error] {
+  border-color: var(--mantine-color-error);
+  color: var(--mantine-color-error);
+}
+
+.mantine-Input-input[data-success],
+.mantine-Select-input[data-success],
+.mantine-Textarea-input[data-success] {
+  border-color: var(--input-bd);
+}
+
+.mantine-Input-input:disabled:not([data-variant='unstyled']),
+.mantine-Select-input:disabled:not([data-variant='unstyled']),
+.mantine-Textarea-input:disabled:not([data-variant='unstyled']),
+.mantine-Button-root:disabled,
+.mantine-Button-root[data-disabled],
+.mantine-ActionIcon-root:disabled,
+.mantine-ActionIcon-root[data-disabled] {
+  background-color: var(--hbc-disabled-bg);
+  border-color: var(--hbc-border);
+  color: var(--hbc-disabled-ink);
+  opacity: 1;
+  cursor: not-allowed;
 }
 
 .mantine-Button-root,
 .mantine-ActionIcon-root {
-  border-radius: 0.65rem;
+  border-radius: 8px;
 }
 
-:is(a, button, input, select, textarea):focus-visible {
-  outline: 2px solid var(--hbc-primary);
-  outline-offset: 2px;
+.mantine-Button-root[data-variant='default'],
+.mantine-ActionIcon-root[data-variant='default'] {
+  border-color: var(--hbc-control-border);
 }
 
-::-webkit-scrollbar {
-  height: 6px;
-  width: 6px;
+.mantine-Menu-item {
+  --menu-item-hover: var(--hbc-surface);
+  color: var(--menu-item-color, var(--hbc-ink));
+}
+.mantine-Menu-item[data-disabled] { color: var(--hbc-disabled-ink); opacity: 1; }
+
+.mantine-Combobox-option,
+.mantine-Select-option {
+  color: var(--hbc-ink);
+}
+.mantine-Combobox-option[data-combobox-selected],
+.mantine-Select-option[data-combobox-selected] {
+  background-color: var(--hbc-surface);
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--mantine-color-dark-3);
-  border-radius: 3px;
+.mantine-Table-table {
+  color: var(--hbc-ink);
+  --table-border-color: var(--hbc-border);
+  --table-highlight-on-hover-color: var(--hbc-surface);
+  --table-striped-color: var(--hbc-surface);
+}
+.mantine-Table-th { color: var(--hbc-muted); }
+.mantine-Table-thead { background: var(--hbc-card); }
+
+:is(a, button, input, select, textarea, [role='tab']):focus-visible {
+  outline: 2px solid var(--hbc-accent);
+  outline-offset: 3px;
 }
 
-::-webkit-scrollbar-track {
-  background-color: transparent;
+.mantine-Input-input:focus-visible,
+.mantine-Select-input:focus-visible,
+.mantine-Textarea-input:focus-visible,
+:is(input, select, textarea):focus-visible {
+  outline-offset: -1px;
 }
 
-::-webkit-scrollbar-corner {
-  background-color: transparent;
+::-webkit-scrollbar { height: 8px; width: 8px; }
+::-webkit-scrollbar-thumb { background: var(--hbc-control-border); border: 2px solid var(--hbc-bg); border-radius: 5px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; }
+}
+@media print {
+  body { background: white; color: black; }
 }

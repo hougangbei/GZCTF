@@ -1,8 +1,10 @@
 .section {
+  color: var(--hbc-ink);
+  background: var(--hbc-card);
   min-width: 0;
   padding: 20px;
   margin-top: 0;
-  border: 1px solid var(--mantine-color-default-border);
+  border: 1px solid var(--hbc-border);
   border-radius: 12px;
 }
 .heading {
@@ -35,9 +37,9 @@
 }
 .upload {
   padding: 18px;
-  border: 1px dashed var(--mantine-color-default-border);
+  border: 1px dashed var(--hbc-border);
   border-radius: var(--mantine-radius-md);
-  background: var(--mantine-color-default-hover);
+  background: var(--hbc-surface);
 }
 .actions {
   display: flex;
@@ -55,7 +57,7 @@
   align-items: center;
   gap: 14px;
   padding: 16px 0;
-  border-bottom: 1px solid var(--mantine-color-default-border);
+  border-bottom: 1px solid var(--hbc-border);
 }
 .row:first-child {
   padding-top: 0;
@@ -65,7 +67,7 @@
 }
 .document {
   display: flex;
-  color: var(--mantine-primary-color-filled);
+  color: var(--hbc-accent);
   flex-shrink: 0;
 }
 .details {
@@ -83,7 +85,7 @@
 }
 .external {
   flex-shrink: 0;
-  color: var(--mantine-color-dimmed);
+  color: var(--hbc-muted);
 }
 .empty {
   display: flex;
@@ -94,7 +96,7 @@
   padding: 14px 8px;
 }
 .empty > svg {
-  color: var(--mantine-primary-color-filled);
+  color: var(--hbc-accent);
   margin-bottom: 4px;
 }
 @media (max-width: 600px) {

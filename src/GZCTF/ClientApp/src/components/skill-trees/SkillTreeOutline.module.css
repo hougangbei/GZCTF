@@ -17,7 +17,7 @@
 }
 .back:hover,
 .categoryBack:hover {
-  color: var(--hbc-primary);
+  color: var(--hbc-accent);
 }
 .back:focus-visible,
 .categoryBack:focus-visible {
@@ -134,7 +134,7 @@
   border: 1px solid var(--hbc-border);
   border-radius: 10px;
   background: var(--hbc-surface);
-  color: var(--hbc-primary);
+  color: var(--hbc-accent);
   font-size: 1.3rem;
 }
 .categoryText,
@@ -182,7 +182,7 @@
   padding: 2px 7px;
   border-radius: 5px;
   background: var(--hbc-primary-soft);
-  color: var(--hbc-primary);
+  color: var(--hbc-accent);
   font-weight: 550;
 }
 .arrow {
@@ -193,7 +193,7 @@
 }
 .categoryLink:hover .arrow,
 .contentLink:hover .arrow {
-  color: var(--hbc-primary);
+  color: var(--hbc-accent);
 }
 .empty,
 .detailState {

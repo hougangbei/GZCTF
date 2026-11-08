@@ -49,7 +49,7 @@
   color: var(--hbc-accent, var(--mantine-primary-color-filled));
 }
 .composer {
-  border: 1px solid var(--hbc-border);
+  border: 1px solid var(--hbc-control-border);
   border-radius: 12px;
   margin-top: 18px;
   overflow: hidden;
@@ -76,7 +76,7 @@
   min-height: 520px;
   resize: vertical;
   border: 0;
-  border-inline-end: 1px solid var(--hbc-border);
+  border-inline-end: 1px solid var(--hbc-control-border);
   background: var(--hbc-bg);
   color: var(--hbc-ink);
   padding: 20px;
@@ -145,7 +145,7 @@
   .source {
     min-height: 350px;
     border-inline-end: 0;
-    border-bottom: 1px solid var(--hbc-border);
+    border-bottom: 1px solid var(--hbc-control-border);
   }
   .header {
     position: static;

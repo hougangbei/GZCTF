@@ -129,6 +129,7 @@ test('skill tree accents follow live personal, default and managed choices', asy
   await modalPage.goto(challengePath)
   const challengeDialog = modalPage.getByRole('dialog')
   await challengeDialog.getByRole('textbox').first().fill('flag{theme-test}')
+  await challengeDialog.getByRole('button', { name: 'Community writeups', exact: true }).click()
   const colors: string[] = []
   for (const provider of ['Customized', 'Default', 'Admin Provided'] as const) {
     await applyAccent(page, provider)
@@ -163,6 +164,7 @@ test('challenge portal and skill-tree surfaces follow light, dark and system pre
   await expect(dialog).toBeVisible()
   await dialog.getByRole('textbox').first().fill('flag{theme-test}')
   const filled = dialog.getByRole('button', { name: 'Submit flag', exact: true })
+  await dialog.getByRole('button', { name: 'Community writeups', exact: true }).click()
   const tab = dialog.getByRole('tab').first()
   for (const mode of ['light', 'dark', 'auto'] as const) {
     await page.evaluate((mode) => {

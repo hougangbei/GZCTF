@@ -6,7 +6,7 @@
 .storySection:last-child { border-bottom: 0; }
 .sectionHeader h2 { margin: 0; font-size: 1.3rem; font-weight: 750; line-height: 1.4; overflow-wrap: anywhere; }
 .grid { display: grid; min-width: 0; grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: start; gap: 1rem; }
-.block { min-width: 0; grid-column: span var(--block-width); padding: 1.5rem; border: 1px solid var(--hbc-border); border-radius: 1rem; background: var(--hbc-card); box-shadow: 0 8px 24px rgb(30 41 59 / 3%); }
+.block { min-width: 0; grid-column: span var(--block-width); padding: 1.5rem; border: 1px solid var(--hbc-border); border-radius: 1rem; background: var(--hbc-card); box-shadow: 0 8px 24px rgb(0 0 0 / 3%); }
 .storySection[data-single] .timelineBlock { grid-column: 1 / -1; }
 .block h3 { margin: 0 0 0.95rem; font-size: 1.08rem; font-weight: 750; line-height: 1.45; overflow-wrap: anywhere; }
 .block figure { margin: 0; }
@@ -22,7 +22,7 @@
 .timeline li { display: grid; grid-template-columns: minmax(80px, 120px) minmax(0, 1fr); gap: 1.5rem; padding: 1.2rem 0; border-top: 1px solid var(--hbc-border); }
 .timeline li:first-child { padding-top: 0.35rem; border-top: 0; }
 .timeline li:last-child { padding-bottom: 0; }
-.time { padding-top: 0.15rem; color: var(--hbc-primary); font-family: var(--mantine-font-family-monospace); font-size: 0.88rem; font-weight: 750; }
+.time { padding-top: 0.15rem; color: var(--hbc-accent); font-family: var(--mantine-font-family-monospace); font-size: 0.88rem; font-weight: 750; }
 .eventContent { min-width: 0; }
 .eventContent h4 { margin: 0 0 0.4rem; font-size: 1rem; font-weight: 750; line-height: 1.45; overflow-wrap: anywhere; }
 .eventContent img { max-width: 100%; height: auto; margin: 0.6rem 0; border-radius: 0.6rem; }

@@ -1,16 +1,15 @@
 .root {
   border-radius: var(--mantine-radius-sm);
-  background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  background-color: var(--hbc-surface);
 }
 
 .item {
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--hbc-border);
   position: relative;
-  background-color: light-dark(var(--mantine-color-gray-0) var(--mantine-color-dark-6));
+  background-color: var(--hbc-surface);
 
   &[data-active] {
-    box-shadow: var(--mantine-shadows-md);
-    background-color: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+    background-color: var(--hbc-card);
   }
 }
 

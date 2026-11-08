@@ -19,6 +19,7 @@ import { createStyles } from '@mantine/emotion'
 import { useLocalStorage, useMediaQuery } from '@mantine/hooks'
 import { useMemo } from 'react'
 import { resolveThemePalette } from '@Utils/ThemePalette'
+import { themeSurfaces } from '@Utils/ThemeSurfaces'
 import { useConfig } from '@Hooks/useConfig'
 import tooltipClasses from '@Styles/Tooltip.module.css'
 
@@ -86,7 +87,7 @@ const CustomTheme: MantineThemeOverride = {
     ],
   },
   primaryColor: 'brand',
-  primaryShade: { light: 6, dark: 3 },
+  primaryShade: { light: 7, dark: 3 },
   autoContrast: true,
   fontFamily: 'Roboto, -apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif',
   fontFamilyMonospace:
@@ -184,29 +185,54 @@ const CustomTheme: MantineThemeOverride = {
   },
 }
 
-export const themeCssVariablesResolver: CSSVariablesResolver = () => ({
+const surfaceVariables = (scheme: 'light' | 'dark') => {
+  const colors = themeSurfaces[scheme]
+  return {
+    '--hbc-bg': colors.bg,
+    '--hbc-card': colors.card,
+    '--hbc-surface': colors.surface,
+    '--hbc-ink': colors.ink,
+    '--hbc-muted': colors.muted,
+    '--hbc-border': colors.border,
+    '--hbc-control-border': colors.controlBorder,
+    '--hbc-disabled-bg': colors.disabledBg,
+    '--hbc-disabled-ink': colors.disabledInk,
+    '--hbc-shadow': scheme === 'dark' ? '0 8px 24px rgb(0 0 0 / 18%)' : '0 6px 20px rgb(20 24 28 / 4%)',
+    '--mantine-color-body': colors.bg,
+    '--mantine-color-text': colors.ink,
+    '--mantine-color-dimmed': colors.muted,
+    '--mantine-color-placeholder': colors.muted,
+    '--mantine-color-default': colors.card,
+    '--mantine-color-default-hover': colors.surface,
+    '--mantine-color-default-color': colors.ink,
+    '--mantine-color-default-border': colors.controlBorder,
+    '--mantine-color-disabled': colors.disabledBg,
+    '--mantine-color-disabled-color': colors.disabledInk,
+    '--mantine-color-disabled-border': colors.border,
+    '--mantine-color-error': scheme === 'light' ? '#b42318' : '#ff9b91',
+  }
+}
+
+export const themeCssVariablesResolver: CSSVariablesResolver = (theme) => ({
   variables: {
     '--hbc-primary': 'var(--mantine-primary-color-filled)',
     '--hbc-accent': 'var(--mantine-primary-color-filled)',
     '--hbc-primary-hover': 'var(--mantine-primary-color-filled-hover)',
     '--hbc-primary-foreground': 'var(--mantine-primary-color-contrast)',
     '--hbc-primary-soft': 'var(--mantine-primary-color-light)',
+    '--hbc-accent-ink': 'var(--mantine-primary-color-filled)',
   },
   light: {
-    '--hbc-bg': '#f9fafb',
-    '--hbc-card': '#ffffff',
-    '--hbc-surface': '#f3f5fa',
-    '--hbc-ink': '#1e293b',
-    '--hbc-muted': '#64748b',
-    '--hbc-border': '#e2e8f0',
+    ...surfaceVariables('light'),
+    [`--mantine-color-${theme.primaryColor}-light`]: 'color-mix(in srgb, var(--hbc-accent) 10%, var(--hbc-card))',
+    [`--mantine-color-${theme.primaryColor}-light-hover`]: 'color-mix(in srgb, var(--hbc-accent) 16%, var(--hbc-card))',
+    [`--mantine-color-${theme.primaryColor}-light-color`]: 'var(--hbc-accent)',
   },
   dark: {
-    '--hbc-bg': '#111827',
-    '--hbc-card': '#1f2937',
-    '--hbc-surface': '#273449',
-    '--hbc-ink': '#f8fafc',
-    '--hbc-muted': '#cbd5e1',
-    '--hbc-border': '#37465d',
+    ...surfaceVariables('dark'),
+    [`--mantine-color-${theme.primaryColor}-light`]: 'color-mix(in srgb, var(--hbc-accent) 10%, var(--hbc-card))',
+    [`--mantine-color-${theme.primaryColor}-light-hover`]: 'color-mix(in srgb, var(--hbc-accent) 16%, var(--hbc-card))',
+    [`--mantine-color-${theme.primaryColor}-light-color`]: 'var(--hbc-accent)',
   },
 })
 

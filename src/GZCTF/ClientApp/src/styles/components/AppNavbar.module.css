@@ -22,7 +22,7 @@
 
 .link:hover,
 .link[aria-current='page'] {
-  color: var(--hbc-primary);
+  color: var(--hbc-accent);
   background: var(--hbc-primary-soft);
 }
 
@@ -43,7 +43,7 @@
   padding: 0.75rem 1rem 1rem;
   border-bottom: 1px solid var(--hbc-border);
   background: var(--hbc-card);
-  box-shadow: 0 1rem 1.75rem rgb(30 41 59 / 12%);
+  box-shadow: 0 1rem 1.75rem rgb(0 0 0 / 12%);
 }
 
 .navbar[data-mobile][data-open] { display: flex; }

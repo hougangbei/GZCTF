@@ -9,30 +9,6 @@
   color: var(--board-ink);
   background: var(--board-bg);
 }
-.shell :global(.mantine-AppShell-header) {
-  box-shadow: none;
-  border-bottom-color: var(--board-border);
-}
-.shell :global(.mantine-AppShell-header) nav a {
-  border-radius: 2px;
-  font-size: 0.82rem;
-  font-weight: 500;
-}
-.shell :global(.mantine-AppShell-header) nav a[aria-current='page'] {
-  background: transparent;
-  text-decoration: underline;
-  text-underline-offset: 9px;
-  text-decoration-thickness: 2px;
-}
-.shell :global(.mantine-AppShell-header) :global(.mantine-Button-root) {
-  border: 1px solid var(--board-border);
-  border-radius: 2px;
-  background: var(--board-bg);
-  color: var(--board-ink);
-}
-.shell :global(.mantine-Burger-root) {
-  --burger-color: var(--board-muted);
-}
 .shell :global(.mantine-AppShell-main) {
   background: var(--board-bg);
 }
@@ -517,7 +493,7 @@ tr[data-rank='3'] .rank span {
   }
 }
 
-.levelBadge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: var(--mantine-radius-sm); color: var(--mantine-primary-color-filled); background: var(--mantine-primary-color-light); font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
+.levelBadge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: var(--mantine-radius-sm); color: var(--board-accent); background: var(--hbc-primary-soft); font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
 .signatureColumn button { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--board-muted); font-size: 0.8125rem; }
 .mobileProfile { display: none; }
 @media (max-width: 640px) {
@@ -528,4 +504,4 @@ tr[data-rank='3'] .rank span {
 
 .signatureColumn button, .mobileBio { border: 0; background: transparent; font-family: inherit; padding: 0; text-align: left; max-width: 100%; cursor: pointer; }
 .signatureColumn button:disabled, .mobileBio:disabled { cursor: default; }
-.signatureColumn button:focus-visible, .mobileBio:focus-visible { outline: 2px solid var(--mantine-primary-color-filled); outline-offset: 3px; }
+.signatureColumn button:focus-visible, .mobileBio:focus-visible { outline: 2px solid var(--board-accent); outline-offset: 3px; }

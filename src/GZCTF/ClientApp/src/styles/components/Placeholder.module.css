@@ -10,5 +10,5 @@
 }
 
 .board > h1 {
-  color: light-dark(var(--mantine-primary-color-filled), var(--mantine-primary-color-4));
+  color: var(--hbc-accent);
 }

@@ -19,27 +19,20 @@
     padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
   }
 
-  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+  color: var(--hbc-ink);
 
   &:disabled {
     cursor: not-allowed;
-    color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-3));
+    color: var(--hbc-muted);
   }
 
   &:not(:disabled):not([data-active]):hover {
-    background-color: light-dark(var(--mantine-color-light-1), var(--mantine-color-dark-6));
+    background-color: var(--hbc-surface);
   }
 
   &[data-active] {
-    @mixin dark {
-      color: var(--tab-active-color, var(--mantine-primary-color-4));
-      background-color: alpha(var(--mantine-color-dark-7), 0.5);
-    }
-
-    @mixin light {
-      color: var(--tab-active-color, var(--mantine-primary-color-7));
-      background-color: var(--mantine-color-light-1);
-    }
+    color: var(--tab-active-color, var(--hbc-accent));
+    background-color: var(--hbc-primary-soft);
   }
 }
 
