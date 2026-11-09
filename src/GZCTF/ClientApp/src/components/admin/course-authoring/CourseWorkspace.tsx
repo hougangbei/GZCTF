@@ -37,6 +37,8 @@ import {
 import { moveOutlineContent, type TransferTarget } from '@Utils/courseTransfer'
 import type { SkillTreeIconKey } from '@Utils/skillTreeAdmin'
 import { courseRequest, useCourseWorkspace } from '@Hooks/useCourseAuthoring'
+import { buildCourseReview, courseReviewHref, groupReviewIssues } from '@Utils/courseReview'
+import { useCourseReview } from '@Hooks/useCourseReview'
 import { useCourseResources } from '@Hooks/useCourseTransfers'
 import { useHistoryLeaveGuard } from '@Hooks/useHistoryLeaveGuard'
 import type { SkillTreeDeleteImpactResponse } from '@Api'
@@ -51,6 +53,7 @@ import { SharedReferences } from './SharedReferences'
 
 export const CourseWorkspace = ({ id }: { id: string }) => {
   const { data, error, mutate } = useCourseWorkspace(id)
+  const reviewSession = useCourseReview(id)
   const { data: categoryResources, mutate: refreshCategoryResources } = useCourseResources('category')
   const [params, setParams] = useSearchParams(),
     navigate = useNavigate()
@@ -188,6 +191,7 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
       document: next,
     })
     accept(saved)
+    reviewSession.markEdited()
     return saved
   }
   const execute = async (work: () => Promise<void>) => {
@@ -301,13 +305,9 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
   const inspect = () =>
     execute(async () => {
       const saved = await ensureSaved()
-      setCheck(
-        await courseRequest<CourseCheck>(
-          `/api/admin/skill-trees/${id}/workspace/check`,
-          { version: saved.version },
-          'POST'
-        )
-      )
+      const checked = await courseRequest<CourseCheck>(`/api/admin/skill-trees/${id}/workspace/check`, {version: saved.version}, 'POST')
+      setCheck(checked)
+      reviewSession.save(buildCourseReview(id, saved.document, checked))
     })
   const publish = () =>
     execute(async () => {
@@ -332,7 +332,8 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
       }
     if (!issue.skillId && !issue.contentId && issue.categoryId)
       node = { kind: 'category', categoryId: issue.categoryId }
-    select(node)
+    if (node.contentId && !issue.code.endsWith('_identity_unavailable')) navigate(contentEditorHref(id,node) + '&review=1')
+    else select(node)
     setCheck(undefined)
   }
   const rememberOutline = (element: HTMLElement | null) => {
@@ -506,6 +507,7 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
           >
             学员预览
           </Button>
+          {reviewSession.review && <Button component={Link} to={courseReviewHref(id)} variant="light" disabled={pending}>问题清单（{groupReviewIssues(reviewSession.review).length}）</Button>}
           <Button disabled={pending} onClick={() => void inspect()}>
             检查并发布
           </Button>
@@ -828,6 +830,7 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
           onClose={() => !pending && setCheck(undefined)}
           onPublish={() => void publish()}
           onLocate={locate}
+          onRepair={()=>navigate(courseReviewHref(id))}
         />
       )}
       {preview && (

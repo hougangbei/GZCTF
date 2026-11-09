@@ -1,3 +1,5 @@
+import { markCourseReviewEdited } from '@Hooks/useCourseReview'
+import { courseReviewHref } from '@Utils/courseReview'
 import { useAdminTestSession } from '@Hooks/useAdminTestSession'
 import { runtimeErrorKey } from '@Utils/runtimeErrors'
 import { useHistoryLeaveGuard } from '@Hooks/useHistoryLeaveGuard'
@@ -41,6 +43,7 @@ const ChallengeEditSession = () => {
   const [params] = useSearchParams()
   const parsedContext = courseContext(params)
   const context = parsedContext === 'invalid' ? undefined : parsedContext
+  const backHref = context ? (params.get('review') === '1' ? courseReviewHref(context.courseId) : workspaceHref(context.courseId,{kind:'skill',categoryId:context.categoryId,skillId:context.skillId})) : '/admin/skill-trees?tab=challenges'
   const { data, error, mutate } = useSWR<ChallengeEditResponse>(
     id && user?.userId && parsedContext !== 'invalid' ? [contextualPath(`/api/admin/challenges/${id}/edit?locale=en`, context),user.userId] : null,
     ([path]:[string,string])=>fetcher(path), {keepPreviousData:false}
@@ -108,6 +111,7 @@ const ChallengeEditSession = () => {
       const response = context
         ? { data: await courseRequest<ChallengeEditResponse>(contextualPath(`/api/admin/challenges/${id}`, context), command) }
         : await api.adminChallenges.adminChallengesUpdate(id, command)
+      if(context) markCourseReviewEdited(user?.userId,context.courseId,{kind:'challenge',contentId:id})
       setPublishVersion(response.data.publication?.rowVersion)
       setSavedDraft(JSON.stringify(draft))
       await mutate(response.data, { revalidate: false })
@@ -127,7 +131,7 @@ const ChallengeEditSession = () => {
   const publish = async () => {
     if (context) {
       const version = await save()
-      if(version !== undefined) navigate(workspaceHref(context.courseId,{kind:'skill',categoryId:context.categoryId,skillId:context.skillId}))
+      if(version !== undefined) navigate(backHref)
       return
     }
     if (!draft?.body.trim()) {
@@ -237,8 +241,8 @@ const ChallengeEditSession = () => {
                 {draft && <Badge variant="outline">{draft.type}</Badge>}
               </Group>
             </Stack>
-            <Button component={Link} to={context ? workspaceHref(context.courseId,{kind:'skill',categoryId:context.categoryId,skillId:context.skillId}) : '/admin/skill-trees?tab=challenges'} variant="subtle">
-              {context ? '返回课程编排' : tSkillTrees('workspace.tabs.challenges')}
+            <Button component={Link} to={backHref} variant="subtle">
+              {context ? (params.get('review') === '1' ? '返回问题清单' : '返回课程编排') : tSkillTrees('workspace.tabs.challenges')}
             </Button>
           </Group>
 
@@ -290,7 +294,7 @@ const ChallengeEditSession = () => {
                 <Button variant="light" onClick={() => setPreviewOpen(true)}>{t('editorPreview')}</Button>
                 <Button variant="light" loading={saving} disabled={uploading || testing || retired} onClick={save}>{t('editorSaveDraft')}</Button>
                 <Button color="green" loading={saving} disabled={uploading || testing || retired} onClick={publish}>
-                  {context ? '保存并返回课程' : tSkillTrees('publish.challengeTitle')}
+                  {context ? (params.get('review') === '1' ? '保存并返回问题清单' : '保存并返回课程') : tSkillTrees('publish.challengeTitle')}
                 </Button>
               </Group>
               <Modal opened={previewOpen} onClose={() => setPreviewOpen(false)} title={t('editorPreview')} size="lg">

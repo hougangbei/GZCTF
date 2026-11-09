@@ -453,7 +453,7 @@ test('publication errors identify the content and explain missing description in
   await expect(error).toContainText('请补全题目标题和各语言版本的正文')
   await expect(page.getByRole('button', { name: '确认统一发布', exact: true })).toBeDisabled()
   await error.getByRole('button', { name: '定位问题', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'WP模板', exact: true })).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`/admin/library/challenges/${lessonId}.*review=1`))
 })
 
 test('cover and disabled-content warnings explain that they do not prevent publication', async ({ page }) => {

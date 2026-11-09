@@ -1,3 +1,5 @@
+import { markCourseReviewEdited } from '@Hooks/useCourseReview'
+import { courseReviewHref } from '@Utils/courseReview'
 import { useHistoryLeaveGuard } from '@Hooks/useHistoryLeaveGuard'
 import { Alert, Badge, Button, Group, Select, Stack, Text, Textarea, TextInput, Title } from '@mantine/core'
 import { useEffect, useRef, useState } from 'react'
@@ -41,6 +43,8 @@ const LessonEditSession = ({
   onLocaleChange: (locale: string) => void
 }) => {
   const navigate = useNavigate()
+  const [reviewParams] = useSearchParams()
+  const backHref = context ? (reviewParams.get('review') === '1' ? courseReviewHref(context.courseId) : workspaceHref(context.courseId,{kind:'skill',categoryId:context.categoryId,skillId:context.skillId})) : '/admin/library/lessons'
   const { t } = useTranslation('lessonWorkspace')
   const { t: tSkillTrees } = useTranslation('skillTrees')
   const { data: categories } = useAdminSkillCategories()
@@ -132,6 +136,7 @@ const LessonEditSession = ({
       const response = context
         ? { data: await courseRequest<LessonResponse>(contextualPath(`/api/admin/lessons/${id}`, context), { ...command, rowVersion: data.publication?.rowVersion }) }
         : await api.adminLessons.adminLessonsUpdate(id, command)
+      if(context) markCourseReviewEdited(userId,context.courseId,{kind:'lesson',contentId:id})
       // A newer session or another tab may have replaced this draft while the request ran.
       // Remove only the exact stored revision that this save submitted.
       try {
@@ -267,16 +272,16 @@ const LessonEditSession = ({
             onClick={async () => {
               const version = await save()
               if (version !== undefined && mounted.current) {
-                if (context) navigate(workspaceHref(context.courseId, {kind:'skill', categoryId:context.categoryId, skillId:context.skillId}))
+                if (context) navigate(backHref)
                 else { setPublishRowVersion(version); setPublishOpen(true) }
               }
             }}
           >
-            {context ? '保存并返回课程' : t('publish', { defaultValue: 'Publish lesson' })}
+            {context ? (reviewParams.get('review') === '1' ? '保存并返回问题清单' : '保存并返回课程') : t('publish', { defaultValue: 'Publish lesson' })}
           </Button>
         </Group>
       </header>
-      {context && <Alert mb="md">正在编辑课程草稿，保存不会改变学员可见内容。<Button component={Link} to={workspaceHref(context.courseId, {kind:'skill',categoryId:context.categoryId,skillId:context.skillId})} variant="subtle">返回课程编排</Button></Alert>}
+      {context && <Alert mb="md">正在编辑课程草稿，保存不会改变学员可见内容。<Button component={Link} to={backHref} variant="subtle">{reviewParams.get('review') === '1' ? '返回问题清单' : '返回课程编排'}</Button></Alert>}
       {published && !context && (
         <Alert color="orange" mb="md">
           {t('publishedWarning', {

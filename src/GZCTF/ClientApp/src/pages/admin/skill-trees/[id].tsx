@@ -1,6 +1,7 @@
 import { useParams, useSearchParams } from 'react-router'
 import { WithNavBar } from '@Components/WithNavbar'
 import { WithRole } from '@Components/WithRole'
+import { CourseReviewWorkspace } from '@Components/admin/course-authoring/CourseReviewWorkspace'
 import { CourseWorkspace } from '@Components/admin/course-authoring/CourseWorkspace'
 import LegacySkillTreeEditor from '@Components/admin/skill-trees/LegacySkillTreeEditor'
 import { Role } from '@Api'
@@ -13,7 +14,7 @@ export default function CourseAuthoringPage() {
   if (params.get('legacy') === '1') return <LegacySkillTreeEditor />
   return (
     <WithRole requiredRole={Role.Admin}>
-      <WithNavBar minWidth={0}>{id && <CourseWorkspace key={`${user?.userId ?? 'pending'}:${id}`} id={id} />}</WithNavBar>
+      <WithNavBar minWidth={0}>{id && (params.get('review') === '1' ? <CourseReviewWorkspace key={`${user?.userId ?? 'pending'}:${id}`} id={id} /> : <CourseWorkspace key={`${user?.userId ?? 'pending'}:${id}`} id={id} />)}</WithNavBar>
     </WithRole>
   )
 }
