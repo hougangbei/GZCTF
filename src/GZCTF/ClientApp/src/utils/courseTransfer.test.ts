@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { CourseWorkspace } from './courseAuthoring'
-import { contentKey, uniqueContents, transferCommand, resourceLabel } from './courseTransfer'
+import { contentKey, uniqueContents, transferCommand, resourceLabel, moveOutlineContent } from './courseTransfer'
 
 describe('course transfer identity', () => {
   it('keeps kind in identity and preserves first source metadata', () => {
@@ -56,5 +56,53 @@ describe('course transfer identity', () => {
     expect(resourceLabel(row)).toContain('ExSolo [gzctf]')
     expect(resourceLabel(row)).toContain('ExSolo个人赛')
     expect(resourceLabel({ ...row, sourceLabels: [] })).toContain('自建')
+  })
+})
+
+describe('inline outline moves', () => {
+  const content = { contentId: 'q', kind: 'challenge' as const, title: 'Q', summary: '', state: 'Draft' }
+  const skill = (skillId: string, contents = [content]) => ({
+    skillId,
+    name: skillId,
+    summary: '',
+    iconKey: 'web',
+    isEnabled: true,
+    contents,
+  })
+  const doc = () => ({
+    name: 'Tree',
+    summary: '',
+    iconKey: 'web',
+    categories: [
+      { categoryId: 'a', name: 'A', summary: '', iconKey: 'web', skills: [skill('s')] },
+      { categoryId: 'b', name: 'B', summary: '', iconKey: 'web', skills: [skill('t', []), skill('s')] },
+    ],
+  })
+  const from = { kind: 'challenge' as const, contentId: 'q', categoryId: 'a', skillId: 's' }
+  it('moves across category/skill and updates every shared occurrence without mutating input', () => {
+    const original = doc(),
+      next = moveOutlineContent(original, from, { categoryId: 'b', skillId: 't' })
+    expect(next.categories[0].skills[0].contents).toEqual([])
+    expect(next.categories[1].skills[1].contents).toEqual([])
+    expect(next.categories[1].skills[0].contents).toEqual([content])
+    expect(original.categories[0].skills[0].contents).toEqual([content])
+  })
+  it('adds a reference without removing original, and deduplicates target', () => {
+    const original = doc()
+    original.categories[1].skills[0].contents = [content]
+    const next = moveOutlineContent(original, from, { categoryId: 'b', skillId: 't' }, 'reference')
+    expect(next.categories[0].skills[0].contents).toEqual([content])
+    expect(next.categories[1].skills[0].contents).toEqual([content])
+  })
+  it('does not remove anything when source, target or content is stale, or target is same shared skill', () => {
+    const original = doc()
+    for (const target of [
+      { categoryId: 'b', skillId: 's' },
+      { categoryId: 'missing', skillId: 't' },
+    ])
+      expect(moveOutlineContent(original, from, target)).toBe(original)
+    expect(moveOutlineContent(original, { ...from, contentId: 'missing' }, { categoryId: 'b', skillId: 't' })).toBe(
+      original
+    )
   })
 })

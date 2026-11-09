@@ -1,6 +1,7 @@
-import { Badge, Button, Group, Stack, Text } from '@mantine/core'
-import { useRef } from 'react'
+import { Badge, Button, Group, Menu, Stack, Text } from '@mantine/core'
+import { useRef, useState } from 'react'
 import type { CourseDocument, CourseSelection } from '@Utils/courseAuthoring'
+import type { TransferTarget } from '@Utils/courseTransfer'
 import classes from './CourseWorkspace.module.css'
 
 type Props = {
@@ -9,9 +10,13 @@ type Props = {
   disabled: boolean
   dirty?: boolean
   onSelect: (node: CourseSelection) => void
+  onTransfer: (node: CourseSelection, target?: TransferTarget) => void
   onMove: (node: CourseSelection, delta: number) => void
 }
-export const CourseOutline = ({ document, selection, disabled, dirty, onSelect, onMove }: Props) => {
+export const CourseOutline = ({ document, selection, disabled, dirty, onSelect, onMove, onTransfer }: Props) => {
+  const [dropKey, setDropKey] = useState('')
+  const key = (node: CourseSelection) => [node.kind, node.categoryId, node.skillId, node.contentId].join(':')
+  const isContent = (node: CourseSelection) => node.kind === 'lesson' || node.kind === 'challenge'
   const dragging = useRef<{ node: CourseSelection; index: number } | undefined>(undefined)
   const row = (name: string, node: CourseSelection, index: number, count: number, state?: string) => {
     const active =
@@ -22,6 +27,9 @@ export const CourseOutline = ({ document, selection, disabled, dirty, onSelect, 
     return (
       <div
         className={classes.outlineRow}
+        data-drop-target={dropKey === key(node) || undefined}
+        data-outline-kind={node.kind}
+        data-outline-id={node.contentId ?? node.skillId ?? node.categoryId}
         draggable={!disabled && node.kind !== 'tree'}
         onDragStart={(event) => {
           dragging.current = { node, index }
@@ -29,15 +37,44 @@ export const CourseOutline = ({ document, selection, disabled, dirty, onSelect, 
           event.dataTransfer.setData('text/plain', name)
         }}
         onDragOver={(event) => {
-          if (!disabled) event.preventDefault()
+          const source = dragging.current?.node
+          if (disabled || !source) return
+          const crossSkill =
+            isContent(source) && (node.kind === 'skill' || isContent(node)) && source.skillId !== node.skillId
+          const sameGroup = source.kind === node.kind || (isContent(source) && isContent(node))
+          const sameParent =
+            source.kind === 'category' ||
+            (source.categoryId === node.categoryId && (source.kind === 'skill' || source.skillId === node.skillId))
+          if (crossSkill || (sameGroup && sameParent)) {
+            event.preventDefault()
+            event.dataTransfer.dropEffect = 'move'
+            setDropKey(key(node))
+          }
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropKey('')
         }}
         onDragEnd={() => {
+          setDropKey('')
           dragging.current = undefined
         }}
         onDrop={(event) => {
           event.preventDefault()
+          setDropKey('')
           const source = dragging.current
           dragging.current = undefined
+          if (
+            !disabled &&
+            source &&
+            isContent(source.node) &&
+            (node.kind === 'skill' || isContent(node)) &&
+            source.node.skillId !== node.skillId &&
+            node.categoryId &&
+            node.skillId
+          ) {
+            onTransfer(source.node, { categoryId: node.categoryId, skillId: node.skillId })
+            return
+          }
           if (
             disabled ||
             !source ||
@@ -76,24 +113,52 @@ export const CourseOutline = ({ document, selection, disabled, dirty, onSelect, 
         </button>
         {node.kind !== 'tree' && (
           <Group gap={0} wrap="nowrap">
-            <Button
-              size="compact-xs"
-              variant="subtle"
-              aria-label={`上移 ${name}`}
-              disabled={disabled || index === 0}
-              onClick={() => onMove(node, -1)}
-            >
-              ↑
-            </Button>
-            <Button
-              size="compact-xs"
-              variant="subtle"
-              aria-label={`下移 ${name}`}
-              disabled={disabled || index === count - 1}
-              onClick={() => onMove(node, 1)}
-            >
-              ↓
-            </Button>
+            {isContent(node) && (
+              <Menu position="bottom-end" withinPortal>
+                <Menu.Target>
+                  <Button
+                    size="compact-xs"
+                    variant="subtle"
+                    aria-label={`更多操作 ${name}`}
+                    disabled={disabled}
+                    draggable={false}
+                  >
+                    ⋯
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item onClick={() => onTransfer(node)}>移动或引用到…</Menu.Item>
+                  <Menu.Item disabled={index === 0} onClick={() => onMove(node, -1)}>
+                    上移
+                  </Menu.Item>
+                  <Menu.Item disabled={index === count - 1} onClick={() => onMove(node, 1)}>
+                    下移
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            )}
+            {!isContent(node) && (
+              <>
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  aria-label={`上移 ${name}`}
+                  disabled={disabled || index === 0}
+                  onClick={() => onMove(node, -1)}
+                >
+                  ↑
+                </Button>
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  aria-label={`下移 ${name}`}
+                  disabled={disabled || index === count - 1}
+                  onClick={() => onMove(node, 1)}
+                >
+                  ↓
+                </Button>
+              </>
+            )}
           </Group>
         )}
       </div>
@@ -101,6 +166,9 @@ export const CourseOutline = ({ document, selection, disabled, dirty, onSelect, 
   }
   return (
     <nav aria-label="课程编排目录" className={classes.outline}>
+      <Text size="xs" c="dimmed" mb="xs">
+        拖到技能可移动；同技能内拖动可排序。
+      </Text>
       {row(document.name, { kind: 'tree' }, 0, 1, dirty ? '未保存' : '课程草稿')}
       {document.categories.map((category, ci) => (
         <div key={category.categoryId} className={classes.branch}>

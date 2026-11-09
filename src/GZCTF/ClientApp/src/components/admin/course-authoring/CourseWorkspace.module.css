@@ -136,3 +136,12 @@
       color 0.15s;
   }
 }
+.outlineRow[data-drop-target] {
+  background: var(--hbc-primary-soft);
+  outline: 2px solid var(--hbc-accent);
+  outline-offset: -2px;
+  border-radius: var(--mantine-radius-sm);
+}
+.outlineRow[draggable='true'] {
+  cursor: grab;
+}
