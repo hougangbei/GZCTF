@@ -90,6 +90,7 @@ public static class AuditActionCatalog
             ["content_assets.upload"] = new("content_assets.upload", "content", "asset", true),
             ["course_workspace.assets.upload"] = new("course_workspace.assets.upload", "skill_trees", "skill_tree", true),
             ["course_workspace.check"] = new("course_workspace.check", "skill_trees", "skill_tree"),
+            ["course_workspace.transfer"] = new("course_workspace.transfer", "skill_trees", "skill_tree"),
             ["course_workspace.node.create"] = new("course_workspace.node.create", "skill_trees", "skill_tree"),
             ["course_workspace.update"] = new("course_workspace.update", "skill_trees", "skill_tree"),
             ["course_workspace.publish"] = new("course_workspace.publish", "skill_trees", "skill_tree"),

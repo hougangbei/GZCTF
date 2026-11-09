@@ -41,7 +41,7 @@ public sealed class AdminAuditController(AppDbContext db) : ControllerBase
             .Skip((page - 1) * pageSize).Take(pageSize)
             .Select(item => new AuditEventSummary(item.Id, item.OccurredAtUtc, item.ActorId, item.ActorName,
                 item.ActorKind, item.Category, item.Action, item.TargetType, item.TargetId, item.TargetName,
-                item.Succeeded, item.HttpStatus, item.ErrorCode, item.ErrorReason, item.RequestId, item.AffectedCount))
+                item.Succeeded, item.HttpStatus, item.ErrorCode, item.ErrorReason, item.RequestId, item.AffectedCount, item.DetailsJson))
             .ToArrayAsync(token);
         return Ok(new PagedResult<AuditEventSummary>(items, total, page, pageSize));
     }
@@ -56,10 +56,10 @@ public sealed class AdminAuditController(AppDbContext db) : ControllerBase
 
 public sealed record AuditEventSummary(Guid Id, DateTimeOffset OccurredAtUtc, Guid? ActorId, string ActorName,
     string ActorKind, string Category, string Action, string TargetType, string? TargetId, string? TargetName,
-    bool Succeeded, int HttpStatus, string? ErrorCode, string? ErrorReason, string RequestId, int? AffectedCount)
+    bool Succeeded, int HttpStatus, string? ErrorCode, string? ErrorReason, string RequestId, int? AffectedCount, string? DetailsJson = null)
 {
     public static AuditEventSummary From(AuditEvent item) => new(item.Id, item.OccurredAtUtc, item.ActorId,
         item.ActorName, item.ActorKind, item.Category, item.Action, item.TargetType, item.TargetId,
         item.TargetName, item.Succeeded, item.HttpStatus, item.ErrorCode, item.ErrorReason, item.RequestId,
-        item.AffectedCount);
+        item.AffectedCount, item.DetailsJson);
 }

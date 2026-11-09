@@ -58,3 +58,12 @@ public sealed class CourseStoredAsset
     public string ReferenceToken { get; set; } = string.Empty;
     public DateTimeOffset LastTouchedUtc { get; set; }
 }
+
+/// <summary>Actor-scoped idempotency journal; contains only public workspace outlines.</summary>
+public sealed class CourseTransferOperation
+{
+    public Guid ActorId { get; set; }
+    public Guid OperationId { get; set; }
+    public string RequestHash { get; set; } = string.Empty;
+    public string ResponseJson { get; set; } = string.Empty;
+}

@@ -17,6 +17,7 @@ import {
 } from '@mantine/core'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
+import { ResourceLocations, SourceLabels } from '@Components/admin/course-transfer/ResourceLocations'
 import { TypedDeleteModal } from '@Components/admin/shared/TypedDeleteModal'
 import { PresetIconPicker } from '@Components/admin/skill-trees/PresetIconPicker'
 import {
@@ -35,6 +36,7 @@ import {
 } from '@Utils/courseAuthoring'
 import type { SkillTreeIconKey } from '@Utils/skillTreeAdmin'
 import { courseRequest, useCourseWorkspace } from '@Hooks/useCourseAuthoring'
+import { useCourseResources } from '@Hooks/useCourseTransfers'
 import { useHistoryLeaveGuard } from '@Hooks/useHistoryLeaveGuard'
 import type { SkillTreeDeleteImpactResponse } from '@Api'
 import { AddCourseNode, type AddedResource, type AddKind } from './AddCourseNode'
@@ -47,6 +49,7 @@ import { SharedReferences } from './SharedReferences'
 
 export const CourseWorkspace = ({ id }: { id: string }) => {
   const { data, error, mutate } = useCourseWorkspace(id)
+  const { data: categoryResources, mutate: refreshCategoryResources } = useCourseResources('category')
   const [params, setParams] = useSearchParams(),
     navigate = useNavigate()
   const [current, setCurrent] = useState<Workspace>(),
@@ -60,6 +63,7 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
     skillId: params.get('skill') ?? undefined,
   })
   const [deleteImpact, setDeleteImpact] = useState<SkillTreeDeleteImpactResponse>()
+  const [lastRemoved, setLastRemoved] = useState<CourseSelection>()
   const [addMode, setAddMode] = useState<'new' | 'library'>('new')
   const [adding, setAdding] = useState<AddKind>(),
     [check, setCheck] = useState<CourseCheck>(),
@@ -168,6 +172,7 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
     setDirty(false)
     setCheck(undefined)
     void mutate(next, { revalidate: false })
+    void refreshCategoryResources()
   }
   const persist = async (next = document) => {
     const saved = await courseRequest<Workspace>(`/api/admin/skill-trees/${id}/workspace`, {
@@ -407,6 +412,18 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
         </Stack>
         <Group>
           <Button
+            variant="light"
+            disabled={pending}
+            onClick={() =>
+              void execute(async () => {
+                await ensureSaved()
+                navigate(`/admin/content-transfer?source=${id}`)
+              })
+            }
+          >
+            整理 / 移动内容
+          </Button>
+          <Button
             color="red"
             variant="subtle"
             disabled={pending}
@@ -471,6 +488,37 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
       {success && (
         <Alert color="green">
           {success}
+          {lastRemoved && (
+            <Button
+              mt="xs"
+              variant="light"
+              size="compact-xs"
+              onClick={() => {
+                const node = lastRemoved
+                select(
+                  node.kind === 'category'
+                    ? { kind: 'tree' }
+                    : node.kind === 'skill'
+                      ? { kind: 'category', categoryId: node.categoryId }
+                      : { kind: 'skill', categoryId: node.categoryId, skillId: node.skillId }
+                )
+                beginAdd(node.kind as AddKind, 'library')
+              }}
+            >
+              从库添加，恢复移出的引用
+            </Button>
+          )}
+          <Group mt="xs">
+            <Button component={Link} to="/admin/skill-trees?tab=categories" size="compact-xs" variant="subtle">
+              打开全局类别
+            </Button>
+            <Button component={Link} to="/admin/skill-trees?tab=challenges" size="compact-xs" variant="subtle">
+              打开题目库
+            </Button>
+            <Button component={Link} to="/admin/library/lessons" size="compact-xs" variant="subtle">
+              打开课节库
+            </Button>
+          </Group>
           {current.hasPublishedVersion && (
             <Button
               component={Link}
@@ -523,6 +571,15 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
                     .join(' / ')}
                 </Text>
                 <SharedReferences id={id} node={selection} />
+                {selection.kind === 'category' && (
+                  <>
+                    <Text size="sm" c="dimmed">
+                      资源库名称：{categoryResources?.find((r) => r.id === category?.categoryId)?.name ?? '加载中'}
+                    </Text>
+                    <SourceLabels resource={categoryResources?.find((r) => r.id === category?.categoryId)} />
+                    <ResourceLocations resource={categoryResources?.find((r) => r.id === category?.categoryId)} />
+                  </>
+                )}
                 {selection.kind === 'lesson' || selection.kind === 'challenge' ? (
                   <>
                     <Text>{content?.summary || '打开完整编辑器，设置内容与附件。'}</Text>
@@ -540,6 +597,9 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
                   <>
                     <TextInput
                       label="名称"
+                      description={
+                        selection.kind === 'tree' ? undefined : '本课程显示名。资源库名称保留，其他课程不会跟随改名。'
+                      }
                       required
                       value={'name' in selected ? selected.name : ''}
                       disabled={pending}
@@ -723,6 +783,31 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
           <Text>
             只解除当前目录中的引用，不删除资源，也不删除学员的完成记录。若是共享技能的内容，将同步调整本草稿中该技能的所有位置。
           </Text>
+          <Text size="sm">
+            移出后可在全局类别、技能库、题目库或课节库找到原资源，并通过“从库添加”恢复。已发布版本保持到再次发布。
+          </Text>
+          {selection.kind === 'category' && (
+            <Text size="sm">
+              当前类别包含{' '}
+              {new Set(category?.skills.flatMap((s) => s.contents.map((c) => `${c.kind}:${c.contentId}`)) ?? []).size}{' '}
+              项不同内容，仅解除类别引用。
+            </Text>
+          )}
+          <Button
+            component={Link}
+            variant="light"
+            to={
+              selection.kind === 'category'
+                ? `/admin/skill-categories/${selection.categoryId}`
+                : selection.kind === 'skill'
+                  ? `/admin/skills/${selection.skillId}`
+                  : selection.kind === 'lesson'
+                    ? `/admin/library/lessons/${selection.contentId}`
+                    : `/admin/library/challenges/${selection.contentId}`
+            }
+          >
+            查看原资源（移出后仍可访问）
+          </Button>
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setRemoving(false)}>
               取消
@@ -731,8 +816,10 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
               color="red"
               onClick={() => {
                 changed(removeCourseNode(document, selection))
+                setLastRemoved({ ...selection })
                 select(category ? { kind: 'category', categoryId: category.categoryId } : { kind: 'tree' })
                 setRemoving(false)
+                setSuccess('已从草稿移出引用，原资源仍在库中，学员记录未删除。可通过从库添加恢复。')
               }}
             >
               确认移出

@@ -1,18 +1,21 @@
-import { Badge, Button, Card, Group, Modal, SimpleGrid, Stack, Text } from '@mantine/core'
+import { Alert, Badge, Button, Card, Group, Modal, SimpleGrid, Stack, Text } from '@mantine/core'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
+import { SourceLabels, ResourceLocations } from '@Components/admin/course-transfer/ResourceLocations'
 import { SkillTreeForm, type SkillTreeFormValues } from '@Components/admin/skill-trees/SkillTreeForm'
-import { useAdminSkillCategories, useSkillTreeAdminMutations } from '@Hooks/useSkillTreeAdmin'
-import { skillTreeIcons, type SkillTreeIconKey } from '@Utils/skillTreeAdmin'
-import { showSkillTreeError } from '@Utils/skillTreeAdminFeedback'
 import classes from '@Components/admin/workspace/AdminWorkspace.module.css'
 import type { CreatePanelProps } from '@Components/admin/workspace/types'
+import { skillTreeIcons, type SkillTreeIconKey } from '@Utils/skillTreeAdmin'
+import { showSkillTreeError } from '@Utils/skillTreeAdminFeedback'
+import { useCourseResources } from '@Hooks/useCourseTransfers'
+import { useAdminSkillCategories, useSkillTreeAdminMutations } from '@Hooks/useSkillTreeAdmin'
 
 export const CategoriesPanel = ({ createOpen, onClose }: CreatePanelProps) => {
   const { t } = useTranslation('skillTrees')
   const { data: categories, isLoading: categoriesLoading } = useAdminSkillCategories()
   const { createCategory } = useSkillTreeAdminMutations()
+  const { data: resources, error: locationError } = useCourseResources('category')
   const navigate = useNavigate()
 
   const [values, setValues] = useState<SkillTreeFormValues>({ name: '', summary: '', iconKey: 'flag' })
@@ -41,6 +44,18 @@ export const CategoriesPanel = ({ createOpen, onClose }: CreatePanelProps) => {
 
   return (
     <Stack gap="md">
+      {categories?.some((c, i) =>
+        categories.some((other, j) => i !== j && c.name?.trim().toLowerCase() === other.name?.trim().toLowerCase())
+      ) && (
+        <Alert title="存在同名或仅大小写不同的类别">
+          <Text size="sm">
+            同名不代表同一资源。请按来源标签和内容位置区分；同一课程的 PWN/Pwn 可一并整理，跨比赛目录不会自动合并。
+          </Text>
+          <Button variant="light" mt="sm" component={Link} to="/admin/content-transfer">
+            一并整理
+          </Button>
+        </Alert>
+      )}
       {categoriesLoading ? (
         <Text c="dimmed">{t('loading')}</Text>
       ) : categories && categories.length > 0 ? (
@@ -50,19 +65,15 @@ export const CategoriesPanel = ({ createOpen, onClose }: CreatePanelProps) => {
             const lessons = (category.contents ?? []).filter((item) => item.kind === 'lesson').length
             const treeCount = category.trees?.length ?? 0
             return (
-              <Card
-                key={category.categoryId}
-                withBorder
-                className={classes.panelCard}
-                component={Link}
-                to={`/admin/skill-categories/${category.categoryId}`}
-              >
+              <Card key={category.categoryId} withBorder className={classes.panelCard}>
                 <Group justify="space-between" wrap="nowrap">
                   <Group gap="xs" wrap="nowrap">
                     <Text size="xl" aria-hidden>
                       {skillTreeIcons[(category.iconKey ?? 'flag') as SkillTreeIconKey] ?? '🚩'}
                     </Text>
-                    <Text fw={600}>{category.name}</Text>
+                    <Text fw={600} component={Link} to={`/admin/skill-categories/${category.categoryId}`}>
+                      {category.name}
+                    </Text>
                   </Group>
                   {treeCount === 0 && (
                     <Badge color="orange" variant="light">
@@ -70,6 +81,11 @@ export const CategoriesPanel = ({ createOpen, onClose }: CreatePanelProps) => {
                     </Badge>
                   )}
                 </Group>
+                <SourceLabels resource={resources?.find((r) => r.id === category.categoryId)} />
+                <ResourceLocations
+                  resource={resources?.find((r) => r.id === category.categoryId)}
+                  unavailable={!!locationError}
+                />
                 <Text size="sm" c="dimmed" lineClamp={2} mt="xs">
                   {category.summary}
                 </Text>

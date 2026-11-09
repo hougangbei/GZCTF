@@ -1,11 +1,13 @@
-import { Alert, Badge, Button, Group, Loader, NativeSelect, Stack, Text, TextInput, Title } from '@mantine/core'
+import { Alert, Badge, Button, Group, Loader, NativeSelect, Stack, Switch, Text, TextInput, Title } from '@mantine/core'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { WithNavBar } from '@Components/WithNavbar'
 import { WithRole } from '@Components/WithRole'
+import { SourceLabels, ResourceLocations } from '@Components/admin/course-transfer/ResourceLocations'
 import { showErrorMsg } from '@Utils/Shared'
 import { useAdminLessons } from '@Hooks/useChallengeLibraryAdmin'
+import { useCourseResources } from '@Hooks/useCourseTransfers'
 import { useAdminSkillCategories } from '@Hooks/useSkillTreeAdmin'
 import api, { Role } from '@Api'
 import classes from './Index.module.css'
@@ -19,6 +21,8 @@ const AdminLessons = () => {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
   const [creating, setCreating] = useState(false)
+  const [unassociated, setUnassociated] = useState(false)
+  const { data: resources, error: locationError } = useCourseResources('lesson')
   const statusLabel = (value: string) =>
     value === 'Published'
       ? t('library.published', { defaultValue: 'Published' })
@@ -37,7 +41,11 @@ const AdminLessons = () => {
       const haystack = [lesson.title, ...categoryLabels(lesson.publication?.categoryIds ?? [])]
         .join(' ')
         .toLocaleLowerCase()
-      return (status === 'all' || state === status) && haystack.includes(search.trim().toLocaleLowerCase())
+      return (
+        (status === 'all' || state === status) &&
+        haystack.includes(search.trim().toLocaleLowerCase()) &&
+        (!unassociated || resources?.find((r) => r.id === lesson.id)?.unassociated === true)
+      )
     }) ?? []
   const create = async () => {
     if (!title.trim() || creating) return
@@ -89,6 +97,12 @@ const AdminLessons = () => {
             </Button>
           </form>
           <div className={classes.filters}>
+            <Switch
+              label="只看未关联到课程"
+              checked={unassociated}
+              disabled={!resources}
+              onChange={(e) => setUnassociated(e.currentTarget.checked)}
+            />
             <TextInput
               className={classes.grow}
               label={t('library.search', { defaultValue: 'Search lessons' })}
@@ -143,6 +157,11 @@ const AdminLessons = () => {
               {visibleLessons.map((lesson) => (
                 <li key={lesson.id} className={classes.row}>
                   <div className={classes.details}>
+                    <SourceLabels resource={resources?.find((r) => r.id === lesson.id)} />
+                    <ResourceLocations
+                      resource={resources?.find((r) => r.id === lesson.id)}
+                      unavailable={!!locationError}
+                    />
                     <Text fw={600} className={classes.lessonTitle}>
                       {lesson.title || t('library.untitled', { defaultValue: 'Untitled lesson' })}
                     </Text>

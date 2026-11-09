@@ -1,8 +1,10 @@
 import { Button, Card, Group, ScrollArea, Stack, Text, TextInput } from '@mantine/core'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { SkillCategoryAdminResponse } from '@Api'
+import { resourceLabel } from '@Utils/courseTransfer'
 import { skillTreeIcons, type SkillTreeIconKey } from '@Utils/skillTreeAdmin'
+import { useCourseResources } from '@Hooks/useCourseTransfers'
+import type { SkillCategoryAdminResponse } from '@Api'
 
 type CategoryPickerProps = {
   categories: SkillCategoryAdminResponse[]
@@ -14,9 +16,16 @@ type CategoryPickerProps = {
 export const CategoryPicker = ({ categories, selectedIds, onSelect, disabled }: CategoryPickerProps) => {
   const { t } = useTranslation('skillTrees')
   const [search, setSearch] = useState('')
+  const { data: resources } = useCourseResources('category')
 
   const keyword = search.trim().toLowerCase()
-  const visible = categories.filter((category) => !keyword || category.name?.toLowerCase().includes(keyword))
+  const visible = categories.filter(
+    (category) =>
+      !keyword ||
+      `${category.name} ${resourceLabel(resources?.find((r) => r.id === category.categoryId))}`
+        .toLowerCase()
+        .includes(keyword)
+  )
 
   return (
     <Stack gap="xs">
@@ -42,7 +51,9 @@ export const CategoryPicker = ({ categories, selectedIds, onSelect, disabled }: 
                     <Text size="lg" aria-hidden>
                       {skillTreeIcons[(category.iconKey ?? 'flag') as SkillTreeIconKey] ?? '🚩'}
                     </Text>
-                    <Text fw={500}>{category.name}</Text>
+                    <Text fw={500}>
+                      {resourceLabel(resources?.find((r) => r.id === category.categoryId)) || category.name}
+                    </Text>
                   </Group>
                   <Button
                     size="compact-sm"

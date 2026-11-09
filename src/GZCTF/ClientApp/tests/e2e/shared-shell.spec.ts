@@ -79,7 +79,9 @@ test('about content uses one readable light surface', async ({ page }) => {
   const block = page.getByRole('heading', { name: 'Timeline' }).locator('..')
   await expect(section).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await expect(block).toHaveCSS('background-color', 'rgb(255, 255, 255)')
-  await expect(page.getByText('Event details')).toHaveCSS('color', 'rgb(30, 41, 59)')
+  // Follow the platform text token rather than freezing the previous palette.
+  const themeText = await page.locator('body').evaluate(element => getComputedStyle(element).color)
+  await expect(page.getByText('Event details')).toHaveCSS('color', themeText)
 })
 
 test('desktop navigation links form a horizontal row', async ({ page }) => {

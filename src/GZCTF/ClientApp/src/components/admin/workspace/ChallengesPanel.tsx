@@ -4,11 +4,13 @@ import { Icon } from '@mdi/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
+import { SourceLabels, ResourceLocations } from '@Components/admin/course-transfer/ResourceLocations'
 import classes from '@Components/admin/workspace/AdminWorkspace.module.css'
 import type { CreatePanelProps } from '@Components/admin/workspace/types'
 import { useChallengeCategoryLabelMap, showErrorMsg } from '@Utils/Shared'
 import { getApiErrorCode } from '@Utils/skillTreeAdmin'
 import { useAdminChallenges } from '@Hooks/useChallengeLibraryAdmin'
+import { useCourseResources } from '@Hooks/useCourseTransfers'
 import api, { ChallengeCategory, ChallengeType, type ChallengeSummaryResponse } from '@Api'
 
 export const ChallengesPanel = ({ createOpen, onClose }: CreatePanelProps) => {
@@ -34,8 +36,14 @@ export const ChallengesPanel = ({ createOpen, onClose }: CreatePanelProps) => {
   const [creating, setCreating] = useState(false)
   const [toggleTarget, setToggleTarget] = useState<ChallengeSummaryResponse>()
   const [toggling, setToggling] = useState(false)
+  const [unassociated, setUnassociated] = useState(false)
+  const [search, setSearch] = useState('')
+  const { data: resources, error: locationError } = useCourseResources('challenge')
   const visibleChallenges = challenges?.filter(
-    (challenge) => !filterCategory || challenge.ctfCategory === filterCategory
+    (challenge) =>
+      (!filterCategory || challenge.ctfCategory === filterCategory) &&
+      (!unassociated || resources?.find((r) => r.id === challenge.id)?.unassociated === true) &&
+      (challenge.title ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
   const toggleAvailability = async () => {
@@ -88,6 +96,18 @@ export const ChallengesPanel = ({ createOpen, onClose }: CreatePanelProps) => {
 
   return (
     <Stack gap="md">
+      <Group align="end">
+        <TextInput label="搜索题目" value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
+        <Switch
+          label="只看未关联到课程"
+          checked={unassociated}
+          disabled={!resources}
+          onChange={(e) => setUnassociated(e.currentTarget.checked)}
+        />
+        <Button component={Link} to="/admin/content-transfer" variant="light">
+          整理 / 移动内容
+        </Button>
+      </Group>
       {challenges && challenges.length > 0 && (
         <Select
           label={t('editorFilterCategory')}
@@ -117,6 +137,11 @@ export const ChallengesPanel = ({ createOpen, onClose }: CreatePanelProps) => {
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
           {visibleChallenges.map((challenge) => (
             <Card key={challenge.id} withBorder className={classes.panelCard}>
+              <SourceLabels resource={resources?.find((r) => r.id === challenge.id)} />
+              <ResourceLocations
+                resource={resources?.find((r) => r.id === challenge.id)}
+                unavailable={!!locationError}
+              />
               <Group justify="space-between" wrap="nowrap">
                 <Text fw={600} lineClamp={1} component={Link} to={`/admin/library/challenges/${challenge.id}`}>
                   {challenge.title}
@@ -155,7 +180,7 @@ export const ChallengesPanel = ({ createOpen, onClose }: CreatePanelProps) => {
             </Card>
           ))}
         </SimpleGrid>
-      ) : filterCategory && challenges?.length ? (
+      ) : (filterCategory || unassociated || search.trim()) && challenges?.length ? (
         <Text c="dimmed">{t('editorNoFilteredChallenges')}</Text>
       ) : (
         <div className={classes.emptyState}>
