@@ -147,3 +147,71 @@ it('an empty runtime template falls back to its canonical Flag template', () => 
   original.flags = [{ kind: ChallengeFlagKind.Template, template: 'nynuctf{[GUID]}' }]
   expect(challengeDraftFromResponse(original).container.FlagTemplate).toBe('nynuctf{[GUID]}')
 })
+
+it('ordinary save automatically fills blank localization fields without overwriting existing translations', () => {
+  const original = edit({}, ChallengeType.StaticAttachment)
+  original.localizations = [
+    { locale: 'en', title: 'Original', body: '' },
+    { locale: 'zh', title: '中文标题', body: '   ' },
+    { locale: 'ja', title: 'Existing title', body: 'Existing translation' },
+    { locale: 'fr', title: '', body: 'French body' },
+  ]
+  const draft = challengeDraftFromResponse(original)
+  draft.title = 'Repaired title'
+  draft.body = 'Repaired description'
+  const repaired = challengeCommandFromDraft(draft, original, 1)
+  expect(repaired.localizations).toEqual([
+    { locale: 'en', title: 'Repaired title', summary: '', body: 'Repaired description' },
+    { locale: 'zh', title: '中文标题', body: 'Repaired description' },
+    { locale: 'ja', title: 'Existing title', body: 'Existing translation' },
+    { locale: 'fr', title: 'Repaired title', body: 'French body' },
+  ])
+  expect(original.localizations[1].body).toBe('   ')
+})
+
+it.each([true, false])(
+  'existing Chinese content is readable without choosing a language (empty English=%s)',
+  (withEmptyEnglish) => {
+    const original = edit({}, ChallengeType.StaticAttachment)
+    original.localizations = [
+      { locale: 'zh', title: '中文题目', body: '已有中文正文' },
+      ...(withEmptyEnglish ? [{ locale: 'en', title: '中文题目', body: '' }] : []),
+    ]
+    const draft = challengeDraftFromResponse(original)
+    expect(draft.body).toBe('已有中文正文')
+    const command = challengeCommandFromDraft(draft, original, 1)
+    expect(command.localizations?.find((l) => l.locale === 'en')?.body).toBe('已有中文正文')
+    expect(command.localizations?.find((l) => l.locale === 'zh')?.body).toBe('已有中文正文')
+  }
+)
+
+it('subsequent edits keep mirrored bilingual copies in sync while preserving distinct translations', () => {
+  const original = edit({}, ChallengeType.StaticAttachment)
+  original.localizations = [
+    { locale: 'en', title: 'Shared title', body: 'Shared body' },
+    { locale: 'zh', title: 'Shared title', body: 'Shared body' },
+    { locale: 'ja', title: '別の翻訳', body: '別の本文' },
+  ]
+  const draft = challengeDraftFromResponse(original)
+  draft.title = 'Changed title'
+  draft.body = 'Changed body'
+  const command = challengeCommandFromDraft(draft, original, 1)
+  expect(command.localizations?.find((l) => l.locale === 'zh')).toMatchObject({
+    title: 'Changed title',
+    body: 'Changed body',
+  })
+  expect(command.localizations?.find((l) => l.locale === 'ja')).toMatchObject({ title: '別の翻訳', body: '別の本文' })
+})
+it('editing Chinese-only content updates the displayed source as well as the compatibility version', () => {
+  const original = edit({}, ChallengeType.StaticAttachment)
+  original.localizations = [{ locale: 'zh', title: '原中文标题', body: '原中文正文' }]
+  const draft = challengeDraftFromResponse(original)
+  draft.title = '新中文标题'
+  draft.body = '新中文正文'
+  const command = challengeCommandFromDraft(draft, original, 1)
+  for (const locale of ['zh', 'en'])
+    expect(command.localizations?.find((l) => l.locale === locale)).toMatchObject({
+      title: '新中文标题',
+      body: '新中文正文',
+    })
+})

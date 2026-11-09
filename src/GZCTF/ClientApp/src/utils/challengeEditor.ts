@@ -105,15 +105,21 @@ const parseAttachments = (value?: string | null): AttachmentEntry[] => {
 }
 
 export const challengeDraftFromResponse = (data: ChallengeEditResponse): ChallengeDraft => {
-  const text = data.localizations?.find((item) => item.locale?.toLowerCase() === 'en')
+  const english = data.localizations?.find((item) => item.locale?.toLowerCase() === 'en')
+  const isChinese = (item: { locale?: string }) => item.locale?.toLowerCase().startsWith('zh')
+  const fallback =
+    data.localizations?.find((item) => isChinese(item) && item.body?.trim()) ??
+    data.localizations?.find(isChinese) ??
+    (!english ? (data.localizations?.find((item) => item.body?.trim()) ?? data.localizations?.[0]) : undefined)
+  const text = english ?? fallback
   const type = data.challenge?.type ?? ChallengeType.StaticAttachment
   const config = parseConfig(data.runtimeConfigurationJson)
   const dynamicPool = data.flags?.find((flag) => flag.kind === ChallengeFlagKind.DynamicAttachment)
   const template = data.flags?.find((flag) => flag.kind === ChallengeFlagKind.Template)?.template
   return {
-    title: text?.title ?? data.challenge?.title ?? '',
+    title: text?.title?.trim() ? text.title : (fallback?.title ?? data.challenge?.title ?? ''),
     summary: text?.summary ?? data.challenge?.summary ?? '',
-    body: text?.body ?? '',
+    body: text?.body?.trim() ? text.body : (fallback?.body ?? text?.body ?? ''),
     type,
     ctfCategory: data.challenge?.ctfCategory ?? ChallengeCategory.Misc,
     difficulty: data.challenge?.difficulty ?? Difficulty.Normal,
@@ -186,6 +192,13 @@ export const challengeCommandFromDraft = (
                 ...(original?.metadataJson ? { metadataJson: original.metadataJson } : {}),
               }
             })
+  const localizations = mergeChallengeLocalization(current.localizations ?? [], {
+    locale: 'en',
+    title: draft.title.trim(),
+    summary: draft.summary.trim(),
+    body: draft.body,
+  })
+  const previousText = challengeDraftFromResponse(current)
   return {
     rowVersion,
     type: draft.type,
@@ -205,12 +218,12 @@ export const challengeCommandFromDraft = (
           ...draft.container,
         })
       : JSON.stringify({ ...rootWithoutAttachments, Attachments: runtimeAttachments }),
-    localizations: mergeChallengeLocalization(current.localizations ?? [], {
-      locale: 'en',
-      title: draft.title.trim(),
-      summary: draft.summary.trim(),
-      body: draft.body,
-    }),
+    localizations: localizations.map((text) => ({
+      ...text,
+      // Imported identical copies follow the same edit; genuine different translations stay intact.
+      title: !text.title?.trim() || text.title === previousText.title ? draft.title.trim() : text.title,
+      body: !text.body?.trim() || text.body === previousText.body ? draft.body : text.body,
+    })),
     flags,
     hints: draft.hints
       .filter((content) => content.trim())
@@ -222,3 +235,11 @@ export const challengeCommandFromDraft = (
     writeups: draft.writeup.trim() ? [{ locale: 'en', content: draft.writeup }] : [],
   }
 }
+
+export const emptyOtherChallengeLocales = (data: ChallengeEditResponse) => [
+  ...new Set(
+    (data.localizations ?? [])
+      .filter((text) => text.locale?.toLowerCase() !== 'en' && (!text.title?.trim() || !text.body?.trim()))
+      .map((text) => text.locale ?? 'unknown')
+  ),
+]

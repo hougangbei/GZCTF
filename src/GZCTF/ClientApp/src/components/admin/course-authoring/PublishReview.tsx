@@ -11,7 +11,10 @@ const publicationMessages: Record<string, string> = {
   lesson_identity_unavailable: '该课节已删除或退役。请移出此引用，并从课节库添加有效的课节。',
 }
 
-export const publicationIssueMessage = (issue: PublicationIssue) => publicationMessages[issue.code] ?? issue.message
+export const publicationIssueMessage = (issue: PublicationIssue) =>
+  issue.code === 'challenge_body_missing'
+    ? `以下语言版本的题目正文为空：${issue.locales?.map((locale) => (locale === 'zh' ? 'zh（中文）' : locale === 'en' ? 'en（英文）' : locale)).join('、') || '未标明语言'}。只需在编辑器填写一次说明并保存，系统会自动补齐空白版本；不同的已有翻译会保留。`
+    : (publicationMessages[issue.code] ?? issue.message)
 
 export const PublishReview = ({
   check,

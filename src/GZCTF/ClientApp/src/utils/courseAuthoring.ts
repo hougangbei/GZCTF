@@ -46,6 +46,7 @@ export type PublicationIssue = {
   categoryId?: string
   skillId?: string
   contentId?: string
+  locales?: string[]
 }
 export type CourseCheck = {
   changes?: { added: string[]; removed: string[] }

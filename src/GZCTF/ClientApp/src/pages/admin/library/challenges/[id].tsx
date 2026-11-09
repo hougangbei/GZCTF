@@ -28,6 +28,7 @@ import { getApiErrorCode } from '@Utils/skillTreeAdmin'
 import {
   challengeCommandFromDraft,
   challengeDraftFromResponse,
+  emptyOtherChallengeLocales,
   isContainerType,
   type ChallengeDraft,
 } from '@Utils/challengeEditor'
@@ -92,6 +93,7 @@ const ChallengeEditSession = () => {
 
   if (!id) return null
 
+  const emptyOtherLocales = data ? emptyOtherChallengeLocales(data) : []
   const save = async (): Promise<number | undefined> => {
     if (conflict) return undefined
     if (!data || !draft || saveInFlight.current || uploadInFlight.current) return
@@ -257,6 +259,9 @@ const ChallengeEditSession = () => {
           {!draft && !error ? <Text>{t('loading')}</Text> : draft && (
             <>
               {formError && <Alert color="red">{formError}</Alert>}
+              {emptyOtherLocales.length > 0 && <Alert color="blue" title="语言版本自动适配">
+                只需填写一次题目说明并保存，系统会自动补齐空白版本、同步内容相同的副本；不同的已有翻译会保留，无需选择语言。
+              </Alert>}
               <Card withBorder padding="lg">
                 <ChallengeBasicsForm value={draft} onChange={setDraft} disabled={saving || testing || retired} />
               </Card>
@@ -292,7 +297,7 @@ const ChallengeEditSession = () => {
                   {t('editorRetireChallenge')}
                 </Button>}
                 <Button variant="light" onClick={() => setPreviewOpen(true)}>{t('editorPreview')}</Button>
-                <Button variant="light" loading={saving} disabled={uploading || testing || retired} onClick={save}>{t('editorSaveDraft')}</Button>
+                <Button variant="light" loading={saving} disabled={uploading || testing || retired} onClick={() => void save()}>{t('editorSaveDraft')}</Button>
                 <Button color="green" loading={saving} disabled={uploading || testing || retired} onClick={publish}>
                   {context ? (params.get('review') === '1' ? '保存并返回问题清单' : '保存并返回课程') : tSkillTrees('publish.challengeTitle')}
                 </Button>

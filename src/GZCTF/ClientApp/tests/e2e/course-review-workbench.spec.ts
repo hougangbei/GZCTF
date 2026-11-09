@@ -14,6 +14,7 @@ async function setup(page: Page) {
     saveFails: false,
     actor: 'admin',
     bodies: ['', ''],
+    extraLocales: [] as { locale: string; title: string; body: string }[],
     issues: true,
   }
   await page.route('**/api/**', (r) => r.fulfill({ json: [] }))
@@ -91,7 +92,10 @@ async function setup(page: Page) {
         isEnabled: true,
         publicationState: 'Draft',
       },
-      localizations: [{ locale: 'en', title: '待修题' + (i + 1), summary: '', body: state.bodies[i] }],
+      localizations: [
+        { locale: 'en', title: '待修题' + (i + 1), summary: '', body: state.bodies[i] },
+        ...state.extraLocales,
+      ],
       runtimeConfigurationJson: '{}',
       flags: [{ kind: 'Static', value: 'flag{synthetic}' }],
       hints: [],
@@ -101,7 +105,9 @@ async function setup(page: Page) {
     await page.route(`**/api/admin/challenges/${id}/edit**`, (r) => r.fulfill({ json: edit() }))
     await page.route(new RegExp(`/api/admin/challenges/${id}\\?`), (r) => {
       if (state.saveFails) return r.fulfill({ status: 409, json: { message: 'Conflict' } })
-      state.bodies[i] = r.request().postDataJSON().localizations[0].body
+      const texts = r.request().postDataJSON().localizations
+      state.bodies[i] = texts.find((t: any) => t.locale === 'en').body
+      state.extraLocales = texts.filter((t: any) => t.locale !== 'en')
       state.version++
       return r.fulfill({ json: edit() })
     })
@@ -312,4 +318,52 @@ test('a long worklist keeps the selected question visible after changing editor 
       return !!b && b.y >= 56 && b.y + b.height <= 1000
     })
     .toBe(true)
+})
+
+test('ordinary save automatically adapts Chinese and English without a separate language action', async ({ page }) => {
+  const state = await setup(page)
+  state.extraLocales = [
+    { locale: 'zh', title: '中文原题名', body: '' },
+    { locale: 'ja', title: 'Existing translation', body: '保留的已有正文' },
+  ]
+  await page.route(`**/api/admin/skill-trees/${tree}/workspace/check`, (r) => {
+    state.checks++
+    const empty = state.extraLocales.filter((l) => !l.body.trim()).map((l) => l.locale)
+    return r.fulfill({
+      json: {
+        version: String(state.version),
+        categoryCount: 1,
+        skillCount: 1,
+        challengeCount: 2,
+        lessonCount: 0,
+        issues: empty.length
+          ? [
+              {
+                severity: 'error',
+                code: 'challenge_body_missing',
+                message: 'Missing body',
+                contentId: ids[0],
+                locales: empty,
+              },
+            ]
+          : [],
+      },
+    })
+  })
+  await queue(page)
+    .getByRole('link', { name: /待修题1/ })
+    .click()
+  await expect(page.getByRole('heading', { name: '待修题1', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '保存并补齐空白语言', exact: true })).toHaveCount(0)
+  await page.getByRole('textbox', { name: '题目说明', exact: true }).fill('一次填写的题目说明')
+  await page.getByRole('button', { name: '保存草稿', exact: true }).click()
+  await expect(queue(page).getByText('已修改 · 待复查')).toHaveCount(1)
+  expect(state.extraLocales.find((l) => l.locale === 'zh')).toMatchObject({
+    title: '中文原题名',
+    body: '一次填写的题目说明',
+  })
+  expect(state.extraLocales.find((l) => l.locale === 'ja')?.body).toBe('保留的已有正文')
+  await page.getByRole('link', { name: '检查摘要 / 统一复查', exact: true }).first().click()
+  await page.getByRole('button', { name: '统一复查全部问题', exact: true }).click()
+  await expect(page.getByRole('button', { name: '确认统一发布', exact: true })).toBeEnabled()
 })
