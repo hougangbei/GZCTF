@@ -1,4 +1,4 @@
-import type { CourseContent, CourseWorkspace } from './courseAuthoring'
+import type { CourseContent, CourseWorkspace, CourseDocument, CourseSelection } from './courseAuthoring'
 
 export type ContentKey = { kind: 'challenge' | 'lesson'; contentId: string }
 export type TransferTarget = { categoryId: string; skillId: string }
@@ -75,3 +75,39 @@ export const transferCommand = (
   targetSkillId: to.skillId,
   contents: contents.map(({ kind, contentId }) => ({ kind, contentId })),
 })
+
+// Same-tree moves stay local until the ordinary draft save; authoring payloads are tree-scoped.
+export function moveOutlineContent(
+  document: CourseDocument,
+  node: CourseSelection,
+  target: TransferTarget,
+  mode: 'move' | 'reference' = 'move'
+): CourseDocument {
+  if (node.kind !== 'challenge' && node.kind !== 'lesson') return document
+  const source = document.categories
+    .find((c) => c.categoryId === node.categoryId)
+    ?.skills.find((s) => s.skillId === node.skillId)
+  const destination = document.categories
+    .find((c) => c.categoryId === target.categoryId)
+    ?.skills.find((s) => s.skillId === target.skillId)
+  const content = source?.contents.find((c) => c.kind === node.kind && c.contentId === node.contentId)
+  if (!source || !destination || !content || source.skillId === destination.skillId) return document
+  return {
+    ...document,
+    categories: document.categories.map((c) => ({
+      ...c,
+      skills: c.skills.map((s) => {
+        if (s.skillId === destination.skillId)
+          return {
+            ...s,
+            contents: s.contents.some((i) => contentKey(i) === contentKey(content))
+              ? s.contents
+              : [...s.contents, content],
+          }
+        if (s.skillId === source.skillId && mode === 'move')
+          return { ...s, contents: s.contents.filter((i) => contentKey(i) !== contentKey(content)) }
+        return s
+      }),
+    })),
+  }
+}

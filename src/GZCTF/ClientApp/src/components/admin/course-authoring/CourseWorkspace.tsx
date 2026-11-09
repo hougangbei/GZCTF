@@ -34,12 +34,14 @@ import {
   type CourseWorkspace as Workspace,
   type PublicationIssue,
 } from '@Utils/courseAuthoring'
+import { moveOutlineContent, type TransferTarget } from '@Utils/courseTransfer'
 import type { SkillTreeIconKey } from '@Utils/skillTreeAdmin'
 import { courseRequest, useCourseWorkspace } from '@Hooks/useCourseAuthoring'
 import { useCourseResources } from '@Hooks/useCourseTransfers'
 import { useHistoryLeaveGuard } from '@Hooks/useHistoryLeaveGuard'
 import type { SkillTreeDeleteImpactResponse } from '@Api'
 import { AddCourseNode, type AddedResource, type AddKind } from './AddCourseNode'
+import { ContentDestinationModal } from './ContentDestinationModal'
 import { CourseCover } from './CourseCover'
 import { CourseOutline } from './CourseOutline'
 import { CoursePreview } from './CoursePreview'
@@ -63,6 +65,12 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
     skillId: params.get('skill') ?? undefined,
   })
   const [deleteImpact, setDeleteImpact] = useState<SkillTreeDeleteImpactResponse>()
+  const [transferring, setTransferring] = useState<CourseSelection>()
+  const [inlineUndo, setInlineUndo] = useState<{
+    before: CourseDocument
+    after: CourseDocument
+    node: CourseSelection
+  }>()
   const [lastRemoved, setLastRemoved] = useState<CourseSelection>()
   const [addMode, setAddMode] = useState<'new' | 'library'>('new')
   const [adding, setAdding] = useState<AddKind>(),
@@ -334,6 +342,20 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
       element.scrollTop = Number(sessionStorage.getItem(key) ?? 0)
     } catch {}
   }
+  const transferLocally = (node: CourseSelection, to: TransferTarget, mode: 'move' | 'reference' = 'move') => {
+    const next = moveOutlineContent(document, node, to, mode)
+    if (next === document) return
+    const sourceRefs = document.categories.filter((c) => c.skills.some((s) => s.skillId === node.skillId)).length
+    const targetRefs = document.categories.filter((c) => c.skills.some((s) => s.skillId === to.skillId)).length
+    changed(next)
+    setInlineUndo({ before: document, after: next, node })
+    setLastRemoved(undefined)
+    select({ ...node, categoryId: to.categoryId, skillId: to.skillId })
+    setSuccess(
+      `${mode === 'move' ? '已移动' : '已添加引用'}，保存草稿并发布后生效。${sourceRefs > 1 || targetRefs > 1 ? '共享技能在当前草稿中的其他引用也已同步。' : ''}`
+    )
+    setTransferring(undefined)
+  }
   const outline = (
     <CourseOutline
       document={document}
@@ -341,6 +363,15 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
       disabled={pending}
       dirty={dirty}
       onSelect={select}
+      onTransfer={(node, target) => {
+        if (target) transferLocally(node, target)
+        else
+          void execute(async () => {
+            await ensureSaved()
+            setDrawer(false)
+            setTransferring(node)
+          })
+      }}
       onMove={(node, delta) => changed(moveCourseNode(document, node, delta))}
     />
   )
@@ -397,6 +428,22 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
 
   return (
     <Stack className={classes.workspace} gap="lg">
+      {transferring && (
+        <ContentDestinationModal
+          source={current}
+          node={transferring}
+          onClose={() => setTransferring(undefined)}
+          onLocal={(target, mode) => transferLocally(transferring, target, mode)}
+          onTransferred={(result, mode) => {
+            accept(result.source)
+            if (mode === 'move')
+              select({ kind: 'skill', categoryId: transferring.categoryId, skillId: transferring.skillId })
+            setLastRemoved(undefined)
+            setSuccess('整理已保存到两棵树的草稿。请先发布目标课程，再发布来源课程；通关与积分保留。')
+            setTransferring(undefined)
+          }}
+        />
+      )}
       <div className={classes.header}>
         <Stack gap={4}>
           <Text size="sm" c="dimmed">
@@ -488,6 +535,20 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
       {success && (
         <Alert color="green">
           {success}
+          {inlineUndo && document === inlineUndo.after && (
+            <Button
+              ml="sm"
+              size="compact-xs"
+              variant="subtle"
+              onClick={() => {
+                changed(inlineUndo.before)
+                select(inlineUndo.node)
+                setInlineUndo(undefined)
+              }}
+            >
+              撤销整理
+            </Button>
+          )}
           {lastRemoved && (
             <Button
               mt="xs"
@@ -508,17 +569,19 @@ export const CourseWorkspace = ({ id }: { id: string }) => {
               从库添加，恢复移出的引用
             </Button>
           )}
-          <Group mt="xs">
-            <Button component={Link} to="/admin/skill-trees?tab=categories" size="compact-xs" variant="subtle">
-              打开全局类别
-            </Button>
-            <Button component={Link} to="/admin/skill-trees?tab=challenges" size="compact-xs" variant="subtle">
-              打开题目库
-            </Button>
-            <Button component={Link} to="/admin/library/lessons" size="compact-xs" variant="subtle">
-              打开课节库
-            </Button>
-          </Group>
+          {lastRemoved && (
+            <Group mt="xs">
+              <Button component={Link} to="/admin/skill-trees?tab=categories" size="compact-xs" variant="subtle">
+                打开全局类别
+              </Button>
+              <Button component={Link} to="/admin/skill-trees?tab=challenges" size="compact-xs" variant="subtle">
+                打开题目库
+              </Button>
+              <Button component={Link} to="/admin/library/lessons" size="compact-xs" variant="subtle">
+                打开课节库
+              </Button>
+            </Group>
+          )}
           {current.hasPublishedVersion && (
             <Button
               component={Link}
