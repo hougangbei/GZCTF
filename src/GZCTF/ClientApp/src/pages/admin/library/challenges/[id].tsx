@@ -94,7 +94,7 @@ const ChallengeEditSession = () => {
   if (!id) return null
 
   const emptyOtherLocales = data ? emptyOtherChallengeLocales(data) : []
-  const save = async (fillEmptyLanguages = false): Promise<number | undefined> => {
+  const save = async (): Promise<number | undefined> => {
     if (conflict) return undefined
     if (!data || !draft || saveInFlight.current || uploadInFlight.current) return
     if (draft.type === ChallengeType.DynamicContainer && /\{userid\}/i.test(draft.container.FlagTemplate)) {
@@ -105,12 +105,11 @@ const ChallengeEditSession = () => {
       setFormError(t('adminTitle'))
       return
     }
-    if(fillEmptyLanguages && !draft.body.trim()) { setFormError('请先填写当前题目说明，再补齐空白语言版本。'); return }
     saveInFlight.current = true
     setSaving(true)
     setFormError(undefined)
     try {
-      const command = challengeCommandFromDraft(draft, data, publishVersion, fillEmptyLanguages)
+      const command = challengeCommandFromDraft(draft, data, publishVersion)
       const response = context
         ? { data: await courseRequest<ChallengeEditResponse>(contextualPath(`/api/admin/challenges/${id}`, context), command) }
         : await api.adminChallenges.adminChallengesUpdate(id, command)
@@ -260,10 +259,8 @@ const ChallengeEditSession = () => {
           {!draft && !error ? <Text>{t('loading')}</Text> : draft && (
             <>
               {formError && <Alert color="red">{formError}</Alert>}
-              {emptyOtherLocales.length > 0 && <Alert color="yellow" title="其他语言版本尚未完整">
-                <Stack gap="xs"><Text size="sm">当前编辑内容保存到 en（英文）版本。以下版本仍缺少标题或正文：{emptyOtherLocales.map(locale => locale === 'zh' ? 'zh（中文）' : locale).join('、')}。这会阻止课程发布。</Text>
-                <Text size="sm">可将当前标题和说明复制到这些版本的空白字段；已有正文和翻译保持不变。</Text>
-                <Button w="fit-content" variant="light" loading={saving} disabled={uploading || testing || retired || !draft.title.trim() || !draft.body.trim() || conflict} onClick={()=>void save(true)}>保存并补齐空白语言</Button></Stack>
+              {emptyOtherLocales.length > 0 && <Alert color="blue" title="语言版本自动适配">
+                只需填写一次题目说明并保存，系统会自动补齐空白版本、同步内容相同的副本；不同的已有翻译会保留，无需选择语言。
               </Alert>}
               <Card withBorder padding="lg">
                 <ChallengeBasicsForm value={draft} onChange={setDraft} disabled={saving || testing || retired} />

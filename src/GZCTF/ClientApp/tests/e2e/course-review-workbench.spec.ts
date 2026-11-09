@@ -320,9 +320,7 @@ test('a long worklist keeps the selected question visible after changing editor 
     .toBe(true)
 })
 
-test('imported hidden empty Chinese version is diagnosed and explicitly repaired without overwriting other translations', async ({
-  page,
-}) => {
+test('ordinary save automatically adapts Chinese and English without a separate language action', async ({ page }) => {
   const state = await setup(page)
   state.extraLocales = [
     { locale: 'zh', title: '中文原题名', body: '' },
@@ -356,26 +354,13 @@ test('imported hidden empty Chinese version is diagnosed and explicitly repaired
     .getByRole('link', { name: /待修题1/ })
     .click()
   await expect(page.getByRole('heading', { name: '待修题1', exact: true })).toBeVisible()
-  const warning = page.getByRole('alert').filter({ hasText: '其他语言版本尚未完整' })
-  await expect(warning).toContainText('zh')
-  await expect(warning.getByRole('button', { name: '保存并补齐空白语言' })).toBeDisabled()
-  await page.getByRole('textbox', { name: '题目说明', exact: true }).fill('用户已经补好的题目说明')
+  await expect(page.getByRole('button', { name: '保存并补齐空白语言', exact: true })).toHaveCount(0)
+  await page.getByRole('textbox', { name: '题目说明', exact: true }).fill('一次填写的题目说明')
   await page.getByRole('button', { name: '保存草稿', exact: true }).click()
   await expect(queue(page).getByText('已修改 · 待复查')).toHaveCount(1)
-  expect(state.extraLocales.find((l) => l.locale === 'zh')?.body).toBe('')
-  await page.getByRole('link', { name: '检查摘要 / 统一复查', exact: true }).first().click()
-  await page.getByRole('button', { name: '统一复查全部问题', exact: true }).click()
-  await expect(page.getByRole('alert').filter({ hasText: '以下语言版本的题目正文为空：zh' })).toBeVisible()
-  await expect(page.getByRole('button', { name: '确认统一发布', exact: true })).toBeDisabled()
-  await queue(page)
-    .getByRole('link', { name: /待修题1/ })
-    .click()
-  await expect(page.getByRole('heading', { name: '待修题1', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: '保存并补齐空白语言', exact: true }).click()
-  await expect(page.getByRole('alert').filter({ hasText: '其他语言版本尚未完整' })).not.toBeVisible()
   expect(state.extraLocales.find((l) => l.locale === 'zh')).toMatchObject({
     title: '中文原题名',
-    body: '用户已经补好的题目说明',
+    body: '一次填写的题目说明',
   })
   expect(state.extraLocales.find((l) => l.locale === 'ja')?.body).toBe('保留的已有正文')
   await page.getByRole('link', { name: '检查摘要 / 统一复查', exact: true }).first().click()

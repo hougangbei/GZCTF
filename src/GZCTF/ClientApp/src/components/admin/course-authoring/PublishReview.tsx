@@ -13,7 +13,7 @@ const publicationMessages: Record<string, string> = {
 
 export const publicationIssueMessage = (issue: PublicationIssue) =>
   issue.code === 'challenge_body_missing'
-    ? `以下语言版本的题目正文为空：${issue.locales?.map((locale) => (locale === 'zh' ? 'zh（中文）' : locale === 'en' ? 'en（英文）' : locale)).join('、') || '未标明语言'}。编辑器当前修改 en 版本，可点击“保存并补齐空白语言”补齐其他空白版本；已有正文不会被覆盖。`
+    ? `以下语言版本的题目正文为空：${issue.locales?.map((locale) => (locale === 'zh' ? 'zh（中文）' : locale === 'en' ? 'en（英文）' : locale)).join('、') || '未标明语言'}。只需在编辑器填写一次说明并保存，系统会自动补齐空白版本；不同的已有翻译会保留。`
     : (publicationMessages[issue.code] ?? issue.message)
 
 export const PublishReview = ({
