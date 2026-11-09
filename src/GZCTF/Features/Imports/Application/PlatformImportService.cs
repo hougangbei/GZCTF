@@ -65,7 +65,7 @@ public sealed partial class PlatformImportService(AppDbContext db, ImportedAccou
                 issues.Add(new("warning", "existing_challenge_preserved", challenge.SourceId, "已导入的题目将复用，保留本地编辑，不会覆盖。"));
             if (challenge.Title.Length is < 1 or > 128)
                 issues.Add(new("error", "invalid_challenge_title", challenge.SourceId, "题目标题需为1–128个字符。"));
-            if (challenge.Category.Length is < 1 or > 128)
+            if (string.IsNullOrWhiteSpace(challenge.Category) || challenge.Category.Length > 128)
                 issues.Add(new("error", "invalid_category_name", challenge.SourceId, "类别名称需为1–128个字符。"));
             if (challenge.SubmissionLimit < 0)
                 issues.Add(new("error", "invalid_submission_limit", challenge.SourceId, "提交次数限制不能为负数。"));
@@ -82,6 +82,10 @@ public sealed partial class PlatformImportService(AppDbContext db, ImportedAccou
                     !string.Equals(Convert.ToHexStringLower(SHA256.HashData(bytes)), attachment.Sha256, StringComparison.OrdinalIgnoreCase)))
                     issues.Add(new("error", "invalid_attachment", challenge.SourceId, "附件缺失或校验失败。"));
         }
+        if (options.TargetSkillId is null)
+            foreach (var group in package.Challenges.GroupBy(c => c.Category.Trim(), StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Select(c => c.Category).Distinct(StringComparer.Ordinal).Count() > 1))
+                issues.Add(new("warning", "category_casefold_merge", "", $"同包类别 {string.Join(" / ", group.Select(c => c.Category).Distinct(StringComparer.Ordinal))} 共{group.Count()}题，新导入将归入 {group.First().Category.Trim()}；既有来源映射优先保留。"));
         issues.Add(options.MergeScores
             ? new("warning", "source_score_snapshot", "", "原站总分将固定为初始积分；原有解题只恢复进度，后续新解题另行加分。")
             : new("warning", "source_scoring_retained", "", "原比赛计分规则、截止日期和赛制仅保存在来源档案中，不直接套用为训练限制。"));
@@ -202,25 +206,56 @@ public sealed partial class PlatformImportService(AppDbContext db, ImportedAccou
                 }
                 batch.TreeId = tree.Id;
             }
+            var categoryGroups = package.Challenges.GroupBy(c => c.Category.Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.Select(c => c.Category).Distinct(StringComparer.Ordinal).ToArray(), StringComparer.OrdinalIgnoreCase);
+            string GroupKey(string category) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(TreeSourceId(package) + ":" + category)));
             foreach (var source in package.Challenges)
             {
+                // Re-import preserves local organization as well as resource identity and scores.
+                if (maps.ContainsKey(("challenge", source.SourceId))) continue;
                 Skill skill;
                 if (targetSkill is not null)
                     skill = targetSkill;
                 else
                 {
-                    var groupKey = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(TreeSourceId(package) + ":" + source.Category)));
-                    if (maps.TryGetValue(("skill", groupKey), out var skillMap))
+                    var groupKey = GroupKey(source.Category);
+                    var variants = categoryGroups[source.Category.Trim()];
+                    // Exact historical keys win. Unmapped variants reuse a mapped sibling within this package only.
+                    var mappedKey = maps.ContainsKey(("skill", groupKey)) ? groupKey : maps.ContainsKey(("category", groupKey)) ? null : variants.Select(GroupKey).FirstOrDefault(k => maps.ContainsKey(("skill", k)));
+                    if (mappedKey is not null && maps.TryGetValue(("skill", mappedKey), out var skillMap))
                         skill = db.Skills.Local.FirstOrDefault(item => item.Id == skillMap.TargetId && item.DeletedAtUtc == null) ?? await db.Skills.SingleOrDefaultAsync(item => item.Id == skillMap.TargetId && item.DeletedAtUtc == null, token)
                             ?? throw new InvalidOperationException("import.mapped_skill_missing");
                     else
                     {
-                        skill = new Skill { Name = source.Category, IconKey = Icon(source.Category) };
-                        var category = new SkillCategory { Name = source.Category, IconKey = Icon(source.Category), Skills = [new CategorySkillRef { Skill = skill }] };
-                        db.SkillCategories.Add(category);
-                        revision!.Categories.Add(new SkillTreeCategoryRef { Category = category, SortOrder = revision.Categories.Count });
-                        AddMap("category", groupKey, category.Id);
+                        var displayName = variants[0].Trim();
+                        skill = new Skill { Name = displayName, IconKey = Icon(displayName) };
+                        var categoryKey = maps.ContainsKey(("category", groupKey)) ? groupKey : variants.Select(GroupKey).FirstOrDefault(k => maps.ContainsKey(("category", k)));
+                        SkillCategory category;
+                        if (categoryKey is not null)
+                        {
+                            var categoryId = maps[("category", categoryKey)].TargetId;
+                            category = db.SkillCategories.Local.FirstOrDefault(c => c.Id == categoryId && c.DeletedAtUtc == null && c.MergedIntoCategoryId == null)
+                                ?? await db.SkillCategories.SingleOrDefaultAsync(c => c.Id == categoryId && c.DeletedAtUtc == null && c.MergedIntoCategoryId == null, token)
+                                ?? throw new InvalidOperationException("import.mapped_category_missing");
+                            var persistedOrder = await db.CategorySkillRefs.Where(r => r.CategoryId == category.Id).MaxAsync(r => (int?)r.SortOrder, token) ?? -1;
+                            var localOrder = db.CategorySkillRefs.Local.Where(r => r.CategoryId == category.Id || r.Category == category).Select(r => r.SortOrder).DefaultIfEmpty(-1).Max();
+                            db.CategorySkillRefs.Add(new CategorySkillRef { Category = category, Skill = skill, SortOrder = Math.Max(persistedOrder, localOrder) + 1 });
+                        }
+                        else
+                        {
+                            category = new SkillCategory { Name = displayName, IconKey = Icon(displayName), Skills = [new CategorySkillRef { Skill = skill }] };
+                            db.SkillCategories.Add(category);
+                        }
+                        if (!revision!.Categories.Any(r => r.CategoryId == category.Id || r.Category == category))
+                            revision.Categories.Add(new SkillTreeCategoryRef { Category = category, SortOrder = revision.Categories.Count });
+                        if (!maps.ContainsKey(("category", groupKey))) AddMap("category", groupKey, category.Id);
                         AddMap("skill", groupKey, skill.Id);
+                    }
+                    if (!maps.ContainsKey(("skill", groupKey)))
+                    {
+                        AddMap("skill", groupKey, skill.Id);
+                        if (mappedKey is not null && maps.TryGetValue(("category", mappedKey), out var categoryMap) && !maps.ContainsKey(("category", groupKey)))
+                            AddMap("category", groupKey, categoryMap.TargetId);
                     }
                 }
                 Guid challengeId;

@@ -1,8 +1,11 @@
 import { Alert, Badge, Button, Group, Modal, Radio, Select, Stack, Text, TextInput } from '@mantine/core'
 import { useState, useRef } from 'react'
 import useSWR from 'swr'
+import { SourceLabels, ResourceLocations } from '@Components/admin/course-transfer/ResourceLocations'
 import type { CourseContent, CourseSkill } from '@Utils/courseAuthoring'
+import { resourceLabel } from '@Utils/courseTransfer'
 import { CourseRequestError, courseRequest } from '@Hooks/useCourseAuthoring'
+import { useCourseResources } from '@Hooks/useCourseTransfers'
 import { useUser } from '@Hooks/useUser'
 import { fetcher } from '@Api'
 
@@ -72,6 +75,7 @@ export const AddCourseNode = ({
   const [challengeType, setChallengeType] = useState(restored?.challengeType ?? 'StaticAttachment')
   const creationOperation = useRef<PendingCreation | undefined>(restored)
   const [operationActive, setOperationActive] = useState(Boolean(restored))
+  const { data: inventory } = useCourseResources(kind, mode === 'library')
   const path =
     kind === 'category'
       ? '/api/admin/skill-categories'
@@ -208,7 +212,7 @@ export const AddCourseNode = ({
               disabled={pending || isLoading}
               data={resources.map((item) => ({
                 value: item.key,
-                label: `${item.name ?? item.title ?? '未命名'}${item.isEnabled === false ? '（已停用）' : ''}`,
+                label: `${resourceLabel(inventory?.find((r) => r.id === item.key)) || item.name || item.title || '未命名'}${item.isEnabled === false ? '（已停用）' : ''}`,
               }))}
               nothingFoundMessage={isLoading ? '正在加载…' : '没有可添加的资源'}
             />
@@ -216,6 +220,8 @@ export const AddCourseNode = ({
               .filter((item) => item.key === selected)
               .map((item) => (
                 <Stack key={item.key} gap={4}>
+                  <SourceLabels resource={inventory?.find((r) => r.id === item.key)} />
+                  <ResourceLocations resource={inventory?.find((r) => r.id === item.key)} />
                   <Text size="sm">{item.summary || '暂无简介'}</Text>
                   <Group>
                     <Badge variant="light">

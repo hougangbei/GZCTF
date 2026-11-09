@@ -73,6 +73,23 @@ public sealed class CourseWorkspaceContentService(AppDbContext db, IBlobStorage 
         return response;
     }
 
+    public async Task<string> CopyForTransferAsync(Guid sourceTreeId, Guid targetTreeId, Guid id, string kind, CancellationToken token)
+    {
+        var existing = await db.CourseWorkspaceContents.SingleOrDefaultAsync(c => c.SkillTreeId == targetTreeId && c.Kind == kind && c.ContentId == id, token);
+        if (existing is not null) return existing.PayloadJson;
+        var source = await LoadAsync(sourceTreeId, id, kind, token) ?? throw new InvalidOperationException("course_transfer_content_missing");
+        // Rehome draft asset URLs through the same verified copying path as published assets.
+        var payload = source.PayloadJson.Replace($"/api/admin/skill-trees/{sourceTreeId}/workspace/assets/",
+            $"/api/course-assets/{sourceTreeId}/{Guid.Empty}/", StringComparison.Ordinal);
+        payload = await RehomeAssetsAsync(payload, sourceTreeId, Guid.Empty, targetTreeId, token);
+        db.CourseWorkspaceContents.Add(new CourseWorkspaceContent { SkillTreeId = targetTreeId, Kind = kind, ContentId = id,
+            Version = 1, PayloadJson = payload });
+        return payload;
+    }
+
+    public Task LockTransferredAssetsAsync(IEnumerable<string> payloads, CancellationToken token) =>
+        registry.LockReferencedAssetsAsync(db, string.Join("\n", payloads), token);
+
     private static void RequireVersion(CourseWorkspaceContent row, uint? version)
     {
         if (version is null || version != row.Version) throw new SkillTreeRevisionConflictException();

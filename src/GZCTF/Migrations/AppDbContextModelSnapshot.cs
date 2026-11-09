@@ -110,6 +110,8 @@ namespace GZCTF.Migrations
                     b.Property<Guid?>("ActorId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("DetailsJson").HasColumnType("text");
+
                     b.Property<string>("ActorKind")
                         .IsRequired()
                         .HasMaxLength(24)
@@ -1976,6 +1978,16 @@ namespace GZCTF.Migrations
                     b.Property<string>("PayloadJson").IsRequired().HasColumnType("text");
                     b.HasKey("SkillTreeId", "Kind", "ContentId");
                     b.ToTable("CourseWorkspaceContents");
+                });
+
+            modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseTransferOperation", b =>
+                {
+                    b.Property<Guid>("ActorId").HasColumnType("uuid");
+                    b.Property<Guid>("OperationId").HasColumnType("uuid");
+                    b.Property<string>("RequestHash").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)");
+                    b.Property<string>("ResponseJson").IsRequired().HasColumnType("text");
+                    b.HasKey("ActorId", "OperationId");
+                    b.ToTable("CourseTransferOperations");
                 });
 
             modelBuilder.Entity("GZCTF.Features.SkillTrees.Domain.CourseNodeOperation", b =>

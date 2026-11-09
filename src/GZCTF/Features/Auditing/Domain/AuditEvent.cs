@@ -17,5 +17,6 @@ public sealed class AuditEvent
     public string? ErrorCode { get; set; }
     public string? ErrorReason { get; set; }
     public string RequestId { get; set; } = string.Empty;
+    public string? DetailsJson { get; set; }
     public int? AffectedCount { get; set; }
 }

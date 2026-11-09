@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using GZCTF.Features.Auditing.Domain;
 using GZCTF.Models;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +38,8 @@ public sealed class AuditWriter(
                     .Select(user => new { user.UserName, user.Role }).SingleOrDefaultAsync(cancellationToken)
                 : null;
             var actorName = actor?.UserName ?? "unknown";
+            var transfer = context.Items[CourseTransferAuditContext.ItemKey] as CourseTransferAuditContext;
+            if (transfer is not null) { targetId = transfer.Source.TreeId.ToString(); targetName = transfer.Source.TreeName; affectedCount = transfer.Contents.Length; }
             db.AuditEvents.Add(new AuditEvent
             {
                 OccurredAtUtc = DateTimeOffset.UtcNow,
@@ -53,7 +56,8 @@ public sealed class AuditWriter(
                 ErrorCode = errorCode,
                 ErrorReason = errorReason,
                 RequestId = context.TraceIdentifier.Length <= 64 ? context.TraceIdentifier : context.TraceIdentifier[^64..],
-                AffectedCount = affectedCount
+                AffectedCount = affectedCount,
+                DetailsJson = transfer is null ? null : JsonSerializer.Serialize(transfer, new JsonSerializerOptions(JsonSerializerDefaults.Web))
             });
             await db.SaveChangesAsync(cancellationToken);
         }

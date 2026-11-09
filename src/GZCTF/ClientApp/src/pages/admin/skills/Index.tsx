@@ -3,8 +3,10 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { WithNavBar } from '@Components/WithNavbar'
 import { WithRole } from '@Components/WithRole'
+import { SourceLabels, ResourceLocations } from '@Components/admin/course-transfer/ResourceLocations'
 import { SkillTreeForm, type SkillTreeFormValues } from '@Components/admin/skill-trees/SkillTreeForm'
 import type { AdminSkill } from '@Utils/skillHierarchy'
+import { useCourseResources } from '@Hooks/useCourseTransfers'
 import { useAdminSkills, useHierarchyMutations } from '@Hooks/useSkillHierarchy'
 import { useAdminSkillCategories } from '@Hooks/useSkillTreeAdmin'
 import { Role } from '@Api'
@@ -12,6 +14,7 @@ import { Role } from '@Api'
 const Skills = () => {
   const { data: skills, error } = useAdminSkills()
   const { data: categories } = useAdminSkillCategories()
+  const { data: resources, error: locationError } = useCourseResources('skill')
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const { request } = useHierarchyMutations()
   const navigate = useNavigate()
@@ -77,6 +80,11 @@ const Skills = () => {
               >
                 <Stack gap={2}>
                   <Text fw={600}>{skill.name}</Text>
+                  <SourceLabels resource={resources?.find((r) => r.id === skill.skillId)} />
+                  <ResourceLocations
+                    resource={resources?.find((r) => r.id === skill.skillId)}
+                    unavailable={!!locationError}
+                  />
                   <Text size="sm" c="dimmed">
                     {skill.contents?.length ?? 0} 项内容 · {skill.categories?.length ?? 0} 个类别 ·{' '}
                     {skill.isEnabled ? '已启用' : '已停用'}

@@ -90,6 +90,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<ChallengeHelpUsage> ChallengeHelpUsages { get; set; } = null!;
     public DbSet<CommunityWriteup> CommunityWriteups { get; set; } = null!;
     public DbSet<CourseStoredAsset> CourseStoredAssets { get; set; } = null!;
+    public DbSet<CourseTransferOperation> CourseTransferOperations { get; set; } = null!;
     public DbSet<CourseNodeOperation> CourseNodeOperations { get; set; } = null!;
     public DbSet<CourseWorkspaceContent> CourseWorkspaceContents { get; set; } = null!;
     public DbSet<CoursePublishedVersion> CoursePublishedVersions { get; set; } = null!;

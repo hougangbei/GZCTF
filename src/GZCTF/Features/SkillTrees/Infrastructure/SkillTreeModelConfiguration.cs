@@ -7,6 +7,12 @@ internal static class SkillTreeModelConfiguration
 {
     internal static void Configure(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<CourseTransferOperation>(entity =>
+        {
+            entity.HasKey(x => new { x.ActorId, x.OperationId });
+            entity.Property(x => x.RequestHash).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.ResponseJson).IsRequired();
+        });
         modelBuilder.Entity<CourseStoredAsset>(entity =>
         {
             entity.HasKey(x => x.StorageKey);

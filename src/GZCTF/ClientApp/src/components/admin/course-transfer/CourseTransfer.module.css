@@ -1,0 +1,52 @@
+.workspace {
+  width: 100%;
+  max-width: 1400px;
+  margin-inline: auto;
+  min-width: 0;
+}
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--mantine-spacing-lg);
+}
+.panel {
+  min-width: 0;
+  background: var(--hbc-card);
+}
+.skill {
+  padding: var(--mantine-spacing-sm);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+  min-width: 0;
+}
+.target {
+  background: var(--hbc-surface);
+}
+.selected {
+  border-color: var(--mantine-primary-color-filled);
+  outline: 1px solid var(--mantine-primary-color-filled);
+}
+.content {
+  padding: var(--mantine-spacing-xs);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-sm);
+  overflow-wrap: anywhere;
+  cursor: grab;
+}
+.actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  background: var(--hbc-card);
+  padding: var(--mantine-spacing-md);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+}
+@media (max-width: 760px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+  .actions {
+    position: static;
+  }
+}

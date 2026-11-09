@@ -34,7 +34,7 @@ export async function courseRequest<T>(path: string, data?: unknown, method = 'P
 export const useCourseWorkspace = (id: string) => {
   const { user } = useUser()
   return useSWR<CourseWorkspace>(
-    user?.userId ? [`/api/admin/skill-trees/${id}/workspace`, user.userId] : null,
+    user?.userId && id ? [`/api/admin/skill-trees/${id}/workspace`, user.userId] : null,
     ([path]: [string, string]) => fetcher(path),
     {
       keepPreviousData: false,

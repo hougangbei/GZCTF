@@ -45,6 +45,7 @@ export const AdminShell = ({ children }: PropsWithChildren) => {
           icon: mdiFolderOutline,
         },
         { key: 'skills', label: '技能库', path: '/admin/skills', icon: mdiSitemapOutline },
+        { key: 'content-transfer', label: '整理课程内容', path: '/admin/content-transfer', icon: mdiSitemapOutline },
         {
           key: 'challenges',
           label: t('skillTrees:workspace.tabs.challenges'),
