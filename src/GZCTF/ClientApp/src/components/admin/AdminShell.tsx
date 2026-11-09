@@ -23,6 +23,8 @@ import { type PropsWithChildren, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router'
 import { getAdminSection } from '@Utils/adminNavigation'
+import { CourseReviewShell } from './course-authoring/CourseReviewShell'
+import { courseContext } from '@Utils/courseAuthoring'
 import classes from './AdminShell.module.css'
 
 type Item = { key: string; label: string; path: string; icon: string }
@@ -120,6 +122,13 @@ export const AdminShell = ({ children }: PropsWithChildren) => {
     },
   ]
   useEffect(() => setOpened(false), [location.pathname, location.search])
+  const query = new URLSearchParams(location.search)
+  const treeMatch = location.pathname.match(/^\/admin\/skill-trees\/([^/]+)$/)
+  const context = courseContext(query)
+  const reviewId = query.get('review') === '1'
+    ? treeMatch?.[1] ?? (context && context !== 'invalid' && /^\/admin\/library\/(challenges|lessons)\/[^/]+$/.test(location.pathname) ? context.courseId : undefined)
+    : undefined
+  if (reviewId) return <CourseReviewShell courseId={reviewId}>{children}</CourseReviewShell>
   return (
     <div className={classes.shell}>
       <aside className={classes.sidebar}>

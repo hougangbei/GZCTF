@@ -85,6 +85,7 @@ jobs:
           tests/e2e/platform-theme.spec.ts
           tests/e2e/admin-updates.spec.ts
           tests/e2e/offline-updates.spec.ts
+          tests/e2e/course-review-workbench.spec.ts
           tests/e2e/course-outline-transfer.spec.ts
           tests/e2e/course-transfer.spec.ts
           tests/e2e/course-authoring.spec.ts
