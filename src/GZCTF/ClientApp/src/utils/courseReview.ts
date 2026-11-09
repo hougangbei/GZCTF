@@ -101,7 +101,11 @@ export function parseCourseReview(raw: string | null, courseId: string): CourseR
       !Array.isArray(r.check?.issues) ||
       !r.check.issues.every(
         (i: any) =>
-          i && typeof i.code === 'string' && typeof i.message === 'string' && ['error', 'warning'].includes(i.severity)
+          i &&
+          typeof i.code === 'string' &&
+          typeof i.message === 'string' &&
+          ['error', 'warning'].includes(i.severity) &&
+          (i.locales == null || (Array.isArray(i.locales) && i.locales.every((l: unknown) => typeof l === 'string')))
       ) ||
       typeof r.document?.name !== 'string' ||
       !Array.isArray(r.document.categories)

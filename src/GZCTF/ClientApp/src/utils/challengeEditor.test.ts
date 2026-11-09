@@ -147,3 +147,26 @@ it('an empty runtime template falls back to its canonical Flag template', () => 
   original.flags = [{ kind: ChallengeFlagKind.Template, template: 'nynuctf{[GUID]}' }]
   expect(challengeDraftFromResponse(original).container.FlagTemplate).toBe('nynuctf{[GUID]}')
 })
+
+it('explicit repair fills only blank localization fields without overwriting existing translations', () => {
+  const original = edit({}, ChallengeType.StaticAttachment)
+  original.localizations = [
+    { locale: 'en', title: 'Original', body: '' },
+    { locale: 'zh', title: '中文标题', body: '   ' },
+    { locale: 'ja', title: 'Existing title', body: 'Existing translation' },
+    { locale: 'fr', title: '', body: 'French body' },
+  ]
+  const draft = challengeDraftFromResponse(original)
+  draft.title = 'Repaired title'
+  draft.body = 'Repaired description'
+  const ordinary = challengeCommandFromDraft(draft, original, 1)
+  expect(ordinary.localizations?.find((l) => l.locale === 'zh')?.body).toBe('   ')
+  const repaired = challengeCommandFromDraft(draft, original, 1, true)
+  expect(repaired.localizations).toEqual([
+    { locale: 'en', title: 'Repaired title', summary: '', body: 'Repaired description' },
+    { locale: 'zh', title: '中文标题', body: 'Repaired description' },
+    { locale: 'ja', title: 'Existing title', body: 'Existing translation' },
+    { locale: 'fr', title: 'Repaired title', body: 'French body' },
+  ])
+  expect(original.localizations[1].body).toBe('   ')
+})

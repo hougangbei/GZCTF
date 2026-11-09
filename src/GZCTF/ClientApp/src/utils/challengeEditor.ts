@@ -148,7 +148,8 @@ export const challengeDraftFromResponse = (data: ChallengeEditResponse): Challen
 export const challengeCommandFromDraft = (
   draft: ChallengeDraft,
   current: ChallengeEditResponse,
-  rowVersion: number | undefined
+  rowVersion: number | undefined,
+  fillEmptyLocalizations = false
 ): ChallengeCommand => {
   const attachments = draft.attachments.map((entry) => ({
     ...entry,
@@ -186,6 +187,12 @@ export const challengeCommandFromDraft = (
                 ...(original?.metadataJson ? { metadataJson: original.metadataJson } : {}),
               }
             })
+  const localizations = mergeChallengeLocalization(current.localizations ?? [], {
+    locale: 'en',
+    title: draft.title.trim(),
+    summary: draft.summary.trim(),
+    body: draft.body,
+  })
   return {
     rowVersion,
     type: draft.type,
@@ -205,12 +212,13 @@ export const challengeCommandFromDraft = (
           ...draft.container,
         })
       : JSON.stringify({ ...rootWithoutAttachments, Attachments: runtimeAttachments }),
-    localizations: mergeChallengeLocalization(current.localizations ?? [], {
-      locale: 'en',
-      title: draft.title.trim(),
-      summary: draft.summary.trim(),
-      body: draft.body,
-    }),
+    localizations: fillEmptyLocalizations
+      ? localizations.map((text) => ({
+          ...text,
+          title: text.title?.trim() ? text.title : draft.title.trim(),
+          body: text.body?.trim() ? text.body : draft.body,
+        }))
+      : localizations,
     flags,
     hints: draft.hints
       .filter((content) => content.trim())
@@ -222,3 +230,11 @@ export const challengeCommandFromDraft = (
     writeups: draft.writeup.trim() ? [{ locale: 'en', content: draft.writeup }] : [],
   }
 }
+
+export const emptyOtherChallengeLocales = (data: ChallengeEditResponse) => [
+  ...new Set(
+    (data.localizations ?? [])
+      .filter((text) => text.locale?.toLowerCase() !== 'en' && (!text.title?.trim() || !text.body?.trim()))
+      .map((text) => text.locale ?? 'unknown')
+  ),
+]

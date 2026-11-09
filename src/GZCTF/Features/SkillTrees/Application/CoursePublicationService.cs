@@ -13,7 +13,7 @@ using Challenge = GZCTF.Features.ChallengeLibrary.Domain.Challenge;
 namespace GZCTF.Features.SkillTrees.Application;
 
 public sealed record CourseVersionCommand(string Version);
-public sealed record CoursePublicationIssue(string Severity, string Code, string Message, Guid? CategoryId = null, Guid? SkillId = null, Guid? ContentId = null);
+public sealed record CoursePublicationIssue(string Severity, string Code, string Message, Guid? CategoryId = null, Guid? SkillId = null, Guid? ContentId = null, IReadOnlyList<string>? Locales = null);
 public sealed record CoursePublicationChanges(IReadOnlyList<string> Added, IReadOnlyList<string> Removed);
 public sealed record CourseRuntimeCheck(Guid ContentId, string Title, string? Image, int? Port, int Score);
 public sealed record CoursePublicationCheck(string Version, IReadOnlyList<CoursePublicationIssue> Issues, int CategoryCount, int SkillCount, int ChallengeCount, int LessonCount,
@@ -95,8 +95,12 @@ public sealed class CoursePublicationService(AppDbContext db, CourseWorkspaceCon
                 { issues.Add(new("error", "challenge_identity_unavailable", "The challenge identity is missing, retired, or merged.", ContentId: item.ContentId)); continue; }
                 var challenge = await contents.GetWorkspaceChallengeAsync(treeId, item.ContentId, token);
                 if (challenge is null || challenge.PublicationState is ChallengePublicationState.Retired or ChallengePublicationState.Merged ||
-                    !challenge.Localizations.Any(l => !string.IsNullOrWhiteSpace(l.Title)) || challenge.Localizations.Any(l => string.IsNullOrWhiteSpace(l.Body)))
-                { issues.Add(new("error", "challenge_invalid", "The challenge is missing, retired, or needs a title and description.", ContentId: item.ContentId)); continue; }
+                    !challenge.Localizations.Any(l => !string.IsNullOrWhiteSpace(l.Title)))
+                { issues.Add(new("error", "challenge_invalid", "The challenge is missing, retired, or needs a title.", ContentId: item.ContentId)); continue; }
+                var missingBodyLocales = challenge.Localizations.Where(l => string.IsNullOrWhiteSpace(l.Body))
+                    .Select(l => string.IsNullOrWhiteSpace(l.Locale) ? "unknown" : l.Locale).Distinct().ToArray();
+                if (missingBodyLocales.Length > 0)
+                { issues.Add(new("error", "challenge_body_missing", "Challenge descriptions are empty for the listed languages.", ContentId: item.ContentId, Locales: missingBodyLocales)); continue; }
                 if (!challenge.IsEnabled) { issues.Add(new("warning", "disabled_challenge", "This challenge is disabled.", ContentId: item.ContentId)); continue; }
                 await ValidateBodyAssetsAsync(treeId, "challenge", item.ContentId, challenge.Localizations.Select(l => l.Body), issues, token);
                 try { await ChallengePublicationValidator.ValidateAsync(challenge, storage, token); }
