@@ -76,6 +76,49 @@ public sealed class UpdateAgentClientTests
             ["Updater:TokenFile"] = tokenFile
         }).Build());
 
+    [Fact]
+    public async Task Upload_stream_forwards_exact_bytes_and_length_without_disposing_input()
+    {
+        var tokenFile = Path.GetTempFileName();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        try
+        {
+            await File.WriteAllTextAsync(tokenFile, new string('s', 32), timeout.Token);
+            var bytes = new byte[300_000];
+            new Random(123).NextBytes(bytes);
+            using var source = new MemoryStream(bytes);
+            var receive = Task.Run(async () =>
+            {
+                using var connection = await listener.AcceptTcpClientAsync(timeout.Token);
+                await using var stream = connection.GetStream();
+                var header = new StringBuilder();
+                var single = new byte[1];
+                while (!header.ToString().EndsWith("\r\n\r\n", StringComparison.Ordinal))
+                {
+                    Assert.True(header.Length < 8192);
+                    Assert.Equal(1, await stream.ReadAsync(single, timeout.Token));
+                    header.Append((char)single[0]);
+                }
+                Assert.Contains("POST /packages/upload HTTP/1.1", header.ToString());
+                Assert.Contains("Content-Length: 300000", header.ToString());
+                Assert.Contains("X-File-Name: " + Uri.EscapeDataString("更新包.tar.gz"), header.ToString());
+                var body = new byte[bytes.Length];
+                await stream.ReadExactlyAsync(body, timeout.Token);
+                Assert.Equal(bytes, body);
+                await stream.WriteAsync(Encoding.UTF8.GetBytes("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}"), timeout.Token);
+            }, timeout.Token);
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            var result = await Client($"http://127.0.0.1:{port}", null, tokenFile)
+                .UploadAsync(source, source.Length, "更新包.tar.gz", timeout.Token);
+            await receive;
+            Assert.Equal(200, result.StatusCode);
+            Assert.True(source.CanRead);
+        }
+        finally { File.Delete(tokenFile); }
+    }
+
     private static async Task<(string StartLine, Dictionary<string, string> Headers, string Body)> ReceiveAsync(
         TcpListener listener, CancellationToken token)
     {

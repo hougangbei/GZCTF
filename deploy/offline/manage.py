@@ -19,6 +19,7 @@ import time
 
 PACKAGE_FILES = ('manage.py', 'compose.yml', 'README.md', 'images.tar.gz')
 SNAPSHOT_FILES = ('.env', 'appsettings.json', 'compose.yml', 'release.json', 'manage.py', 'compose.site.yml', 'installation.json')
+OPTIONAL_SNAPSHOT_FILES = ('compose.updater.yml',)
 
 class OfflineError(RuntimeError):
     pass
@@ -56,11 +57,21 @@ def check_hashes(root, files):
 
 def load_manifest(root):
     root = Path(root)
-    manifest = json.loads((root / 'manifest.json').read_text())
+    path = safe_child(root, 'manifest.json')
+    if not path.is_file() or path.stat().st_size > 1024 * 1024:
+        raise OfflineError('Bundle manifest exceeds the 1 MiB metadata limit')
+    with path.open('rb') as source:
+        raw = source.read(1024 * 1024 + 1)
+    if len(raw) > 1024 * 1024:
+        raise OfflineError('Bundle manifest exceeds the 1 MiB metadata limit')
+    manifest = json.loads(raw)
     if manifest.get('schema') != 1 or set(manifest.get('images', {})) != {'app', 'db', 'redis'}:
         raise OfflineError('Unsupported bundle manifest')
     if set(manifest.get('files', {})) != set(PACKAGE_FILES):
         raise OfflineError('Incomplete bundle file list')
+    for name in ('manage.py', 'compose.yml', 'README.md'):
+        if safe_child(root, name).stat().st_size > 8 * 1024 * 1024:
+            raise OfflineError('Bundle control file exceeds the 8 MiB limit')
     check_hashes(root, manifest['files'])
     return manifest
 
@@ -204,7 +215,18 @@ class Deployment:
 
     def compose(self, *args, **kwargs):
         return command(['docker', 'compose', '--project-directory', self.root, '--env-file', self.root / '.env',
-                        '-p', self.env()['COMPOSE_PROJECT'], '-f', self.root / 'compose.yml', '-f', self.root / 'compose.site.yml'] + list(args), **kwargs)
+                        '-p', self.env()['COMPOSE_PROJECT'], '-f', self.root / 'compose.yml', '-f', self.root / 'compose.site.yml'] + self.extra_compose(self.root) + list(args), **kwargs)
+
+    @staticmethod
+    def extra_compose(root):
+        path = Path(root) / 'compose.updater.yml'
+        if path.is_symlink():
+            raise OfflineError('Updater Compose overlay must not be a symlink')
+        return ['-f', path] if path.is_file() else []
+
+    @staticmethod
+    def snapshot_files(root):
+        return SNAPSHOT_FILES + tuple(name for name in OPTIONAL_SNAPSHOT_FILES if (Path(root) / name).is_file())
 
     def volume_exists(self, name):
         return subprocess.run(['docker', 'volume', 'inspect', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
@@ -237,8 +259,25 @@ class Deployment:
     def release(self):
         return json.loads((self.root / 'release.json').read_text())
 
+    def verify_application(self):
+        env = self.env()
+        ids = self.compose('ps', '-a', '-q', 'app').decode().split()
+        if len(ids) != 1:
+            raise OfflineError('Cannot identify the installed application container')
+        container = json.loads(docker('inspect', ids[0]))[0]
+        labels = container.get('Config', {}).get('Labels') or {}
+        if labels.get('com.docker.compose.project') != env['COMPOSE_PROJECT'] or labels.get('com.docker.compose.service') != 'app':
+            raise OfflineError('Application container identity changed')
+        image = json.loads(docker('image', 'inspect', container['Image']))[0]
+        if image['Os'] != 'linux' or image['Architecture'] != 'amd64' or fingerprint(image) != self.release()['images']['app']['fingerprint']:
+            raise OfflineError('Installed application image changed')
+
     def save_release(self, bundle, manifest):
-        for name in ('compose.yml', 'manage.py'):
+        # Package Python is untrusted data. Preserve the operator-installed CLI;
+        # a first install receives this fixed host tool, never bundle/manage.py.
+        if not (self.root / 'manage.py').exists():
+            write_private(self.root / 'manage.py', Path(__file__).read_text())
+        for name in ('compose.yml',):
             write_private(self.root / name, (Path(bundle) / name).read_text())
         write_private(self.root / 'release.json', json.dumps(manifest, indent=2))
         env = self.env()
@@ -253,10 +292,19 @@ class Deployment:
         candidate = self.root / ('.candidate-env-' + secrets.token_hex(5))
         write_private(candidate, ''.join(k + '=' + v + '\n' for k, v in env.items()), exclusive=True)
         try:
+            original = json.loads(self.compose('config', '--format', 'json'))
             output = command(['docker', 'compose', '--project-directory', self.root, '--env-file', candidate,
                               '-p', env['COMPOSE_PROJECT'], '-f', Path(bundle) / 'compose.yml',
-                              '-f', self.root / 'compose.site.yml', 'config', '--format', 'json'])
-            validate_effective_config(json.loads(output), env, self.root)
+                              '-f', self.root / 'compose.site.yml'] + self.extra_compose(self.root) + ['config', '--format', 'json'])
+            effective = json.loads(output)
+            validate_effective_config(effective, env, self.root)
+            # Images are the only capability a package may change. In particular,
+            # reject new commands, entrypoints, services, mounts, capabilities,
+            # users, Docker sockets and network changes before any `up` call.
+            for service, key in [('app', 'APP_IMAGE'), ('db', 'DB_IMAGE'), ('redis', 'REDIS_IMAGE')]:
+                original['services'][service]['image'] = env[key]
+            if effective != original:
+                raise OfflineError('Candidate Compose changes deployment permissions or runtime configuration')
         finally:
             candidate.unlink(missing_ok=True)
 
@@ -373,7 +421,7 @@ class Deployment:
         with (backup / 'redis.tar').open('wb') as target:
             docker('run', '--rm', '--network', 'none', '--entrypoint', 'tar', '--mount',
                    'type=volume,src=' + env['REDIS_VOLUME'] + ',dst=/data,readonly', env['REDIS_IMAGE'], '-C', '/data', '-cf', '-', '.', stdout=target)
-        for name in SNAPSHOT_FILES:
+        for name in self.snapshot_files(self.root):
             shutil.copyfile(str(self.root / name), str(backup / name))
             os.chmod(str(backup / name), 0o600)
         hashes = {str(p.relative_to(backup)): sha256(p) for p in backup.rglob('*') if p.is_file()}
@@ -410,7 +458,7 @@ class Deployment:
         targets = self.recovery_targets(previous, identity, release)
         effective = command(['docker', 'compose', '--project-directory', self.root, '--env-file', backup / '.env',
                              '-p', previous['COMPOSE_PROJECT'], '-f', backup / 'compose.yml', '-f', backup / 'compose.site.yml',
-                             'config', '--format', 'json'])
+                             ] + self.extra_compose(backup) + ['config', '--format', 'json'])
         validate_effective_config(json.loads(effective), previous, self.root)
         # Validate the entire Redis archive before removing cache volume contents.
         with tarfile.open(str(backup / 'redis.tar')) as archive:
@@ -427,7 +475,7 @@ class Deployment:
         if apps: docker('stop', *apps)
         docker('stop', targets['redis'])
         # Restore the verified old control files before any database operation. Retry does not depend on candidate configuration.
-        for name in SNAPSHOT_FILES:
+        for name in self.snapshot_files(backup):
             write_private(self.root / name, (backup / name).read_text())
         env = previous
         self.installed(allow_recovery=True)
@@ -441,7 +489,7 @@ class Deployment:
             docker('run', '--rm', '-i', '--network', 'none', '--entrypoint', 'sh', '--mount',
                    'type=volume,src=' + env['REDIS_VOLUME'] + ',dst=/data', env['REDIS_IMAGE'], '-c',
                    'find /data -mindepth 1 -maxdepth 1 -exec rm -rf {} + && tar -C /data -xf -', stdin=source)
-        for name in SNAPSHOT_FILES:
+        for name in self.snapshot_files(backup):
             write_private(self.root / name, (backup / name).read_text())
         self.resume()
         (self.root / 'recovery-required.json').unlink(missing_ok=True)
@@ -458,27 +506,40 @@ class Deployment:
         self.recovery_marker(backup, 'Operator requested full recovery')
         self.restore_stopped(backup)
 
-    def update(self, bundle):
+    def update(self, bundle, progress=None):
+        def report(phase, message, backup=None):
+            if progress is not None:
+                progress(phase, message, backup)
         self.installed()
         new = load_manifest(bundle)
         compatible_update(self.release(), new)
         self.validate_candidate(bundle, new)
+        report('importing', '正在导入并校验离线镜像。')
         self.import_bundle(bundle)
         backup = None
         try:
+            report('stopping', '正在停止应用写入并保存 Redis。')
             self.stop_writers()
+            report('backingUp', '正在备份数据库、文件、Redis 与部署配置。')
             backup = self.backup_stopped()
+            report('backingUp', '备份已校验。', backup)
             self.recovery_marker(backup, 'Update in progress; do not bypass recovery after interruption')
             self.save_release(bundle, new)
+            report('starting', '正在启动新版本并检查健康状态。', backup)
             self.resume()
             (self.root / 'recovery-required.json').unlink()
             print('Application updated; persistent volumes and secrets retained.')
         except Exception:
             if backup is not None:
+                report('recovering', '更新失败，正在恢复完整的旧版数据和配置。', backup)
                 print('Candidate failed. Restoring the verified pre-update snapshot...', flush=True)
                 self.restore_stopped(backup)
             else:
-                self.resume()
+                try:
+                    self.resume()
+                except Exception:
+                    self.recovery_marker(None, 'Backup or writer stop failed and original services could not resume')
+                    raise
             raise
 
 def main():

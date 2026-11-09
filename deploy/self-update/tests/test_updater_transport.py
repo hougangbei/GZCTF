@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 import threading
 import unittest
+from unittest import mock
 import urllib.request
 import urllib.error
 from types import SimpleNamespace
@@ -10,6 +11,10 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import updater
 
 class TransportTests(unittest.TestCase):
+    def test_legacy_installation_status_without_offline_module(self):
+        with mock.patch.dict(sys.modules, {'offline_updates': None}):
+            self.test_tcp_transport_keeps_bearer_authentication_and_json_status()
+
     def test_tcp_transport_keeps_bearer_authentication_and_json_status(self):
         self.assertTrue(hasattr(updater,'UpdaterTCPServer'),'Loopback TCP transport must be available for Docker Desktop')
         class QuietHandler(updater.Handler):

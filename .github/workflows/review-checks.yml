@@ -83,6 +83,8 @@ jobs:
           tests/e2e/admin-test-session.spec.ts
           tests/e2e/challenge-layout.spec.ts
           tests/e2e/platform-theme.spec.ts
+          tests/e2e/admin-updates.spec.ts
+          tests/e2e/offline-updates.spec.ts
       - uses: actions/upload-artifact@v7
         if: always()
         with:
