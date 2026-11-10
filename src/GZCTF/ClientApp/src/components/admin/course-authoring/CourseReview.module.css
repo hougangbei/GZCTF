@@ -72,3 +72,13 @@
     padding: 16px 12px;
   }
 }
+
+.sticky,
+.drawerList {
+  overflow-anchor: none;
+  scroll-behavior: auto;
+}
+.drawerList {
+  max-height: calc(100dvh - 90px);
+  overflow-y: auto;
+}

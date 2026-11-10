@@ -1089,6 +1089,8 @@ export interface GlobalConfig {
   footerInfo?: string | null;
   /** Optional laboratory blog URL shown in public navigation */
   laboratoryBlogUrl?: string | null;
+  /** Optional laboratory netdisk URL shown in public navigation */
+  laboratoryNetdiskUrl?: string | null;
   /** Custom theme color */
   customTheme?: string | null;
   /** Use asymmetric encryption for API requests */
@@ -1550,6 +1552,8 @@ export interface ClientConfig {
   footerInfo?: string | null;
   /** Optional laboratory blog URL shown in public navigation */
   laboratoryBlogUrl?: string | null;
+  /** Optional laboratory netdisk URL shown in public navigation */
+  laboratoryNetdiskUrl?: string | null;
   /** Custom theme color */
   customTheme?: string | null;
   /** The public key used for API requests */

@@ -425,7 +425,12 @@
           "description": "Будет отображен в верхней части страницы",
           "label": "Слоган"
         },
-        "title": "Настройки платформы"
+        "title": "Настройки платформы",
+        "laboratory_netdisk": {
+          "label": "Laboratory netdisk URL",
+          "description": "Opens from the navigation in a new tab. Leave blank to hide.",
+          "error": "Enter an absolute URL starting with http:// or https://."
+        }
       }
     },
     "show_all": "Показать всё",

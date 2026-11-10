@@ -153,7 +153,8 @@
       "light": "淺色",
       "system": "跟隨系統",
       "switch_to": "切換到{{theme}}主題"
-    }
+    },
+    "laboratory_netdisk": "實驗室網盤"
   },
   "title": {
     "404": "無埞走",

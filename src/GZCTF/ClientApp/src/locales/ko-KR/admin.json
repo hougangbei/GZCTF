@@ -425,7 +425,12 @@
           "description": "페이지 맨 위에 표시됩니다.",
           "label": "플랫폼 슬로건"
         },
-        "title": "플랫폼 설정"
+        "title": "플랫폼 설정",
+        "laboratory_netdisk": {
+          "label": "Laboratory netdisk URL",
+          "description": "Opens from the navigation in a new tab. Leave blank to hide.",
+          "error": "Enter an absolute URL starting with http:// or https://."
+        }
       }
     },
     "show_all": "모두 보기",

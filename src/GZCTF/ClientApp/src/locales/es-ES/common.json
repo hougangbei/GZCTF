@@ -153,7 +153,8 @@
       "light": "modo claro",
       "system": "Sistema",
       "switch_to": "Cambiar a {{theme}}"
-    }
+    },
+    "laboratory_netdisk": "Laboratory netdisk"
   },
   "title": {
     "404": "La Nada",

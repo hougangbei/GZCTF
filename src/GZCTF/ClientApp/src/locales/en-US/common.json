@@ -157,7 +157,8 @@
       "light": "light mode",
       "system": "System",
       "switch_to": "Switch to {{theme}}"
-    }
+    },
+    "laboratory_netdisk": "Laboratory netdisk"
   },
   "title": {
     "404": "The Nowhere",

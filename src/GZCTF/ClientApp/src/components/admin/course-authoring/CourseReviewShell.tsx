@@ -1,10 +1,13 @@
 import { Alert, Badge, Button, Drawer, Group, Stack, Text, Title } from '@mantine/core'
-import { type PropsWithChildren, useEffect, useRef, useState } from 'react'
+import { type PropsWithChildren, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router'
-import { courseReviewHref, groupReviewIssues, reviewIssueHref } from '@Utils/courseReview'
+import { courseReviewHref, groupReviewIssues, reviewIssueHref, reviewKey } from '@Utils/courseReview'
 import { useCourseReview } from '@Hooks/useCourseReview'
+import { useUser } from '@Hooks/useUser'
 import classes from './CourseReview.module.css'
 import { publicationIssueMessage } from './PublishReview'
+
+const scrollMemory = new Map<string, number>()
 
 export function CourseReviewShell({ courseId, children }: PropsWithChildren<{ courseId: string }>) {
   const { review, storageUnavailable } = useCourseReview(courseId)
@@ -14,16 +17,43 @@ export function CourseReviewShell({ courseId, children }: PropsWithChildren<{ co
   useEffect(() => {
     setOpened(false)
   }, [location.pathname, location.search])
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      document
-        .querySelectorAll<HTMLElement>('nav[aria-label="发布问题清单"] a[aria-current="page"]')
-        .forEach((item) => {
-          if (item.getClientRects().length) item.scrollIntoView({ block: 'nearest' })
-        })
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [location.pathname, opened, review?.check.version])
+  const { user } = useUser()
+  const desktop = useRef<HTMLDivElement>(null),
+    mobile = useRef<HTMLDivElement>(null)
+  const scrollKey = user?.userId ? `${reviewKey(user.userId, courseId)}:scroll` : undefined
+  const rememberScroll = (side: 'desktop' | 'mobile', element: HTMLElement) => {
+    if (!scrollKey) return
+    const key = `${scrollKey}:${side}`
+    scrollMemory.set(key, element.scrollTop)
+    if (scrollMemory.size > 128) scrollMemory.delete(scrollMemory.keys().next().value!)
+    try {
+      sessionStorage.setItem(key, String(element.scrollTop))
+    } catch {}
+  }
+  const restoreScroll = useCallback(
+    (side: 'desktop' | 'mobile', element: HTMLDivElement) => {
+      let saved = scrollKey ? (scrollMemory.get(`${scrollKey}:${side}`) ?? 0) : 0
+      if (scrollKey)
+        try {
+          const raw = sessionStorage.getItem(`${scrollKey}:${side}`)
+          if (raw !== null && Number.isFinite(Number(raw))) saved = Math.max(0, Number(raw))
+        } catch {}
+      element.scrollTop = saved
+    },
+    [scrollKey]
+  )
+  const mountMobile = useCallback(
+    (element: HTMLDivElement | null) => {
+      mobile.current = element
+      if (element) restoreScroll('mobile', element)
+    },
+    [restoreScroll]
+  )
+  useLayoutEffect(() => {
+    if (desktop.current) restoreScroll('desktop', desktop.current)
+    if (mobile.current) restoreScroll('mobile', mobile.current)
+    // Restore manual position only; selection must never scroll the list or page.
+  }, [location.pathname, location.search, opened, restoreScroll, review?.check.version])
   const groups = review ? groupReviewIssues(review) : []
   const list = (
     <Stack gap="md">
@@ -91,7 +121,9 @@ export function CourseReviewShell({ courseId, children }: PropsWithChildren<{ co
   return (
     <div className={classes.shell}>
       <aside className={classes.sidebar}>
-        <div className={classes.sticky}>{list}</div>
+        <div ref={desktop} className={classes.sticky} onScroll={(e) => rememberScroll('desktop', e.currentTarget)}>
+          {list}
+        </div>
       </aside>
       <div className={classes.main}>
         <Group className={classes.mobileBar} justify="space-between">
@@ -111,7 +143,13 @@ export function CourseReviewShell({ courseId, children }: PropsWithChildren<{ co
         title="问题清单"
         size="sm"
       >
-        {list}
+        <div
+          ref={mountMobile}
+          className={classes.drawerList}
+          onScroll={(e) => rememberScroll('mobile', e.currentTarget)}
+        >
+          {list}
+        </div>
       </Drawer>
     </div>
   )

@@ -153,7 +153,8 @@
       "light": "светлый режим",
       "system": "Система",
       "switch_to": "Переключиться на {{theme}}"
-    }
+    },
+    "laboratory_netdisk": "Laboratory netdisk"
   },
   "title": {
     "404": "Не найдено",
