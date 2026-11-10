@@ -281,7 +281,7 @@ test('a damaged cached report can be replaced with a new check instead of crashi
   await expect(queue(page).getByRole('link', { name: /待修题/ })).toHaveCount(2)
 })
 
-test('a long worklist keeps the selected question visible after changing editor routes', async ({ page }) => {
+test('a long worklist keeps its scroll position when changing editor routes', async ({ page }) => {
   await setup(page)
   await page.evaluate(() => {
     const key = Object.keys(sessionStorage).find((k) => k.startsWith('course-review:'))!
@@ -312,12 +312,19 @@ test('a long worklist keeps the selected question visible after changing editor 
   await expect(page.getByRole('heading', { name: '待修题2', exact: true })).toBeVisible()
   const active = queue(page).locator('a[aria-current="page"]')
   await expect(active).toContainText('待修题2')
-  await expect
-    .poll(async () => {
-      const b = await active.boundingBox()
-      return !!b && b.y >= 56 && b.y + b.height <= 1000
-    })
-    .toBe(true)
+  const before = await queue(page).evaluate((el) => el.parentElement!.parentElement!.scrollTop)
+  await page.getByRole('button', { name: '保存草稿', exact: true }).click()
+  await expect(queue(page).getByText('已修改 · 待复查')).toHaveCount(1)
+  await expect.poll(() => queue(page).evaluate((el) => el.parentElement!.parentElement!.scrollTop)).toBe(before)
+  // Select the first entry visible at the current list position, rather than asking the browser to scroll a hidden link into view.
+  const link = queue(page)
+    .getByRole('link', { name: /其他问题/ })
+    .last()
+  await link.scrollIntoViewIfNeeded()
+  const position = await queue(page).evaluate((el) => el.parentElement!.parentElement!.scrollTop)
+  await link.click()
+  await expect(page).toHaveURL(/review=1/)
+  await expect.poll(() => queue(page).evaluate((el) => el.parentElement!.parentElement!.scrollTop)).toBe(position)
 })
 
 test('ordinary save automatically adapts Chinese and English without a separate language action', async ({ page }) => {
@@ -366,4 +373,45 @@ test('ordinary save automatically adapts Chinese and English without a separate 
   await page.getByRole('link', { name: '检查摘要 / 统一复查', exact: true }).first().click()
   await page.getByRole('button', { name: '统一复查全部问题', exact: true }).click()
   await expect(page.getByRole('button', { name: '确认统一发布', exact: true })).toBeEnabled()
+})
+
+test('mobile question drawer keeps manual scroll when it is reopened after selecting a question', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await setup(page)
+  await page.evaluate(() => {
+    const key = Object.keys(sessionStorage).find((k) => k.startsWith('course-review:') && !k.includes(':scroll'))!
+    const r = JSON.parse(sessionStorage.getItem(key)!),
+      items = r.document.categories[0].skills[0].contents
+    const extras = Array.from({ length: 20 }, (_, i) => ({
+      ...items[0],
+      contentId: crypto.randomUUID(),
+      title: '其他问题' + i,
+    }))
+    r.document.categories[0].skills[0].contents = [...extras, ...items]
+    r.check.issues = [
+      ...extras.map((c) => ({
+        severity: 'error',
+        code: 'challenge_invalid',
+        message: 'empty',
+        contentId: c.contentId,
+      })),
+      ...r.check.issues,
+    ]
+    sessionStorage.setItem(key, JSON.stringify(r))
+  })
+  await page.reload()
+  await page.getByRole('button', { name: '打开问题清单', exact: true }).click()
+  const drawer = page.getByRole('dialog', { name: '问题清单' }),
+    link = drawer.getByRole('link', { name: /待修题1/ })
+  await link.scrollIntoViewIfNeeded()
+  const before = await link.evaluate((el) => el.closest('nav')!.parentElement!.parentElement!.scrollTop)
+  expect(before).toBeGreaterThan(0)
+  await link.click()
+  await expect(page.getByRole('heading', { name: '待修题1', exact: true })).toBeVisible()
+  await expect(drawer).not.toBeVisible()
+  await page.getByRole('button', { name: '打开问题清单', exact: true }).click()
+  const reopened = drawer.getByRole('link', { name: /待修题1/ })
+  await expect
+    .poll(() => reopened.evaluate((el) => el.closest('nav')!.parentElement!.parentElement!.scrollTop))
+    .toBe(before)
 })

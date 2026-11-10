@@ -102,6 +102,8 @@ const Configs: FC = () => {
 
   const blogUrl = globalConfig?.laboratoryBlogUrl?.trim() ?? ''
   const invalidBlogUrl = Boolean(blogUrl && !getLaboratoryBlogUrl(blogUrl))
+  const netdiskUrl = globalConfig?.laboratoryNetdiskUrl?.trim() ?? ''
+  const invalidNetdiskUrl = Boolean(netdiskUrl && !getLaboratoryBlogUrl(netdiskUrl))
   const platformPalette = resolveThemePalette(color)
   const colors = platformPalette?.colors ?? theme.colors.brand
 
@@ -128,6 +130,7 @@ const Configs: FC = () => {
             globalConfig: {
               ...globalConfig,
               laboratoryBlogUrl: blogUrl,
+              laboratoryNetdiskUrl: netdiskUrl,
               customTheme: color && platformPalette ? color : '',
             },
             accountPolicy,
@@ -138,7 +141,7 @@ const Configs: FC = () => {
             setSaved(true)
           }, 500)
         }}
-        disabled={!saved || disabled || invalidBlogUrl || Boolean(color && !platformPalette)}
+        disabled={!saved || disabled || invalidBlogUrl || invalidNetdiskUrl || Boolean(color && !platformPalette)}
       >
         {t('admin.button.save')}
       </Button>
@@ -216,6 +219,19 @@ const Configs: FC = () => {
                 error={invalidBlogUrl ? t('admin.content.settings.platform.laboratory_blog.error') : undefined}
                 onChange={(e) => {
                   setGlobalConfig({ ...globalConfig, laboratoryBlogUrl: e.currentTarget.value })
+                }}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 4, sm: 2 }}>
+              <TextInput
+                label={t('admin.content.settings.platform.laboratory_netdisk.label')}
+                description={t('admin.content.settings.platform.laboratory_netdisk.description')}
+                placeholder="https://pan.example.com"
+                disabled={disabled}
+                value={globalConfig?.laboratoryNetdiskUrl ?? ''}
+                error={invalidNetdiskUrl ? t('admin.content.settings.platform.laboratory_netdisk.error') : undefined}
+                onChange={(e) => {
+                  setGlobalConfig({ ...globalConfig, laboratoryNetdiskUrl: e.currentTarget.value })
                 }}
               />
             </Grid.Col>

@@ -425,7 +425,12 @@
           "description": "Akan ditampilkan di bagian atas halaman",
           "label": "Slogan platform"
         },
-        "title": "Pengaturan platform"
+        "title": "Pengaturan platform",
+        "laboratory_netdisk": {
+          "label": "Laboratory netdisk URL",
+          "description": "Opens from the navigation in a new tab. Leave blank to hide.",
+          "error": "Enter an absolute URL starting with http:// or https://."
+        }
       }
     },
     "show_all": "Tampilan semua",

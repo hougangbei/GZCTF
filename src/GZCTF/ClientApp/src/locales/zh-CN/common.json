@@ -157,7 +157,8 @@
       "light": "浅色",
       "system": "跟随系统",
       "switch_to": "切换到{{theme}}主题"
-    }
+    },
+    "laboratory_netdisk": "实验室网盘"
   },
   "title": {
     "404": "The Nowhere",

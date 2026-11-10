@@ -425,7 +425,12 @@
           "description": "Sẽ được hiển thị ở đầu trang.",
           "label": "Khẩu hiệu nền tảng."
         },
-        "title": "Cài đặt nền tảng."
+        "title": "Cài đặt nền tảng.",
+        "laboratory_netdisk": {
+          "label": "Laboratory netdisk URL",
+          "description": "Opens from the navigation in a new tab. Leave blank to hide.",
+          "error": "Enter an absolute URL starting with http:// or https://."
+        }
       }
     },
     "show_all": "Hiển thị tất cả.",

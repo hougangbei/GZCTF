@@ -431,7 +431,12 @@
           "description": "平台标语将显示在页面顶部和关于页面",
           "label": "平台标语"
         },
-        "title": "平台设置"
+        "title": "平台设置",
+        "laboratory_netdisk": {
+          "label": "实验室网盘链接",
+          "description": "从顶部菜单在新标签页打开，留空则隐藏入口。",
+          "error": "请输入以 http:// 或 https:// 开头的完整链接。"
+        }
       }
     },
     "show_all": "显示全部",

@@ -425,7 +425,12 @@
           "description": "平臺標語將顯示在頁面頂部和關於頁面",
           "label": "平臺標語"
         },
-        "title": "平臺設置"
+        "title": "平臺設置",
+        "laboratory_netdisk": {
+          "label": "實驗室網盤連結",
+          "description": "從頂部選單在新分頁開啟，留空則隱藏入口。",
+          "error": "請輸入以 http:// 或 https:// 開頭的完整連結。"
+        }
       }
     },
     "show_all": "顯示全部",

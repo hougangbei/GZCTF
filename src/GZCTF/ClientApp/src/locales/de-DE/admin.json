@@ -425,7 +425,12 @@
           "description": "Wird oben auf der Seite angezeigt",
           "label": "Plattform-Slogan"
         },
-        "title": "Plattform-Einstellungen"
+        "title": "Plattform-Einstellungen",
+        "laboratory_netdisk": {
+          "label": "Laboratory netdisk URL",
+          "description": "Opens from the navigation in a new tab. Leave blank to hide.",
+          "error": "Enter an absolute URL starting with http:// or https://."
+        }
       }
     },
     "show_all": "Alle anzeigen",

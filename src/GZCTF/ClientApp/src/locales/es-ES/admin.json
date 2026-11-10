@@ -425,7 +425,12 @@
           "description": "Se mostrará en la parte superior de la página",
           "label": "Eslogan de la Plataforma"
         },
-        "title": "Configuraciones de la Plataforma"
+        "title": "Configuraciones de la Plataforma",
+        "laboratory_netdisk": {
+          "label": "Laboratory netdisk URL",
+          "description": "Opens from the navigation in a new tab. Leave blank to hide.",
+          "error": "Enter an absolute URL starting with http:// or https://."
+        }
       }
     },
     "show_all": "Mostrar Todo",

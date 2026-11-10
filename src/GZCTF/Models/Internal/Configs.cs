@@ -267,6 +267,10 @@ public class GlobalConfig : IValidatableObject
     [CacheFlush(CacheKey.ClientConfig)]
     public string? LaboratoryBlogUrl { get; set; }
 
+    /// <summary>Optional laboratory netdisk URL shown in public navigation.</summary>
+    [CacheFlush(CacheKey.ClientConfig)]
+    public string? LaboratoryNetdiskUrl { get; set; }
+
     /// <summary>
     /// Custom theme color
     /// </summary>
@@ -310,6 +314,14 @@ public class GlobalConfig : IValidatableObject
             yield return new ValidationResult(
                 "The laboratory blog URL must be an absolute HTTP or HTTPS URL.",
                 [nameof(LaboratoryBlogUrl)]);
+        if (!string.IsNullOrEmpty(LaboratoryNetdiskUrl) &&
+            (LaboratoryNetdiskUrl.Any(char.IsWhiteSpace) ||
+             !Uri.TryCreate(LaboratoryNetdiskUrl, UriKind.Absolute, out var netdiskUri) ||
+             (netdiskUri.Scheme != Uri.UriSchemeHttp && netdiskUri.Scheme != Uri.UriSchemeHttps) ||
+             string.IsNullOrEmpty(netdiskUri.Host)))
+            yield return new ValidationResult(
+                "The laboratory netdisk URL must be an absolute HTTP or HTTPS URL.",
+                [nameof(LaboratoryNetdiskUrl)]);
     }
 }
 
@@ -338,6 +350,9 @@ public partial class ClientConfig
     /// Optional laboratory blog URL shown in public navigation
     /// </summary>
     public string? LaboratoryBlogUrl { get; set; }
+
+    /// <summary>Optional laboratory netdisk URL shown in public navigation.</summary>
+    public string? LaboratoryNetdiskUrl { get; set; }
 
     /// <summary>
     /// Custom theme color
@@ -392,6 +407,7 @@ public partial class ClientConfig
             Slogan = globalConfig.Slogan,
             FooterInfo = globalConfig.FooterInfo,
             LaboratoryBlogUrl = globalConfig.LaboratoryBlogUrl,
+            LaboratoryNetdiskUrl = globalConfig.LaboratoryNetdiskUrl,
             CustomTheme = globalConfig.CustomTheme,
             LogoUrl = globalConfig.LogoUrl,
             ApiPublicKey = globalConfig.ApiEncryption ? managedConfig.ApiEncryption.PublicKey : null,

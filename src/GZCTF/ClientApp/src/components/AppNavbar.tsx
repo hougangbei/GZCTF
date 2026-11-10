@@ -1,10 +1,19 @@
-import { mdiBookOpenPageVariantOutline, mdiChartLine, mdiFileTreeOutline, mdiHomeVariantOutline, mdiInformationOutline, mdiNoteTextOutline, mdiWrenchOutline } from '@mdi/js'
+import {
+  mdiBookOpenPageVariantOutline,
+  mdiChartLine,
+  mdiFolderNetworkOutline,
+  mdiFileTreeOutline,
+  mdiHomeVariantOutline,
+  mdiInformationOutline,
+  mdiNoteTextOutline,
+  mdiWrenchOutline,
+} from '@mdi/js'
 import { Icon } from '@mdi/react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router'
-import { useUser } from '@Hooks/useUser'
-import { useConfig } from '@Hooks/useConfig'
 import { getLaboratoryBlogUrl } from '@Utils/LaboratoryBlog'
+import { useConfig } from '@Hooks/useConfig'
+import { useUser } from '@Hooks/useUser'
 import { Role } from '@Api'
 import classes from '@Styles/AppNavbar.module.css'
 
@@ -21,6 +30,7 @@ export function AppNavbar({ mobile, mobileHidden, onNavigate }: AppNavbarProps) 
   const { user } = useUser()
   const { config } = useConfig()
   const blogUrl = getLaboratoryBlogUrl(config.laboratoryBlogUrl)
+  const netdiskUrl = getLaboratoryBlogUrl(config.laboratoryNetdiskUrl)
   const location = useLocation()
   const items: NavItem[] = [
     { icon: mdiHomeVariantOutline, label: 'common.tab.home', link: '/' },
@@ -28,31 +38,60 @@ export function AppNavbar({ mobile, mobileHidden, onNavigate }: AppNavbarProps) 
     { icon: mdiNoteTextOutline, label: 'common.tab.post', link: '/posts' },
     { icon: mdiChartLine, label: 'skillTrees:leaderboard.title', link: '/leaderboard' },
     { icon: mdiInformationOutline, label: 'common.tab.about', link: '/about' },
-    ...(blogUrl ? [{ icon: mdiBookOpenPageVariantOutline, label: 'common.tab.laboratory_blog', link: blogUrl, external: true }] : []),
+    ...(blogUrl
+      ? [{ icon: mdiBookOpenPageVariantOutline, label: 'common.tab.laboratory_blog', link: blogUrl, external: true }]
+      : []),
+    ...(netdiskUrl
+      ? [{ icon: mdiFolderNetworkOutline, label: 'common.tab.laboratory_netdisk', link: netdiskUrl, external: true }]
+      : []),
     { icon: mdiWrenchOutline, label: 'common.tab.admin', link: '/admin/skill-trees', admin: true },
   ]
 
   return (
-    <nav className={classes.navbar} data-mobile={mobile || undefined} data-open={mobile && !mobileHidden || undefined} aria-label={t('common.accessibility.navigation')} aria-hidden={mobileHidden || undefined} inert={mobileHidden}>
-      {items.filter(item => !item.admin || user?.role === Role.Admin).map(item => {
-        if (item.external) {
+    <nav
+      className={classes.navbar}
+      data-mobile={mobile || undefined}
+      data-open={(mobile && !mobileHidden) || undefined}
+      aria-label={t('common.accessibility.navigation')}
+      aria-hidden={mobileHidden || undefined}
+      inert={mobileHidden}
+    >
+      {items
+        .filter((item) => !item.admin || user?.role === Role.Admin)
+        .map((item) => {
+          if (item.external) {
+            return (
+              <a
+                key={item.label}
+                href={item.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={classes.link}
+                onClick={onNavigate}
+              >
+                <Icon path={item.icon} size={0.8} aria-hidden="true" />
+                <span>{t(item.label)}</span>
+              </a>
+            )
+          }
+          const selected = item.admin
+            ? location.pathname.startsWith('/admin')
+            : item.link === '/'
+              ? location.pathname === '/'
+              : location.pathname.startsWith(item.link)
           return (
-            <a key={item.link} href={item.link} target="_blank" rel="noopener noreferrer" className={classes.link} onClick={onNavigate}>
+            <Link
+              key={item.link}
+              to={item.link}
+              className={classes.link}
+              aria-current={selected ? 'page' : undefined}
+              onClick={onNavigate}
+            >
               <Icon path={item.icon} size={0.8} aria-hidden="true" />
               <span>{t(item.label)}</span>
-            </a>
+            </Link>
           )
-        }
-        const selected = item.admin
-          ? location.pathname.startsWith('/admin')
-          : item.link === '/' ? location.pathname === '/' : location.pathname.startsWith(item.link)
-        return (
-          <Link key={item.link} to={item.link} className={classes.link} aria-current={selected ? 'page' : undefined} onClick={onNavigate}>
-            <Icon path={item.icon} size={0.8} aria-hidden="true" />
-            <span>{t(item.label)}</span>
-          </Link>
-        )
-      })}
+        })}
     </nav>
   )
 }
